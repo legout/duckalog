@@ -17,6 +17,13 @@ app = typer.Typer(help="Duckalog CLI for building and inspecting DuckDB catalogs
 
 
 def _configure_logging(verbose: bool) -> None:
+    """Configure global logging settings for CLI commands.
+
+    Args:
+        verbose: When ``True``, set the log level to ``INFO``; otherwise use
+            ``WARNING``.
+    """
+
     level = logging.INFO if verbose else logging.WARNING
     logging.basicConfig(level=level, format="%(message)s")
 
@@ -28,6 +35,17 @@ def build(
     dry_run: bool = typer.Option(False, "--dry-run", help="Generate SQL without executing against DuckDB."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging output."),
 ) -> None:
+    """CLI entry point for the ``build`` command.
+
+    This command loads a configuration file and applies it to a DuckDB
+    catalog, or prints the generated SQL when ``--dry-run`` is used.
+
+    Args:
+        config_path: Path to the configuration file.
+        db_path: Optional override for the DuckDB database file path.
+        dry_run: If ``True``, print SQL instead of modifying the database.
+        verbose: If ``True``, enable more verbose logging.
+    """
     _configure_logging(verbose)
     log_info(
         "CLI build invoked",
@@ -66,6 +84,14 @@ def generate_sql(
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Write SQL output to file instead of stdout."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging output."),
 ) -> None:
+    """CLI entry point for the ``generate-sql`` command.
+
+    Args:
+        config_path: Path to the configuration file.
+        output: Optional output file path. If omitted, SQL is printed to
+            standard output.
+        verbose: If ``True``, enable more verbose logging.
+    """
     _configure_logging(verbose)
     log_info("CLI generate-sql invoked", config_path=str(config_path), output=str(output) if output else "stdout")
     try:
@@ -89,6 +115,12 @@ def validate(
     config_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging output."),
 ) -> None:
+    """CLI entry point for the ``validate`` command.
+
+    Args:
+        config_path: Path to the configuration file.
+        verbose: If ``True``, enable more verbose logging.
+    """
     _configure_logging(verbose)
     log_info("CLI validate invoked", config_path=str(config_path))
     try:
@@ -101,11 +133,20 @@ def validate(
 
 
 def _fail(message: str, code: int) -> None:
+    """Print an error message and exit with the given code.
+
+    Args:
+        message: Message to write to stderr.
+        code: Process exit code.
+    """
+
     typer.echo(message, err=True)
     raise typer.Exit(code)
 
 
 def main_entry() -> None:
+    """Invoke the Typer application as the console entry point."""
+
     app()
 
 

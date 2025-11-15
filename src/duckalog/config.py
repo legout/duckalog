@@ -15,7 +15,18 @@ from .logging_utils import log_debug, log_info
 
 
 class ConfigError(Exception):
-    """Raised when a catalog configuration cannot be parsed or validated."""
+    """Configuration-related error.
+
+    This exception is raised when a catalog configuration cannot be read,
+    parsed, interpolated, or validated according to the Duckalog schema.
+
+    Typical error conditions include:
+
+    * The config file does not exist or cannot be read.
+    * The file is not valid YAML/JSON.
+    * Required fields are missing or invalid.
+    * An environment variable placeholder cannot be resolved.
+    """
 
 
 EnvSource = Literal["parquet", "delta", "iceberg", "duckdb", "sqlite", "postgres"]
@@ -23,6 +34,16 @@ ENV_PATTERN = re.compile(r"\$\{env:([A-Za-z_][A-Za-z0-9_]*)\}")
 
 
 class DuckDBConfig(BaseModel):
+    """DuckDB connection and session settings.
+
+    Attributes:
+        database: Path to the DuckDB database file. Defaults to ``":memory:"``.
+        install_extensions: Names of extensions to install before use.
+        load_extensions: Names of extensions to load in the session.
+        pragmas: SQL statements (typically ``SET`` pragmas) executed after
+            connecting and loading extensions.
+    """
+
     database: str = ":memory:"
     install_extensions: List[str] = Field(default_factory=list)
     load_extensions: List[str] = Field(default_factory=list)
@@ -32,6 +53,15 @@ class DuckDBConfig(BaseModel):
 
 
 class DuckDBAttachment(BaseModel):
+    """Configuration for attaching another DuckDB database.
+
+    Attributes:
+        alias: Alias under which the database will be attached.
+        path: Filesystem path to the DuckDB database file.
+        read_only: Whether the attachment should be opened in read-only mode.
+            Defaults to ``True`` for safety.
+    """
+
     alias: str
     path: str
     read_only: bool = True
@@ -40,6 +70,13 @@ class DuckDBAttachment(BaseModel):
 
 
 class SQLiteAttachment(BaseModel):
+    """Configuration for attaching a SQLite database.
+
+    Attributes:
+        alias: Alias under which the SQLite database will be attached.
+        path: Filesystem path to the SQLite ``.db`` file.
+    """
+
     alias: str
     path: str
 
@@ -47,6 +84,19 @@ class SQLiteAttachment(BaseModel):
 
 
 class PostgresAttachment(BaseModel):
+    """Configuration for attaching a Postgres database.
+
+    Attributes:
+        alias: Alias used inside DuckDB to reference the Postgres database.
+        host: Hostname or IP address of the Postgres server.
+        port: TCP port of the Postgres server.
+        database: Database name to connect to.
+        user: Username for authentication.
+        password: Password for authentication.
+        sslmode: Optional SSL mode (for example, ``require``).
+        options: Extra key/value options passed to the attachment clause.
+    """
+
     alias: str
     host: str
     port: int = Field(ge=1, le=65535)
@@ -60,6 +110,14 @@ class PostgresAttachment(BaseModel):
 
 
 class AttachmentsConfig(BaseModel):
+    """Collection of attachment configurations.
+
+    Attributes:
+        duckdb: DuckDB attachment entries.
+        sqlite: SQLite attachment entries.
+        postgres: Postgres attachment entries.
+    """
+
     duckdb: List[DuckDBAttachment] = Field(default_factory=list)
     sqlite: List[SQLiteAttachment] = Field(default_factory=list)
     postgres: List[PostgresAttachment] = Field(default_factory=list)
@@ -68,6 +126,16 @@ class AttachmentsConfig(BaseModel):
 
 
 class IcebergCatalogConfig(BaseModel):
+    """Configuration for an Iceberg catalog.
+
+    Attributes:
+        name: Catalog name referenced by Iceberg views.
+        catalog_type: Backend type (for example, ``rest``, ``hive``, ``glue``).
+        uri: Optional URI used by certain catalog types.
+        warehouse: Optional warehouse location for catalog data.
+        options: Additional catalog-specific options.
+    """
+
     name: str
     catalog_type: str
     uri: Optional[str] = None
@@ -85,6 +153,26 @@ class IcebergCatalogConfig(BaseModel):
 
 
 class ViewConfig(BaseModel):
+    """Definition of a single catalog view.
+
+    A view is either backed by raw SQL (``sql``) or by a logical data source
+    (``source`` + required fields). Additional metadata fields such as
+    ``description`` and ``tags`` do not affect SQL generation but are preserved
+    for documentation and tooling.
+
+    Attributes:
+        name: Unique view name within the config.
+        sql: Raw SQL text defining the view body.
+        source: Source type (e.g. ``"parquet"``, ``"iceberg"``, ``"duckdb"``).
+        uri: URI for file- or table-based sources (Parquet/Delta/Iceberg).
+        database: Attachment alias for attached-database sources.
+        table: Table name (optionally schema-qualified) for attached sources.
+        catalog: Iceberg catalog name for catalog-based Iceberg views.
+        options: Source-specific options passed to scan functions.
+        description: Optional human-readable description of the view.
+        tags: Optional list of tags for classification.
+    """
+
     name: str
     sql: Optional[str] = None
     source: Optional[EnvSource] = None
@@ -141,6 +229,16 @@ class ViewConfig(BaseModel):
 
 
 class Config(BaseModel):
+    """Top-level Duckalog configuration.
+
+    Attributes:
+        version: Positive integer describing the config schema version.
+        duckdb: DuckDB session and connection settings.
+        views: List of view definitions to create in the catalog.
+        attachments: Optional attachments to external databases.
+        iceberg_catalogs: Optional Iceberg catalog definitions.
+    """
+
     version: int
     duckdb: DuckDBConfig
     views: List[ViewConfig]
@@ -196,7 +294,31 @@ class Config(BaseModel):
 
 
 def load_config(path: str) -> Config:
-    """Load a Duckalog config file, interpolate env vars, and validate it."""
+    """Load, interpolate, and validate a Duckalog configuration file.
+
+    This helper is the main entry point for turning a YAML or JSON file into a
+    validated :class:`Config` instance. It applies environment-variable
+    interpolation and enforces the configuration schema.
+
+    Args:
+        path: Path to a YAML or JSON config file.
+
+    Returns:
+        A validated :class:`Config` object.
+
+    Raises:
+        ConfigError: If the file cannot be read, is not valid YAML/JSON,
+            fails schema validation, or contains unresolved
+            ``${env:VAR_NAME}`` placeholders.
+
+    Example:
+        Load a catalog from ``catalog.yaml``::
+
+            from duckalog import load_config
+
+            config = load_config("catalog.yaml")
+            print(len(config.views))
+    """
 
     config_path = Path(path)
     if not config_path.exists():

@@ -10,6 +10,15 @@ SENSITIVE_KEYWORDS = ("password", "secret", "token", "key", "pwd")
 
 
 def get_logger(name: str = LOGGER_NAME) -> logging.Logger:
+    """Return a logger configured for Duckalog.
+
+    Args:
+        name: Logger name. Defaults to the project-wide logger name.
+
+    Returns:
+        A :class:`logging.Logger` instance.
+    """
+
     return logging.getLogger(name)
 
 
@@ -38,14 +47,35 @@ def _log(level: int, message: str, **details: Any) -> None:
 
 
 def log_info(message: str, **details: Any) -> None:
+    """Log a redacted INFO-level message.
+
+    Args:
+        message: High-level message to log.
+        **details: Structured key/value details to attach to the log message.
+    """
+
     _log(logging.INFO, message, **details)
 
 
 def log_debug(message: str, **details: Any) -> None:
+    """Log a redacted DEBUG-level message.
+
+    Args:
+        message: Debug message to log.
+        **details: Structured key/value details to attach to the log message.
+    """
+
     _log(logging.DEBUG, message, **details)
 
 
 def log_error(message: str, **details: Any) -> None:
+    """Log a redacted ERROR-level message.
+
+    Args:
+        message: Error message to log.
+        **details: Structured key/value details to attach to the log message.
+    """
+
     _log(logging.ERROR, message, **details)
 
 

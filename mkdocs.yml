@@ -1,0 +1,29 @@
+site_name: Duckalog
+site_description: Build DuckDB catalogs from declarative YAML/JSON configs.
+site_url: 
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
+  - User Guide:
+      - Usage: guides/usage.md
+  - API Reference:
+      - duckalog: reference/api.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_root_heading: true
+            show_source: false
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+

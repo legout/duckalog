@@ -15,7 +15,12 @@ logger = get_logger()
 
 
 class EngineError(Exception):
-    """Raised when DuckDB engine operations fail."""
+    """Engine-level error raised during catalog builds.
+
+    This exception wraps lower-level DuckDB errors, such as failures to
+    connect to the database, attach external systems, or execute generated
+    SQL statements.
+    """
 
 
 def build_catalog(
@@ -24,9 +29,40 @@ def build_catalog(
     dry_run: bool = False,
     verbose: bool = False,
 ) -> Optional[str]:
-    """Build or update a DuckDB catalog from a config file.
+    """Build or update a DuckDB catalog from a configuration file.
 
-    Returns the generated SQL string when ``dry_run`` is True, otherwise None.
+    This function is the high-level entry point used by both the CLI and
+    Python API. It loads the config, optionally performs a dry-run SQL
+    generation, or otherwise connects to DuckDB, sets up attachments and
+    Iceberg catalogs, and creates or replaces configured views.
+
+    Args:
+        config_path: Path to the YAML/JSON configuration file.
+        db_path: Optional override for ``duckdb.database`` in the config.
+        dry_run: If ``True``, do not connect to DuckDB; instead generate and
+            return the full SQL script for all views.
+        verbose: If ``True``, enable more verbose logging via the standard
+            logging module.
+
+    Returns:
+        The generated SQL script as a string when ``dry_run`` is ``True``,
+        otherwise ``None`` when the catalog is applied to DuckDB.
+
+    Raises:
+        ConfigError: If the configuration file is invalid.
+        EngineError: If connecting to DuckDB or executing SQL fails.
+
+    Example:
+        Build a catalog in-place::
+
+            from duckalog import build_catalog
+
+            build_catalog("catalog.yaml")
+
+        Generate SQL without modifying the database::
+
+            sql = build_catalog("catalog.yaml", dry_run=True)
+            print(sql)
     """
 
     if verbose:
