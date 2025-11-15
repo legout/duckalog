@@ -44,6 +44,28 @@ def test_build_catalog_idempotent(tmp_path):
     assert rows == [(42,)]
 
 
+def test_build_catalog_missing_iceberg_catalog(tmp_path):
+    config_path = _write_config(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        iceberg_catalogs:
+          - name: main_ic
+            catalog_type: rest
+        views:
+          - name: missing_catalog_view
+            source: iceberg
+            catalog: other_ic
+            table: analytics.orders
+        """,
+    )
+
+    with pytest.raises(ConfigError):
+        build_catalog(str(config_path), db_path=str(tmp_path / "out.duckdb"))
+
+
 def test_build_catalog_with_duckdb_attachment(tmp_path):
     attached_path = tmp_path / "ref.duckdb"
     conn = duckdb.connect(str(attached_path))

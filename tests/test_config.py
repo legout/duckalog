@@ -173,6 +173,29 @@ def test_view_metadata_fields(tmp_path):
     assert view.tags == ["core", "metrics"]
 
 
+def test_iceberg_view_catalog_reference_valid(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        iceberg_catalogs:
+          - name: main_ic
+            catalog_type: rest
+        views:
+          - name: iceberg_catalog_view
+            source: iceberg
+            catalog: main_ic
+            table: analytics.orders
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert config.views[0].catalog == "main_ic"
+
+
 def test_duckdb_attachment_read_only_default(tmp_path):
     config_path = _write(
         tmp_path / "catalog.yaml",
@@ -220,3 +243,28 @@ def test_duckdb_attachment_read_only_explicit_false(tmp_path):
 
     attachment = config.attachments.duckdb[0]
     assert attachment.read_only is False
+
+
+def test_iceberg_view_catalog_reference_missing(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        iceberg_catalogs:
+          - name: defined_ic
+            catalog_type: rest
+        views:
+          - name: missing_catalog_view
+            source: iceberg
+            catalog: missing_ic
+            table: analytics.orders
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "missing_catalog_view" in str(exc.value)
+    assert "missing_ic" in str(exc.value)

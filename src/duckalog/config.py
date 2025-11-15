@@ -180,6 +180,18 @@ class Config(BaseModel):
             dup_list = ", ".join(sorted(set(duplicates)))
             raise ValueError(f"Duplicate Iceberg catalog name(s) found: {dup_list}")
 
+        missing_catalog_views: List[str] = []
+        defined_catalogs = set(catalog_names.keys())
+        for view in self.views:
+            if view.source == "iceberg" and view.catalog and view.catalog not in defined_catalogs:
+                missing_catalog_views.append(f"{view.name} -> {view.catalog}")
+        if missing_catalog_views:
+            details = ", ".join(missing_catalog_views)
+            raise ValueError(
+                "Iceberg view(s) reference undefined catalog(s): "
+                f"{details}. Define each catalog under `iceberg_catalogs`."
+            )
+
         return self
 
 
