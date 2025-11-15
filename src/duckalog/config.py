@@ -34,7 +34,7 @@ class DuckDBConfig(BaseModel):
 class DuckDBAttachment(BaseModel):
     alias: str
     path: str
-    read_only: bool = False
+    read_only: bool = True
 
     model_config = ConfigDict(extra="forbid")
 

@@ -171,3 +171,52 @@ def test_view_metadata_fields(tmp_path):
     view = config.views[0]
     assert view.description == "Primary metrics view"
     assert view.tags == ["core", "metrics"]
+
+
+def test_duckdb_attachment_read_only_default(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        attachments:
+          duckdb:
+            - alias: ref
+              path: ./ref.duckdb
+        views:
+          - name: v1
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert len(config.attachments.duckdb) == 1
+    attachment = config.attachments.duckdb[0]
+    assert attachment.alias == "ref"
+    assert attachment.read_only is True
+
+
+def test_duckdb_attachment_read_only_explicit_false(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        attachments:
+          duckdb:
+            - alias: ref
+              path: ./ref.duckdb
+              read_only: false
+        views:
+          - name: v1
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    attachment = config.attachments.duckdb[0]
+    assert attachment.read_only is False
