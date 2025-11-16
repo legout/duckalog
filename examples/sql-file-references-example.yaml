@@ -1,0 +1,349 @@
+# Duckalog Configuration with SQL File References Example
+#
+# This example demonstrates the new SQL file references feature in Duckalog.
+# It shows how to use sql_file and sql_template to reference external SQL files
+# instead of writing SQL inline in the configuration.
+
+version: 1
+
+# DuckDB configuration
+duckdb:
+  database: sql_references_demo.duckdb
+  install_extensions:
+    - httpfs    # For S3 file access
+    - iceberg   # For Iceberg table support
+
+  pragmas:
+    # Memory and performance settings
+    - "SET memory_limit='2GB'"
+    - "SET threads=4"
+    - "SET timezone='UTC'"
+
+    # S3 configuration for cloud storage
+    - "SET s3_region='${env:AWS_REGION:us-east-1}'"
+    - "SET s3_access_key_id='${env:AWS_ACCESS_KEY_ID}'"
+    - "SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"
+
+# Attach reference databases
+attachments:
+  duckdb:
+    - alias: reference_data
+      path: ./reference_data.duckdb
+      read_only: true
+
+    - alias: historical_data
+      path: ./historical_data.duckdb
+      read_only: true
+
+  sqlite:
+    - alias: legacy_system
+      path: ./legacy_system.db
+
+  postgres:
+    - alias: production_db
+      host: "${env:PROD_DB_HOST}"
+      port: 5432
+      database: "${env:PROD_DB_NAME}"
+      user: "${env:PROD_DB_USER}"
+      password: "${env:PROD_DB_PASSWORD}"
+      sslmode: require
+
+# Iceberg catalog configuration
+iceberg_catalogs:
+  - name: data_lake_catalog
+    catalog_type: rest
+    uri: "${env:ICEBERG_CATALOG_URI}"
+    warehouse: "s3://${env:ICEBERG_WAREHOUSE_BUCKET}/analytics/"
+    options:
+      token: "${env:ICEBERG_TOKEN}"
+      region: "${env:AWS_REGION:us-east-1}"
+
+# View definitions using various SQL reference methods
+views:
+  # =================================================================
+  # 1. TRADITIONAL INLINE SQL (Backward Compatibility)
+  # =================================================================
+  # Views with inline SQL continue to work exactly as before
+
+  - name: simple_users_view
+    source: parquet
+    uri: "s3://data-warehouse/users/*.parquet"
+    sql: |
+      SELECT
+        user_id,
+        name,
+        email,
+        created_at,
+        region,
+        status
+      FROM data
+      WHERE active = true
+        AND created_at >= CURRENT_DATE - INTERVAL 30 DAYS
+      ORDER BY created_at DESC
+    description: "Simple user view with inline SQL - backward compatible"
+
+  # =================================================================
+  # 2. SIMPLE SQL FILE REFERENCES
+  # =================================================================
+  # Use sql_file for direct references to external .sql files
+
+  - name: user_engagement_analysis
+    source: duckdb
+    database: reference_data
+    table: user_events
+    sql_file:
+      path: "examples/sql-files/user_summary.sql"
+    description: "User engagement metrics from external SQL file"
+
+  - name: product_sales_summary
+    source: postgres
+    database: production_db
+    table: sales
+    sql_file:
+      path: "sql/product_analysis.sql"
+    description: "Product sales analysis using external SQL file"
+
+  - name: daily_metrics_aggregated
+    source: iceberg
+    catalog: data_lake_catalog
+    table: analytics.daily_metrics
+    sql_file:
+      path: "sql/daily_aggregations.sql"
+    description: "Daily metrics with external SQL file reference"
+
+  # =================================================================
+  # 3. SQL TEMPLATES WITH CONFIGURATION VARIABLES
+  # =================================================================
+  # Use sql_template for parameterized SQL files with variable substitution
+
+  - name: sales_report_q1_2023
+    source: postgres
+    database: production_db
+    sql_template:
+      path: "examples/sql-files/sales_report_template.sql"
+      variables:
+        start_date: "2023-01-01"
+        end_date: "2023-03-31"
+        min_amount: 25.00
+        time_period: "month"
+        high_value_threshold: 150.00
+        product_revenue_threshold: 5000.00
+        customer_ltv_threshold: 1000.00
+    description: "Q1 2023 sales report using template with config variables"
+
+  - name: sales_report_q2_2023
+    source: postgres
+    database: production_db
+    sql_template:
+      path: "examples/sql-files/sales_report_template.sql"
+      variables:
+        start_date: "2023-04-01"
+        end_date: "2023-06-30"
+        min_amount: 25.00
+        time_period: "month"
+        high_value_threshold: 150.00
+        product_revenue_threshold: 5000.00
+        customer_ltv_threshold: 1000.00
+    description: "Q2 2023 sales report using same template with different variables"
+
+  - name: weekly_sales_report
+    source: postgres
+    database: production_db
+    sql_template:
+      path: "examples/sql-files/sales_report_template.sql"
+      variables:
+        start_date: "2023-06-01"
+        end_date: "2023-06-30"
+        min_amount: 10.00
+        time_period: "week"
+        high_value_threshold: 75.00
+        product_revenue_threshold: 1000.00
+        customer_ltv_threshold: 250.00
+    description: "Weekly sales report with different parameters for June 2023"
+
+  # =================================================================
+  # 4. SQL TEMPLATES WITH ENVIRONMENT VARIABLES
+  # =================================================================
+  # Templates can also use environment variables via ${env:VAR_NAME} syntax
+
+  - name: region_specific_sales
+    source: postgres
+    database: production_db
+    sql_template:
+      path: "sql/regional_sales_template.sql"
+      variables:
+        min_revenue_threshold: 1000.00
+        time_range_days: 90
+    description: "Sales report filtered by environment-specified region"
+
+  - name: customer_cohort_analysis
+    source: duckdb
+    database: reference_data
+    sql_template:
+      path: "sql/cohort_analysis_template.sql"
+      variables:
+        analysis_date: "2023-06-30"
+        retention_periods: "1,7,30,90"
+        min_cohort_size: 100
+    description: "Customer cohort analysis using template with environment context"
+
+  # =================================================================
+  # 5. SOURCE + SQL COMBINATIONS
+  # =================================================================
+  # Views can have both a data source AND SQL transformation
+
+  - name: enriched_user_events
+    source: parquet
+    uri: "s3://data-lake/raw-events/*.parquet"
+    sql_file:
+      path: "sql/event_enrichment.sql"
+    description: "Raw events enriched with additional transformations from SQL file"
+
+  - name: filtered_iceberg_data
+    source: iceberg
+    catalog: data_lake_catalog
+    table: analytics.processed_data
+    sql_template:
+      path: "sql/data_filtering_template.sql"
+      variables:
+        date_threshold: "2023-01-01"
+        status_filter: "active"
+        category_whitelist: "premium,enterprise"
+    description: "Iceberg data with additional SQL filtering via template"
+
+  - name: postgres_enriched_view
+    source: postgres
+    database: production_db
+    table: customers
+    sql: |
+      -- This combines source data with SQL transformation
+      SELECT
+        c.customer_id,
+        c.name,
+        c.email,
+        c.segment,
+        c.country,
+        -- Add computed fields
+        CASE
+          WHEN c.segment = 'enterprise' THEN 'High Value'
+          WHEN c.segment = 'smb' THEN 'Medium Value'
+          ELSE 'Standard'
+        END as value_tier,
+        -- Reference attached database for additional data
+        ref.lookup_value
+      FROM customers c
+      LEFT JOIN reference_data.customer_lookup ref ON c.customer_id = ref.customer_id
+      WHERE c.created_at >= CURRENT_DATE - INTERVAL 365 DAYS
+    description: "Postgres source with inline SQL transformation (demonstrating source + SQL)"
+
+  # =================================================================
+  # 6. REUSABLE TEMPLATE PATTERNS
+  # =================================================================
+  # Show how the same template can be reused with different parameters
+
+  - name: revenue_analysis_monthly
+    source: postgres
+    database: production_db
+    sql_template:
+      path: "sql/revenue_analysis_template.sql"
+      variables:
+        analysis_type: "monthly"
+        revenue_minimum: 100.00
+        include_categories: "premium,standard"
+        calculation_method: "sum"
+    description: "Monthly revenue analysis"
+
+  - name: revenue_analysis_quarterly
+    source: postgres
+    database: production_db
+    sql_template:
+      path: "sql/revenue_analysis_template.sql"
+      variables:
+        analysis_type: "quarterly"
+        revenue_minimum: 500.00
+        include_categories: "premium,enterprise"
+        calculation_method: "avg"
+    description: "Quarterly revenue analysis"
+
+  - name: revenue_analysis_weekly
+    source: postgres
+    database: production_db
+    sql_template:
+      path: "sql/revenue_analysis_template.sql"
+      variables:
+        analysis_type: "weekly"
+        revenue_minimum: 50.00
+        include_categories: "all"
+        calculation_method: "median"
+    description: "Weekly revenue analysis"
+
+# =============================================================================
+# EXAMPLE SQL FILES EXPECTED:
+# =============================================================================
+# This configuration expects the following SQL files to exist:
+#
+# - examples/sql-files/user_summary.sql
+# - examples/sql-files/sales_report_template.sql
+# - sql/product_analysis.sql
+# - sql/daily_aggregations.sql
+# - sql/regional_sales_template.sql
+# - sql/cohort_analysis_template.sql
+# - sql/event_enrichment.sql
+# - sql/data_filtering_template.sql
+# - sql/revenue_analysis_template.sql
+#
+# =============================================================================
+# ENVIRONMENT VARIABLES REQUIRED:
+# =============================================================================
+# For this configuration to work, set these environment variables:
+#
+# export AWS_REGION="us-east-1"
+# export AWS_ACCESS_KEY_ID="your_aws_access_key"
+# export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
+#
+# export PROD_DB_HOST="your-production-db-host"
+# export PROD_DB_NAME="your_production_database"
+# export PROD_DB_USER="your_db_user"
+# export PROD_DB_PASSWORD="your_db_password"
+#
+# export ICEBERG_CATALOG_URI="https://your-iceberg-catalog.com"
+# export ICEBERG_WAREHOUSE_BUCKET="your-data-warehouse-bucket"
+# export ICEBERG_TOKEN="your_iceberg_access_token"
+#
+# Additional environment variables used by templates:
+# export CUSTOMER_SEGMENT="enterprise"  # Used by sales_report_template.sql
+# export CUSTOMER_COUNTRY="US"           # Used by sales_report_template.sql
+#
+# =============================================================================
+# USAGE EXAMPLES:
+# =============================================================================
+#
+# 1. Validate configuration (checks SQL files exist and are readable):
+#    duckalog validate sql-file-references-example.yaml
+#
+# 2. Generate SQL without executing:
+#    duckalog generate-sql sql-file-references-example.yaml --output preview.sql
+#
+# 3. Build the catalog:
+#    duckalog build sql-file-references-example.yaml
+#
+# 4. Use Python API:
+#    from duckalog import load_config, build_catalog
+#
+#    config = load_config("sql-file-references-example.yaml")
+#    build_catalog("sql-file-references-example.yaml")
+#
+# =============================================================================
+# KEY BENEFITS OF SQL FILE REFERENCES:
+# =============================================================================
+#
+# ✅ **Better Maintainability**: SQL queries are in separate .sql files with proper syntax highlighting
+# ✅ **Version Control**: SQL changes have clearer diffs and commit history
+# ✅ **Code Reusability**: Common SQL patterns can be shared across multiple configurations
+# ✅ **Template Variables**: Parameterized SQL for different environments and use cases
+# ✅ **Environment Integration**: Combine config variables with system environment variables
+# ✅ **Backward Compatibility**: All existing inline SQL configurations continue to work
+# ✅ **Tool Support**: SQL files benefit from IDE syntax highlighting, linting, and formatting
+# ✅ **Testing**: SQL files can be tested independently of configurations
+#
+# =============================================================================

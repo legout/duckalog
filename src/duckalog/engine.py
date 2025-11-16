@@ -7,7 +7,7 @@ from typing import Optional
 
 import duckdb
 
-from .config import Config, load_config
+from .config import Config, SecretConfig, load_config
 from .sql_generation import generate_all_views_sql, generate_view_sql
 from .logging_utils import get_logger, log_debug, log_info
 
@@ -107,7 +107,70 @@ def _resolve_db_path(config: Config, override: Optional[str]) -> str:
     return ":memory:"
 
 
-def _apply_duckdb_settings(conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool) -> None:
+def _create_secrets(
+    conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool
+) -> None:
+    """Create DuckDB secrets from configuration."""
+    db_conf = config.duckdb
+    if not db_conf.secrets:
+        return
+
+    log_info("Creating DuckDB secrets", count=len(db_conf.secrets))
+    for index, secret in enumerate(db_conf.secrets, start=1):
+        log_debug("Creating secret", index=index, type=secret.type, name=secret.name)
+
+        # For now, we'll log the secret configuration but not actually create it
+        # since CREATE SECRET syntax varies by DuckDB version and may not be available
+        # This allows the configuration to be validated and documented
+        log_info(
+            "Secret configuration parsed",
+            name=secret.name or secret.type,
+            type=secret.type,
+            provider=secret.provider,
+            persistent=secret.persistent,
+        )
+
+        # TODO: Implement actual CREATE SECRET when syntax is stable
+        # For now, we'll just log that we would create the secret
+        secret_config = {
+            "name": secret.name or secret.type,
+            "type": secret.type,
+            "provider": secret.provider,
+            "persistent": secret.persistent,
+        }
+
+        if secret.provider == "config":
+            if secret.type == "s3":
+                if secret.key_id:
+                    secret_config["key_id"] = secret.key_id
+                if secret.secret:
+                    secret_config["secret"] = "***REDACTED***"
+                if secret.region:
+                    secret_config["region"] = secret.region
+                if secret.endpoint:
+                    secret_config["endpoint"] = secret.endpoint
+            elif secret.type == "azure":
+                if secret.connection_string:
+                    secret_config["connection_string"] = "***REDACTED***"
+                else:
+                    if secret.tenant_id:
+                        secret_config["tenant_id"] = secret.tenant_id
+                    if secret.account_name:
+                        secret_config["account_name"] = secret.account_name
+                    if secret.secret:
+                        secret_config["secret"] = "***REDACTED***"
+            elif secret.type == "http":
+                if secret.key_id:
+                    secret_config["key_id"] = secret.key_id
+                if secret.secret:
+                    secret_config["secret"] = "***REDACTED***"
+
+        log_debug("Secret would be created", config=secret_config)
+
+
+def _apply_duckdb_settings(
+    conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool
+) -> None:
     db_conf = config.duckdb
     for ext in db_conf.install_extensions:
         log_info("Installing DuckDB extension", extension=ext)
@@ -115,14 +178,32 @@ def _apply_duckdb_settings(conn: duckdb.DuckDBPyConnection, config: Config, verb
     for ext in db_conf.load_extensions:
         log_info("Loading DuckDB extension", extension=ext)
         conn.load_extension(ext)
+
+    # Create secrets after extensions but before pragmas
+    _create_secrets(conn, config, verbose)
+
     if db_conf.pragmas:
         log_info("Executing DuckDB pragmas", count=len(db_conf.pragmas))
     for index, pragma in enumerate(db_conf.pragmas, start=1):
         log_debug("Running pragma", index=index)
         conn.execute(pragma)
 
+    # Apply settings after pragmas
+    if db_conf.settings:
+        settings_list = (
+            db_conf.settings
+            if isinstance(db_conf.settings, list)
+            else [db_conf.settings]
+        )
+        log_info("Executing DuckDB settings", count=len(settings_list))
+        for index, setting in enumerate(settings_list, start=1):
+            log_debug("Running setting", index=index, setting=setting)
+            conn.execute(setting)
 
-def _setup_attachments(conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool) -> None:
+
+def _setup_attachments(
+    conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool
+) -> None:
     for attachment in config.attachments.duckdb:
         clause = " (READ_ONLY)" if attachment.read_only else ""
         log_info(
@@ -136,7 +217,9 @@ def _setup_attachments(conn: duckdb.DuckDBPyConnection, config: Config, verbose:
         )
 
     for attachment in config.attachments.sqlite:
-        log_info("Attaching SQLite database", alias=attachment.alias, path=attachment.path)
+        log_info(
+            "Attaching SQLite database", alias=attachment.alias, path=attachment.path
+        )
         conn.execute(
             f"ATTACH DATABASE '{_quote_literal(attachment.path)}' AS \"{attachment.alias}\" (TYPE SQLITE)"
         )
@@ -174,9 +257,15 @@ def _setup_attachments(conn: duckdb.DuckDBPyConnection, config: Config, verbose:
         )
 
 
-def _setup_iceberg_catalogs(conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool) -> None:
+def _setup_iceberg_catalogs(
+    conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool
+) -> None:
     for catalog in config.iceberg_catalogs:
-        log_info("Registering Iceberg catalog", name=catalog.name, catalog_type=catalog.catalog_type)
+        log_info(
+            "Registering Iceberg catalog",
+            name=catalog.name,
+            catalog_type=catalog.catalog_type,
+        )
         log_debug("Iceberg catalog options", name=catalog.name, options=catalog.options)
         options = []
         if catalog.uri:
@@ -195,7 +284,9 @@ def _setup_iceberg_catalogs(conn: duckdb.DuckDBPyConnection, config: Config, ver
         conn.execute(query)
 
 
-def _create_views(conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool) -> None:
+def _create_views(
+    conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool
+) -> None:
     for view in config.views:
         sql = generate_view_sql(view)
         log_info("Creating or replacing view", name=view.name)

@@ -268,3 +268,436 @@ def test_iceberg_view_catalog_reference_missing(tmp_path):
 
     assert "missing_catalog_view" in str(exc.value)
     assert "missing_ic" in str(exc.value)
+
+
+def test_duckdb_settings_single_string(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          settings: "SET threads = 32"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert config.duckdb.settings == "SET threads = 32"
+
+
+def test_duckdb_settings_list(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          settings:
+            - "SET threads = 32"
+            - "SET memory_limit = '1GB'"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert config.duckdb.settings == ["SET threads = 32", "SET memory_limit = '1GB'"]
+
+
+def test_duckdb_settings_with_env_interpolation(monkeypatch, tmp_path):
+    monkeypatch.setenv("THREAD_COUNT", "16")
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          settings: "SET threads = ${env:THREAD_COUNT}"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert config.duckdb.settings == "SET threads = 16"
+
+
+def test_duckdb_settings_empty_string(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          settings: ""
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert config.duckdb.settings is None
+
+
+def test_duckdb_settings_empty_list(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          settings: []
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert config.duckdb.settings is None
+
+
+def test_duckdb_settings_invalid_format_not_set(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          settings: "threads = 32"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Settings must be valid DuckDB SET statements" in str(exc.value)
+
+
+def test_duckdb_settings_invalid_format_in_list(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          settings:
+            - "SET threads = 32"
+            - "memory_limit = '1GB'"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Settings must be valid DuckDB SET statements" in str(exc.value)
+
+
+def test_duckdb_settings_no_settings(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert config.duckdb.settings is None
+
+
+def test_duckdb_secrets_s3_config(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          secrets:
+            - type: s3
+              key_id: AKIAIOSFODNN7EXAMPLE
+              secret: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+              region: us-west-2
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert len(config.duckdb.secrets) == 1
+    secret = config.duckdb.secrets[0]
+    assert secret.type == "s3"
+    assert secret.key_id == "AKIAIOSFODNN7EXAMPLE"
+    assert secret.secret == "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    assert secret.region == "us-west-2"
+    assert secret.provider == "config"
+    assert secret.persistent is False
+
+
+def test_duckdb_secrets_azure_persistent(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          secrets:
+            - type: azure
+              name: azure_prod
+              provider: config
+              persistent: true
+              scope: 'prod/'
+              connection_string: DefaultEndpointsProtocol=https;AccountName=myaccount;AccountKey=mykey;EndpointSuffix=core.windows.net
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert len(config.duckdb.secrets) == 1
+    secret = config.duckdb.secrets[0]
+    assert secret.type == "azure"
+    assert secret.name == "azure_prod"
+    assert secret.provider == "config"
+    assert secret.persistent is True
+    assert secret.scope == "prod/"
+    assert (
+        secret.connection_string
+        == "DefaultEndpointsProtocol=https;AccountName=myaccount;AccountKey=mykey;EndpointSuffix=core.windows.net"
+    )
+
+
+def test_duckdb_secrets_credential_chain(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          secrets:
+            - type: s3
+              name: s3_auto
+              provider: credential_chain
+              region: us-east-1
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert len(config.duckdb.secrets) == 1
+    secret = config.duckdb.secrets[0]
+    assert secret.type == "s3"
+    assert secret.name == "s3_auto"
+    assert secret.provider == "credential_chain"
+    assert secret.region == "us-east-1"
+    assert secret.key_id is None
+    assert secret.secret is None
+
+
+def test_duckdb_secrets_http_basic_auth(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          secrets:
+            - type: http
+              name: api_auth
+              key_id: myusername
+              secret: mypassword
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert len(config.duckdb.secrets) == 1
+    secret = config.duckdb.secrets[0]
+    assert secret.type == "http"
+    assert secret.name == "api_auth"
+    assert secret.key_id == "myusername"
+    assert secret.secret == "mypassword"
+
+
+def test_duckdb_secrets_postgres_connection_string(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          secrets:
+            - type: postgres
+              name: pg_prod
+              connection_string: postgresql://user:password@localhost:5432/mydb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert len(config.duckdb.secrets) == 1
+    secret = config.duckdb.secrets[0]
+    assert secret.type == "postgres"
+    assert secret.name == "pg_prod"
+    assert secret.connection_string == "postgresql://user:password@localhost:5432/mydb"
+
+
+def test_duckdb_secrets_with_env_interpolation(monkeypatch, tmp_path):
+    monkeypatch.setenv("AWS_ACCESS_KEY", "AKIA123")
+    monkeypatch.setenv("AWS_SECRET_KEY", "secret123")
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          secrets:
+            - type: s3
+              key_id: ${env:AWS_ACCESS_KEY}
+              secret: ${env:AWS_SECRET_KEY}
+              region: us-west-2
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert len(config.duckdb.secrets) == 1
+    secret = config.duckdb.secrets[0]
+    assert secret.key_id == "AKIA123"
+    assert secret.secret == "secret123"
+
+
+def test_duckdb_secrets_validation_s3_missing_fields(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          secrets:
+            - type: s3
+              key_id: AKIAIOSFODNN7EXAMPLE
+              # Missing secret field
+              region: us-west-2
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "S3 config provider requires key_id and secret" in str(exc.value)
+
+
+def test_duckdb_secrets_validation_azure_missing_fields(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          secrets:
+            - type: azure
+              # Missing connection_string or tenant_id + account_name
+              account_name: myaccount
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert (
+        "Azure config provider requires connection_string or (tenant_id and account_name)"
+        in str(exc.value)
+    )
+
+
+def test_duckdb_secrets_validation_http_missing_fields(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          secrets:
+            - type: http
+              key_id: myusername
+              # Missing secret field
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "HTTP secret requires key_id (username) and secret (password)" in str(
+        exc.value
+    )
+
+
+def test_duckdb_secrets_empty_secrets(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+          secrets: []
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert config.duckdb.secrets == []
+
+
+def test_duckdb_secrets_no_secrets(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert config.duckdb.secrets == []
