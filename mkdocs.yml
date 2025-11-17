@@ -1,12 +1,15 @@
 site_name: Duckalog
 site_description: Build DuckDB catalogs from declarative YAML/JSON configs.
-site_url:
+site_url: https://legout.github.io/duckalog/
+repo_url: https://github.com/legout/duckalog
+repo_name: legout/duckalog
 
 theme:
   name: material
 
 nav:
   - Home: index.md
+  - Architecture: architecture.md
   - User Guide:
       - Usage: guides/usage.md
       - Examples:

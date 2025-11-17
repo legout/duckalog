@@ -133,9 +133,9 @@ All examples demonstrate these important Duckalog concepts:
 
 After working through examples:
 
-- **Read the User Guide** in `docs/guides/usage.md` for comprehensive documentation
-- **Explore the API Reference** in `docs/reference/api.md` for detailed function documentation
-- **Review the PRD** in `docs/PRD_Spec.md` for deep technical understanding
+- **Read the User Guide** in `../guides/usage.md` for comprehensive documentation
+- **Explore the API Reference** in `../reference/api.md` for detailed function documentation
+- **Review the PRD** in `../plan/PRD_Spec.md` for deep technical understanding
 - **Join the community** for questions and discussions
 
 ## Contributing Examples
@@ -151,8 +151,8 @@ Have a great Duckalog pattern to share? Consider contributing:
 ## Need Help?
 
 - **Configuration Issues**: Check [troubleshooting sections](simple-parquet.md#troubleshooting) in examples
-- **API Questions**: See [API Reference](docs/reference/api.md)
-- **General Usage**: Review [User Guide](docs/guides/usage.md)
-- **Technical Details**: Read [PRD Spec](docs/PRD_Spec.md)
+- **API Questions**: See [API Reference](../reference/api.md)
+- **General Usage**: Review [User Guide](../guides/usage.md)
+- **Technical Details**: Read [PRD Spec](../plan/PRD_Spec.md)
 
 Choose an example above to get started, or explore them in order to build your Duckalog expertise progressively!

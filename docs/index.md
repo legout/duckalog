@@ -8,6 +8,9 @@ Use these docs to:
 - Understand the core concepts behind Duckalog configs.
 - Get started with the CLI and Python API.
 - Find API reference information generated from the source code.
+- Learn about the [system architecture](architecture.md) and design patterns.
+
+For a deeper product and technical description, see the [PRD in `plan/PRD_Spec.md`](../plan/PRD_Spec.md).
 
 ## Quick Start Guide: A Realistic Example
 
@@ -165,6 +168,12 @@ con.close()
 This example demonstrates how Duckalog can help you create a cohesive analytics layer that combines data from multiple sources, applies business logic, and provides a single point of access for your data consumers.
 
 ## Quick Reference
+
+### Documentation Structure
+
+- **[System Architecture](architecture.md)** - Understanding Duckalog's design, components, and patterns
+- **[Quick Start](index.md)** - Getting started guide and examples
+- **[Product Requirements](plan/PRD_Spec.md)** - Comprehensive PRD and technical specification
 
 ### Install
 
