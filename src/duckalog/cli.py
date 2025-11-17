@@ -30,10 +30,18 @@ def _configure_logging(verbose: bool) -> None:
 
 @app.command(help="Build or update a DuckDB catalog from a config file.")
 def build(
-    config_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False),
-    db_path: Optional[Path] = typer.Option(None, "--db-path", help="Override DuckDB database path."),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Generate SQL without executing against DuckDB."),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging output."),
+    config_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False
+    ),
+    db_path: Optional[Path] = typer.Option(
+        None, "--db-path", help="Override DuckDB database path."
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Generate SQL without executing against DuckDB."
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
 ) -> None:
     """CLI entry point for the ``build`` command.
 
@@ -80,9 +88,15 @@ def build(
 
 @app.command(name="generate-sql", help="Validate config and emit CREATE VIEW SQL only.")
 def generate_sql(
-    config_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Write SQL output to file instead of stdout."),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging output."),
+    config_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False
+    ),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Write SQL output to file instead of stdout."
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
 ) -> None:
     """CLI entry point for the ``generate-sql`` command.
 
@@ -93,7 +107,11 @@ def generate_sql(
         verbose: If ``True``, enable more verbose logging.
     """
     _configure_logging(verbose)
-    log_info("CLI generate-sql invoked", config_path=str(config_path), output=str(output) if output else "stdout")
+    log_info(
+        "CLI generate-sql invoked",
+        config_path=str(config_path),
+        output=str(output) if output else "stdout",
+    )
     try:
         config = load_config(str(config_path))
         sql = generate_all_views_sql(config)
@@ -112,8 +130,12 @@ def generate_sql(
 
 @app.command(help="Validate a config file and report success or failure.")
 def validate(
-    config_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging output."),
+    config_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
 ) -> None:
     """CLI entry point for the ``validate`` command.
 

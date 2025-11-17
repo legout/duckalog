@@ -77,7 +77,9 @@ def test_generate_view_sql_iceberg_uri_and_catalog():
 
 def test_generate_view_sql_attachment_sources():
     for source in ("duckdb", "sqlite", "postgres"):
-        view = ViewConfig(name=f"{source}_view", source=source, database="refdb", table="public.users")
+        view = ViewConfig(
+            name=f"{source}_view", source=source, database="refdb", table="public.users"
+        )
         sql = generate_view_sql(view)
         assert sql.endswith("SELECT * FROM refdb.public.users;")
 
@@ -88,7 +90,7 @@ def test_generate_view_sql_raw_sql_preserves_body():
     sql = generate_view_sql(view)
 
     assert "SELECT * FROM base WHERE is_vip" in sql
-    assert sql.startswith("CREATE OR REPLACE VIEW \"vip\"")
+    assert sql.startswith('CREATE OR REPLACE VIEW "vip"')
 
 
 def test_generate_view_sql_ignores_metadata():

@@ -4,7 +4,18 @@ from __future__ import annotations
 
 import inspect
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union, get_args, get_origin, get_type_hints
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 import click
 
@@ -18,7 +29,9 @@ def echo(message: str, err: bool = False) -> None:
 
 
 class OptionInfo:
-    def __init__(self, default: Any, names: Tuple[str, ...], kwargs: Dict[str, Any]) -> None:
+    def __init__(
+        self, default: Any, names: Tuple[str, ...], kwargs: Dict[str, Any]
+    ) -> None:
         self.default = default
         self.names = names
         self.kwargs = kwargs
@@ -42,11 +55,15 @@ class Typer(click.Group):
     def __init__(self, *, help: Optional[str] = None) -> None:
         super().__init__(help=help)
 
-    def command(self, name: Optional[str] = None, *, help: Optional[str] = None) -> Callable:
+    def command(
+        self, name: Optional[str] = None, *, help: Optional[str] = None
+    ) -> Callable:
         def decorator(func: Callable) -> Callable:
             cmd_name = name or func.__name__.replace("_", "-")
             params = _build_params(func)
-            click_command = click.Command(cmd_name, params=params, callback=func, help=help)
+            click_command = click.Command(
+                cmd_name, params=params, callback=func, help=help
+            )
             self.add_command(click_command)
             return func
 
@@ -72,13 +89,19 @@ def _build_params(func: Callable) -> Sequence[click.Parameter]:
         if isinstance(default, OptionInfo):
             params.append(_build_option(param, annotation, default))
         else:
-            arg_info = default if isinstance(default, ArgumentInfo) else ArgumentInfo(default, {})
+            arg_info = (
+                default
+                if isinstance(default, ArgumentInfo)
+                else ArgumentInfo(default, {})
+            )
             params.append(_build_argument(param, annotation, arg_info))
     return params
 
 
-def _build_option(param: inspect.Parameter, annotation: Any, info: OptionInfo) -> click.Option:
-    names = info.names or (f"--{param.name.replace('_', '-')}" ,)
+def _build_option(
+    param: inspect.Parameter, annotation: Any, info: OptionInfo
+) -> click.Option:
+    names = info.names or (f"--{param.name.replace('_', '-')}",)
     param_kwargs = dict(info.kwargs)
     click_type = _annotation_to_click_type(annotation, param_kwargs)
     if click_type is not None:
@@ -90,7 +113,9 @@ def _build_option(param: inspect.Parameter, annotation: Any, info: OptionInfo) -
     return click.Option(list(names), default=info.default, **param_kwargs)
 
 
-def _build_argument(param: inspect.Parameter, annotation: Any, info: ArgumentInfo) -> click.Argument:
+def _build_argument(
+    param: inspect.Parameter, annotation: Any, info: ArgumentInfo
+) -> click.Argument:
     param_kwargs: Dict[str, Any] = {}
     default = info.default
     required = default in (inspect._empty, ...)  # type: ignore[comparison-overlap]
@@ -103,10 +128,19 @@ def _build_argument(param: inspect.Parameter, annotation: Any, info: ArgumentInf
     return click.Argument([param.name], **param_kwargs)
 
 
-def _annotation_to_click_type(annotation: Any, extra: Dict[str, Any]) -> Optional[click.ParamType]:
+def _annotation_to_click_type(
+    annotation: Any, extra: Dict[str, Any]
+) -> Optional[click.ParamType]:
     if _is_path_annotation(annotation):
         path_kwargs = {}
-        for key in ("exists", "file_okay", "dir_okay", "writable", "readable", "resolve_path"):
+        for key in (
+            "exists",
+            "file_okay",
+            "dir_okay",
+            "writable",
+            "readable",
+            "resolve_path",
+        ):
             if key in extra:
                 path_kwargs[key] = extra.pop(key)
         return click.Path(**path_kwargs)
@@ -118,7 +152,11 @@ def _is_path_annotation(annotation: Any) -> bool:
         return True
     origin = get_origin(annotation)
     if origin in (Union, Optional):
-        return any(_is_path_annotation(arg) for arg in get_args(annotation) if arg is not type(None))
+        return any(
+            _is_path_annotation(arg)
+            for arg in get_args(annotation)
+            if arg is not type(None)
+        )
     return False
 
 
@@ -127,7 +165,11 @@ def _is_bool_annotation(annotation: Any) -> bool:
         return True
     origin = get_origin(annotation)
     if origin in (Union, Optional):
-        return any(_is_bool_annotation(arg) for arg in get_args(annotation) if arg is not type(None))
+        return any(
+            _is_bool_annotation(arg)
+            for arg in get_args(annotation)
+            if arg is not type(None)
+        )
     return False
 
 

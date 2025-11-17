@@ -24,7 +24,7 @@ def quote_ident(value: str) -> str:
         '"events"'
     """
 
-    escaped = value.replace("\"", "\"\"")
+    escaped = value.replace('"', '""')
     return f'"{escaped}"'
 
 

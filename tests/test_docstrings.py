@@ -22,4 +22,3 @@ def test_public_api_has_docstrings() -> None:
             missing.append(name)
 
     assert not missing, f"Missing docstrings for public API symbols: {missing}"
-
