@@ -332,7 +332,7 @@ def test_cli_build_dry_run_outputs_sql(tmp_path):
 
 def test_cli_version_flag():
     runner = CliRunner()
-    result = runner.invoke(app, ["--version"])
+    result = runner.invoke(app, ["version"])
     assert result.exit_code == 0
     assert "duckalog" in result.output
 

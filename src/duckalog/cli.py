@@ -31,25 +31,15 @@ def _configure_logging(verbose: bool) -> None:
     logging.basicConfig(level=level, format="%(message)s")
 
 
-@app.callback(invoke_without_command=True)
-def main_callback(
-    version: bool = typer.Option(
-        False,
-        "--version",
-        "-V",
-        help="Show duckalog version and exit.",
-        is_eager=True,
-    ),
-) -> None:
-    """Handle global CLI options such as --version."""
+@app.command(name="version", help="Show duckalog version.")
+def version_command() -> None:
+    """Show the installed duckalog package version."""
 
-    if version:
-        try:
-            current_version = pkg_version("duckalog")
-        except PackageNotFoundError:
-            current_version = "unknown"
-        typer.echo(f"duckalog {current_version}")
-        raise typer.Exit()
+    try:
+        current_version = pkg_version("duckalog")
+    except PackageNotFoundError:
+        current_version = "unknown"
+    typer.echo(f"duckalog {current_version}")
 
 
 @app.command(help="Build or update a DuckDB catalog from a config file.")
