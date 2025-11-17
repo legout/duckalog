@@ -330,6 +330,13 @@ def test_cli_build_dry_run_outputs_sql(tmp_path):
     assert 'CREATE OR REPLACE VIEW "sample"' in result.output
 
 
+def test_cli_version_flag():
+    runner = CliRunner()
+    result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0
+    assert "duckalog" in result.output
+
+
 def test_info_logs_redact_secrets(monkeypatch, tmp_path, caplog):
     import duckdb as duckdb_module
 

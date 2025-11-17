@@ -4,6 +4,8 @@ from __future__ import annotations
 
 # mypy: disable-error-code=assignment
 import logging
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as pkg_version
 from pathlib import Path
 from typing import Optional
 
@@ -27,6 +29,27 @@ def _configure_logging(verbose: bool) -> None:
 
     level = logging.INFO if verbose else logging.WARNING
     logging.basicConfig(level=level, format="%(message)s")
+
+
+@app.callback(invoke_without_command=True)
+def main_callback(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        help="Show duckalog version and exit.",
+        is_eager=True,
+    ),
+) -> None:
+    """Handle global CLI options such as --version."""
+
+    if version:
+        try:
+            current_version = pkg_version("duckalog")
+        except PackageNotFoundError:
+            current_version = "unknown"
+        typer.echo(f"duckalog {current_version}")
+        raise typer.Exit()
 
 
 @app.command(help="Build or update a DuckDB catalog from a config file.")
