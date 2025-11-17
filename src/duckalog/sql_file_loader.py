@@ -8,9 +8,6 @@ import os
 import re
 from pathlib import Path
 from typing import Any, Dict, Optional, Set
-from urllib.parse import quote
-
-from pydantic import BaseModel, Field, ValidationError
 
 from .config import ConfigError
 

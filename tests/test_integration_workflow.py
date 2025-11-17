@@ -1,8 +1,7 @@
 """Integration tests for automated version tagging workflow."""
 
-import subprocess
-import tempfile
 import os
+import tempfile
 from pathlib import Path
 
 
@@ -17,7 +16,7 @@ def test_workflow_syntax():
             import yaml
 
             with open(workflow_path, "r") as f:
-                workflow_content = yaml.safe_load(f)
+                yaml.safe_load(f)
             print("✅ Workflow YAML syntax is valid")
             return True
         except ImportError:

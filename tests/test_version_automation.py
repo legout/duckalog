@@ -1,9 +1,6 @@
 """Unit tests for version automation workflow."""
 
 import re
-import tempfile
-import os
-from pathlib import Path
 
 
 def test_semver_validation():
@@ -102,6 +99,7 @@ name = "test-package"
             return
 
     try:
+        import os
         import tempfile
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:

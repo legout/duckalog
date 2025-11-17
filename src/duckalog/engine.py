@@ -7,9 +7,9 @@ from typing import Optional
 
 import duckdb
 
-from .config import Config, SecretConfig, load_config
-from .sql_generation import generate_all_views_sql, generate_view_sql
+from .config import Config, load_config
 from .logging_utils import get_logger, log_debug, log_info
+from .sql_generation import generate_all_views_sql, generate_view_sql
 
 logger = get_logger()
 

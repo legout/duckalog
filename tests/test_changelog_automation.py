@@ -1,9 +1,7 @@
 """Tests for changelog automation workflow."""
 
 import re
-import tempfile
-import os
-from pathlib import Path
+from datetime import datetime
 
 
 def test_changelog_entry_generation():
@@ -21,9 +19,6 @@ u6v7w8x|chore: Update dependencies
 """
 
     # Simulate the changelog generation logic
-    import re
-    from datetime import datetime
-
     commit_entries = []
     for line in test_commits.strip().split("\n"):
         if not line or "|" not in line:
@@ -56,16 +51,6 @@ u6v7w8x|chore: Update dependencies
         commit_entries.append(
             {"type": change_type, "message": clean_message, "hash": hash_part}
         )
-
-    # Test change type categorization
-    expected_types = {
-        "feat: Add automated version tagging": "Added",
-        "Fix bug in config parsing": "Fixed",
-        "docs: Update README with new features": "Changed",
-        "refactor: Clean up code structure": "Changed",
-        "test: Add unit tests for validation": "Changed",
-        "chore: Update dependencies": "Changed",
-    }
 
     # Generate changelog
     changelog_entries = []

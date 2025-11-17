@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import textwrap
 from pathlib import Path
 
 import duckdb
 import pytest
-from typer.testing import CliRunner
-import logging
 
 from duckalog import (
     ConfigError,
@@ -18,6 +17,7 @@ from duckalog import (
     validate_config,
 )
 from duckalog.cli import app
+from typer.testing import CliRunner
 
 
 def _write_config(path: Path, content: str) -> Path:
@@ -331,7 +331,6 @@ def test_cli_build_dry_run_outputs_sql(tmp_path):
 
 
 def test_info_logs_redact_secrets(monkeypatch, tmp_path, caplog):
-    from duckalog import engine as engine_module
     import duckdb as duckdb_module
 
     class FakeConnection:
