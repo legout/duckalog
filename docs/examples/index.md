@@ -135,7 +135,7 @@ After working through examples:
 
 - **Read the User Guide** in `../guides/usage.md` for comprehensive documentation
 - **Explore the API Reference** in `../reference/api.md` for detailed function documentation
-- **Review the PRD** in `../plan/PRD_Spec.md` for deep technical understanding
+- **Review the Architecture** in `../architecture.md` for high-level design details
 - **Join the community** for questions and discussions
 
 ## Contributing Examples
