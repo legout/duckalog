@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 import typer
 
@@ -30,18 +30,23 @@ def _configure_logging(verbose: bool) -> None:
 
 @app.command(help="Build or update a DuckDB catalog from a config file.")
 def build(
-    config_path: Path = typer.Argument(
-        ..., exists=True, file_okay=True, dir_okay=False
-    ),
-    db_path: Optional[Path] = typer.Option(
-        None, "--db-path", help="Override DuckDB database path."
-    ),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Generate SQL without executing against DuckDB."
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose logging output."
-    ),
+    config_path: Annotated[
+        Path, typer.Argument(..., exists=True, file_okay=True, dir_okay=False)
+    ],
+    db_path: Annotated[
+        Optional[Path],
+        typer.Option(None, "--db-path", help="Override DuckDB database path."),
+    ] = None,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            False, "--dry-run", help="Generate SQL without executing against DuckDB."
+        ),
+    ] = False,
+    verbose: Annotated[
+        bool,
+        typer.Option(False, "--verbose", "-v", help="Enable verbose logging output."),
+    ] = False,
 ) -> None:
     """CLI entry point for the ``build`` command.
 
@@ -88,15 +93,19 @@ def build(
 
 @app.command(name="generate-sql", help="Validate config and emit CREATE VIEW SQL only.")
 def generate_sql(
-    config_path: Path = typer.Argument(
-        ..., exists=True, file_okay=True, dir_okay=False
-    ),
-    output: Optional[Path] = typer.Option(
-        None, "--output", "-o", help="Write SQL output to file instead of stdout."
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose logging output."
-    ),
+    config_path: Annotated[
+        Path, typer.Argument(..., exists=True, file_okay=True, dir_okay=False)
+    ],
+    output: Annotated[
+        Optional[Path],
+        typer.Option(
+            None, "--output", "-o", help="Write SQL output to file instead of stdout."
+        ),
+    ] = None,
+    verbose: Annotated[
+        bool,
+        typer.Option(False, "--verbose", "-v", help="Enable verbose logging output."),
+    ] = False,
 ) -> None:
     """CLI entry point for the ``generate-sql`` command.
 
@@ -130,12 +139,13 @@ def generate_sql(
 
 @app.command(help="Validate a config file and report success or failure.")
 def validate(
-    config_path: Path = typer.Argument(
-        ..., exists=True, file_okay=True, dir_okay=False
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose logging output."
-    ),
+    config_path: Annotated[
+        Path, typer.Argument(..., exists=True, file_okay=True, dir_okay=False)
+    ],
+    verbose: Annotated[
+        bool,
+        typer.Option(False, "--verbose", "-v", help="Enable verbose logging output."),
+    ] = False,
 ) -> None:
     """CLI entry point for the ``validate`` command.
 

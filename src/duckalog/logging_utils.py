@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
+_LOGURU_LOGGER: Any
+
 try:  # pragma: no cover - exercised when loguru is installed
     from loguru import logger as _LOGURU_LOGGER
 

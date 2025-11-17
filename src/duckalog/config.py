@@ -6,7 +6,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
 
 import yaml
 from pydantic import (
@@ -20,8 +20,8 @@ from pydantic import (
 
 from .logging_utils import log_debug, log_info
 
-# Forward reference for SQLFileLoader to avoid circular imports
-SQLFileLoader = "SQLFileLoader"
+if TYPE_CHECKING:  # pragma: no cover - used for type checking only
+    from .sql_file_loader import SQLFileLoader
 
 
 class ConfigError(Exception):
@@ -385,19 +385,19 @@ class ViewConfig(BaseModel):
             )
 
         # Validate SQL file references
-        if has_sql_file:
-            if not self.sql_file.path.strip():
+        if self.sql_file is not None:
+            if not self.sql_file.path or not self.sql_file.path.strip():
                 raise ValueError(f"View '{self.name}': sql_file.path cannot be empty")
 
-        if has_sql_template:
-            if not self.sql_template.path.strip():
+        if self.sql_template is not None:
+            if not self.sql_template.path or not self.sql_template.path.strip():
                 raise ValueError(
                     f"View '{self.name}': sql_template.path cannot be empty"
                 )
 
         # If we have SQL content, clean it up
-        if has_sql:
-            self.sql = self.sql.strip()  # type: ignore[assignment]
+        if isinstance(self.sql, str) and self.sql.strip():
+            self.sql = self.sql.strip()
 
         # Validate data source configuration (if source is defined)
         if has_source:

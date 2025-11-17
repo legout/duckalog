@@ -204,56 +204,58 @@ def _apply_duckdb_settings(
 def _setup_attachments(
     conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool
 ) -> None:
-    for attachment in config.attachments.duckdb:
-        clause = " (READ_ONLY)" if attachment.read_only else ""
+    for duckdb_attachment in config.attachments.duckdb:
+        clause = " (READ_ONLY)" if duckdb_attachment.read_only else ""
         log_info(
             "Attaching DuckDB database",
-            alias=attachment.alias,
-            path=attachment.path,
-            read_only=attachment.read_only,
+            alias=duckdb_attachment.alias,
+            path=duckdb_attachment.path,
+            read_only=duckdb_attachment.read_only,
         )
         conn.execute(
-            f"ATTACH DATABASE '{_quote_literal(attachment.path)}' AS \"{attachment.alias}\"{clause}"
+            f"ATTACH DATABASE '{_quote_literal(duckdb_attachment.path)}' AS \"{duckdb_attachment.alias}\"{clause}"
         )
 
-    for attachment in config.attachments.sqlite:
+    for sqlite_attachment in config.attachments.sqlite:
         log_info(
-            "Attaching SQLite database", alias=attachment.alias, path=attachment.path
+            "Attaching SQLite database",
+            alias=sqlite_attachment.alias,
+            path=sqlite_attachment.path,
         )
         conn.execute(
-            f"ATTACH DATABASE '{_quote_literal(attachment.path)}' AS \"{attachment.alias}\" (TYPE SQLITE)"
+            f"ATTACH DATABASE '{_quote_literal(sqlite_attachment.path)}' AS \"{sqlite_attachment.alias}\" (TYPE SQLITE)"
         )
 
-    for attachment in config.attachments.postgres:
+    for pg_attachment in config.attachments.postgres:
         log_info(
             "Attaching Postgres database",
-            alias=attachment.alias,
-            host=attachment.host,
-            database=attachment.database,
-            user=attachment.user,
+            alias=pg_attachment.alias,
+            host=pg_attachment.host,
+            database=pg_attachment.database,
+            user=pg_attachment.user,
         )
         log_debug(
             "Postgres attachment details",
-            alias=attachment.alias,
-            user=attachment.user,
-            password=attachment.password,
-            options=attachment.options,
+            alias=pg_attachment.alias,
+            user=pg_attachment.user,
+            password=pg_attachment.password,
+            options=pg_attachment.options,
         )
         clauses = [
             "TYPE POSTGRES",
-            f"HOST '{_quote_literal(attachment.host)}'",
-            f"PORT {attachment.port}",
-            f"USER '{_quote_literal(attachment.user)}'",
-            f"PASSWORD '{_quote_literal(attachment.password)}'",
-            f"DATABASE '{_quote_literal(attachment.database)}'",
+            f"HOST '{_quote_literal(pg_attachment.host)}'",
+            f"PORT {pg_attachment.port}",
+            f"USER '{_quote_literal(pg_attachment.user)}'",
+            f"PASSWORD '{_quote_literal(pg_attachment.password)}'",
+            f"DATABASE '{_quote_literal(pg_attachment.database)}'",
         ]
-        if attachment.sslmode:
-            clauses.append(f"SSLMODE '{_quote_literal(attachment.sslmode)}'")
-        for key, value in attachment.options.items():
+        if pg_attachment.sslmode:
+            clauses.append(f"SSLMODE '{_quote_literal(pg_attachment.sslmode)}'")
+        for key, value in pg_attachment.options.items():
             clauses.append(f"{key.upper()} '{_quote_literal(str(value))}'")
         clause_sql = ", ".join(clauses)
         conn.execute(
-            f"ATTACH DATABASE '{_quote_literal(attachment.database)}' AS \"{attachment.alias}\" ({clause_sql})"
+            f"ATTACH DATABASE '{_quote_literal(pg_attachment.database)}' AS \"{pg_attachment.alias}\" ({clause_sql})"
         )
 
 
