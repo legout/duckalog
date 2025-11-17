@@ -283,18 +283,18 @@ jobs:
           if [ ! -f "mkdocs.yml" ]; then
             echo "📄 No mkdocs.yml found, creating minimal configuration..."
             cat > mkdocs.yml <<'EOF'
-site_name: Duckalog
-site_description: Build DuckDB catalogs from declarative YAML/JSON configs.
-nav:
-  - Home: index.md
-theme:
-  name: material
-plugins:
-  - search
-markdown_extensions:
-  - toc:
-      permalink: true
-EOF
+              site_name: Duckalog
+              site_description: Build DuckDB catalogs from declarative YAML/JSON configs.
+              nav:
+                - Home: index.md
+              theme:
+                name: material
+              plugins:
+                - search
+              markdown_extensions:
+                - toc:
+                    permalink: true
+            EOF
             echo "✅ Created minimal mkdocs.yml"
           fi
 
