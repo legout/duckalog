@@ -1,4 +1,8 @@
 # Changelog
+## [2025-11-17] - 0.1.0.1
+
+### Changed
+- Finish ci lint formatting, logging, and config type safety improvements (224f0d3)
 
 All notable changes to this project will be documented in this file.
 
