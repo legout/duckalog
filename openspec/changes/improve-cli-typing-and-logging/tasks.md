@@ -13,8 +13,8 @@
 - [x] 2.1 Update `duckalog.logging_utils` to:
   - Use a logger type that can explicitly represent the presence or absence of loguru.
   - Avoid assignments that mypy flags as incompatible while preserving runtime behavior.
-- [ ] 2.2 Verify that debug and info logging still satisfy the `errors-logging` spec (including secret redaction).
-- [ ] 2.3 Add or adjust tests (or mypy strictness) to ensure the new logger typing is exercised.
+- [x] 2.2 Verify that debug and info logging still satisfy the `errors-logging` spec (including secret redaction).
+- [x] 2.3 Add or adjust tests (or mypy strictness) to ensure the new logger typing is exercised.
 
 ## 3. CLI Typing Changes
 

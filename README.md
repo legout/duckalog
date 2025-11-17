@@ -292,6 +292,12 @@ Duckalog uses a streamlined GitHub Actions setup to keep CI predictable:
 - **Security workflow** focuses on a curated set of scans: TruffleHog and GitLeaks for secrets, Safety + pip-audit for dependency issues, and Bandit + Semgrep for code-level checks. Heavy container or supply-chain scans run only when explicitly needed.
 - **publish.yml** builds sdist + wheel once on Python 3.11, validates artifacts with `twine check`, smoke-tests the wheel, and then reuses the artifacts for Test PyPI, PyPI, or dry-run scenarios. Release jobs rely on the `Tests` workflow’s status rather than re-running the full test matrix.
 
+For local development, we recommend:
+
+- `uv run ruff check src/ tests/` to run lint checks (CI treats these as required).
+- `uv run ruff format src/ tests/` to auto-format code (CI runs `ruff format --check` in advisory mode).
+- `uv run mypy src/duckalog` to run type checks.
+
 #### Using uv (recommended for development)
 
 ```bash

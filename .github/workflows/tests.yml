@@ -46,11 +46,15 @@ jobs:
           pip install -e . || echo "Package installation completed with warnings"
 
       - name: Run Ruff checks
-        run: ruff check src/ tests/
+        run: |
+          echo "🧹 Running Ruff lint (hard gate)..."
+          ruff check src/ tests/
 
       - name: Run Ruff format check (advisory)
         continue-on-error: true
-        run: ruff format --check src/ tests/
+        run: |
+          echo "🎨 Running Ruff format --check (advisory)..."
+          ruff format --check src/ tests/
 
       - name: Type checking with mypy
         run: mypy src/duckalog --ignore-missing-imports

@@ -270,6 +270,46 @@ def test_iceberg_view_catalog_reference_missing(tmp_path):
     assert "missing_ic" in str(exc.value)
 
 
+def test_sql_file_path_cannot_be_empty(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: file_view
+            sql_file:
+              path: ""
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "sql_file.path cannot be empty" in str(exc.value)
+
+
+def test_sql_template_path_cannot_be_empty(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: template_view
+            sql_template:
+              path: "   "
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "sql_template.path cannot be empty" in str(exc.value)
+
+
 def test_duckdb_settings_single_string(tmp_path):
     config_path = _write(
         tmp_path / "catalog.yaml",
