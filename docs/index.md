@@ -173,7 +173,6 @@ This example demonstrates how Duckalog can help you create a cohesive analytics 
 
 - **[System Architecture](architecture.md)** - Understanding Duckalog's design, components, and patterns
 - **[Quick Start](index.md)** - Getting started guide and examples
-- **[Product Requirements](plan/PRD_Spec.md)** - Comprehensive PRD and technical specification
 
 ### Install
 
