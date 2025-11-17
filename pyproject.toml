@@ -38,7 +38,6 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Systems Administration",
     "Topic :: Utilities",
-    "Topic :: Data Processing",
     "Topic :: Scientific/Engineering",
     "Natural Language :: English",
     "Environment :: Console",
