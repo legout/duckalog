@@ -14,10 +14,12 @@ nav:
       - Usage: guides/usage.md
       - Examples:
           - examples/index.md
+          - DuckDB Secrets: examples/duckdb-secrets.md
+          - DuckDB Settings: examples/duckdb-settings.md
+          - Environment Variables: examples/environment-vars.md
+          - Local Attachments: examples/local-attachments.md
           - Multi-Source Analytics: examples/multi-source-analytics.md
           - Simple Parquet: examples/simple-parquet.md
-          - Local Attachments: examples/local-attachments.md
-          - Environment Variables: examples/environment-vars.md
   - API Reference:
       - duckalog: reference/api.md
 

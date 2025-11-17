@@ -10,7 +10,7 @@ Use these docs to:
 - Find API reference information generated from the source code.
 - Learn about the [system architecture](architecture.md) and design patterns.
 
-For a deeper product and technical description, see the [PRD in `plan/PRD_Spec.md`](../plan/PRD_Spec.md).
+For a deeper product and technical description, see the [Architecture in `architecture.md`](architecture.md).
 
 ## Quick Start Guide: A Realistic Example
 
@@ -211,4 +211,3 @@ validate_config("catalog.yaml")
 
 For a deeper product and technical description, see the PRD in
 `docs/PRD_Spec.md`.
-

@@ -153,6 +153,6 @@ Have a great Duckalog pattern to share? Consider contributing:
 - **Configuration Issues**: Check [troubleshooting sections](simple-parquet.md#troubleshooting) in examples
 - **API Questions**: See [API Reference](../reference/api.md)
 - **General Usage**: Review [User Guide](../guides/usage.md)
-- **Technical Details**: Read [PRD Spec](../plan/PRD_Spec.md)
+- **Technical Details**: Read [Architecture](../architecture.md)
 
 Choose an example above to get started, or explore them in order to build your Duckalog expertise progressively!
