@@ -65,7 +65,7 @@ jobs:
           echo "TRUFFLEHOG_HEAD=$HEAD_SHA" >> $GITHUB_ENV
 
       - name: Run TruffleHog
-        if: env.TRUFFLEHOG_BASE != env.TRUFFLEHOG_HEAD
+        if: ${{ env.TRUFFLEHOG_BASE != env.TRUFFLEHOG_HEAD }}
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
@@ -74,7 +74,7 @@ jobs:
           extra_args: --only-verified
 
       - name: Skip TruffleHog (no diff)
-        if: env.TRUFFLEHOG_BASE == env.TRUFFLEHOG_HEAD
+        if: ${{ env.TRUFFLEHOG_BASE == env.TRUFFLEHOG_HEAD }}
         run: echo "Skipping TruffleHog: BASE and HEAD are identical"
 
       - name: Run GitLeaks
