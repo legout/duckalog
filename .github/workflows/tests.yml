@@ -42,7 +42,7 @@ jobs:
       - name: Install linting tools
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy
+          pip install ruff mypy types-PyYAML
           pip install -e . || echo "Package installation completed with warnings"
 
       - name: Run Ruff checks
