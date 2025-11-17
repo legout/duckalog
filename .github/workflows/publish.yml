@@ -124,7 +124,7 @@ jobs:
           sleep 20
           python -m pip install duckalog
           duckalog --help
-          duckalog --version
+          duckalog version
 
       - name: Get package info from PyPI
         run: |
