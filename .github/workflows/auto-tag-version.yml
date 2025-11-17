@@ -25,154 +25,42 @@ jobs:
   detect-version-change:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.extract_version.outputs.version }}
-      should_tag: ${{ steps.compare_versions.outputs.should_tag }}
-      tag_exists: ${{ steps.check_tag_exists.outputs.tag_exists }}
-      
+      version: ${{ steps.version_info.outputs.current_version }}
+      should_tag: ${{ steps.tag_decision.outputs.should_tag }}
+      tag_exists: ${{ steps.version_info.outputs.tag_exists }}
+      valid: ${{ steps.version_info.outputs.valid_semver }}
+      latest_tag: ${{ steps.version_info.outputs.latest_tag }}
+      latest_version: ${{ steps.version_info.outputs.latest_version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for proper tag comparison
+          fetch-depth: 0
 
-      - name: Extract version from pyproject.toml
-        id: extract_version
-        run: |
-          echo "🔍 Extracting version from pyproject.toml..."
-          
-          # Try to extract version using Python
-          VERSION=$(python -c "
-          import sys
-          try:
-              import tomllib
-          except ImportError:
-              import tomli as tomllib
-          
-          try:
-              with open('pyproject.toml', 'rb') as f:
-                  data = tomllib.load(f)
-              version = data['project']['version']
-              print(f'✅ Extracted version: {version}')
-              print(f'::set-output name=version::{version}')
-          except Exception as e:
-              print(f'❌ Error extracting version: {e}', file=sys.stderr)
-              sys.exit(1)
-          " || {
-            echo "❌ Failed to extract version from pyproject.toml"
-            exit 1
-          }
-          
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Detect version information
+        id: version_info
+        run: python .github/scripts/version_info.py --output "$GITHUB_OUTPUT"
 
-      - name: Validate semantic versioning
-        id: validate_version
+      - name: Determine tagging decision
+        id: tag_decision
         run: |
-          echo "🔍 Validating semantic versioning..."
-          VERSION="${{ steps.extract_version.outputs.version }}"
-          
-          # Simple semantic versioning validation
-          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "✅ Version $VERSION follows semantic versioning"
-            echo "valid=true" >> $GITHUB_OUTPUT
-          else
-            echo "❌ Version $VERSION does not follow semantic versioning (expected format: X.Y.Z)"
-            echo "valid=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
+          FORCE="${{ github.event.inputs.force_tag || 'false' }}"
+          SHOULD="${{ steps.version_info.outputs.should_tag }}"
 
-      - name: Get existing tags
-        id: get_tags
-        run: |
-          echo "📋 Fetching existing tags..."
-          git fetch --tags
-          
-          # Get latest version tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 --match='v[0-9]*' 2>/dev/null || echo "")
-          if [[ -n "$LATEST_TAG" ]]; then
-            LATEST_VERSION=${LATEST_TAG#v}
-            echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-            echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
-            echo "📋 Latest version tag: $LATEST_TAG"
-          else
-            echo "latest_tag=" >> $GITHUB_OUTPUT
-            echo "latest_version=0.0.0" >> $GITHUB_OUTPUT
-            echo "📋 No existing version tags found"
-          fi
-
-      - name: Compare versions
-        id: compare_versions
-        run: |
-          echo "🔄 Comparing versions..."
-          CURRENT_VERSION="${{ steps.extract_version.outputs.version }}"
-          LATEST_VERSION="${{ steps.get_tags.outputs.latest_version }}"
-          FORCE_TAG="${{ github.event.inputs.force_tag || 'false' }}"
-          
-          if [[ "$FORCE_TAG" == "true" ]]; then
+          if [[ "$FORCE" == "true" ]]; then
             echo "🔧 Force tag mode enabled"
             echo "should_tag=true" >> $GITHUB_OUTPUT
           else
-            # Simple version comparison (assuming semantic versioning)
-            if python -c "
-            import sys
-            from packaging import version
-            
-            current = '${CURRENT_VERSION}'
-            latest = '${LATEST_VERSION}'
-            
-            if version.parse(current) > version.parse(latest):
-                print(f'✅ Version {current} is newer than {latest}')
-                print('should_tag=true')
-            else:
-                print(f'ℹ️ Version {current} is not newer than {latest}')
-                print('should_tag=false')
-            " 2>/dev/null; then
-              SHOULD_TAG=$(python -c "
-              import sys
-              from packaging import version
-              
-              current = '${CURRENT_VERSION}'
-              latest = '${LATEST_VERSION}'
-              
-              if version.parse(current) > version.parse(latest):
-                  print('true')
-              else:
-                  print('false')
-              ")
-              echo "should_tag=$SHOULD_TAG" >> $GITHUB_OUTPUT
-            else
-              # Fallback comparison if packaging module not available
-              if [[ "$CURRENT_VERSION" != "$LATEST_VERSION" ]]; then
-                echo "✅ Version changed from $LATEST_VERSION to $CURRENT_VERSION"
-                echo "should_tag=true" >> $GITHUB_OUTPUT
-              else
-                echo "ℹ️ Version unchanged: $CURRENT_VERSION"
-                echo "should_tag=false" >> $GITHUB_OUTPUT
-              fi
-            fi
-          fi
-
-      - name: Check if tag already exists
-        id: check_tag_exists
-        run: |
-          VERSION="${{ steps.extract_version.outputs.version }}"
-          TAG_NAME="v$VERSION"
-          
-          if git rev-parse --verify "refs/tags/$TAG_NAME" >/dev/null 2>&1; then
-            echo "❌ Tag $TAG_NAME already exists"
-            echo "tag_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "✅ Tag $TAG_NAME does not exist yet"
-            echo "tag_exists=false" >> $GITHUB_OUTPUT
+            echo "should_tag=$SHOULD" >> $GITHUB_OUTPUT
           fi
 
   create-and-push-tag:
     needs: detect-version-change
     if: |
-      needs.detect-version-change.outputs.should_tag == 'true' && 
+      needs.detect-version-change.outputs.should_tag == 'true' &&
       needs.detect-version-change.outputs.tag_exists == 'false' &&
       needs.detect-version-change.outputs.valid == 'true'
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -190,21 +78,18 @@ jobs:
           VERSION="${{ needs.detect-version-change.outputs.version }}"
           TAG_NAME="v$VERSION"
           DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
-          
+
           echo "🏷️ Creating tag: $TAG_NAME"
           echo "📝 Version: $VERSION"
           echo "🔧 Dry run: $DRY_RUN"
-          
+
           if [[ "$DRY_RUN" == "true" ]]; then
             echo "🧪 DRY RUN: Would create tag $TAG_NAME"
             echo "🧪 DRY RUN: Would push tag to trigger publish.yml workflow"
           else
-            # Create the tag
-            git tag -a "$TAG_NAME" -m "Release $TAG_NAME
-            
-            # Push the tag to trigger the publish workflow
+            git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
             git push origin "$TAG_NAME"
-            
+
             echo "✅ Tag $TAG_NAME created and pushed successfully"
             echo "🚀 This will trigger the publish.yml workflow"
           fi
@@ -212,11 +97,10 @@ jobs:
   skip-tagging:
     needs: detect-version-change
     if: |
-      needs.detect-version-change.outputs.should_tag == 'false' || 
+      needs.detect-version-change.outputs.should_tag == 'false' ||
       needs.detect-version-change.outputs.tag_exists == 'true' ||
       needs.detect-version-change.outputs.valid == 'false'
     runs-on: ubuntu-latest
-    
     steps:
       - name: Report skip reason
         run: |
@@ -224,13 +108,17 @@ jobs:
           TAG_EXISTS="${{ needs.detect-version-change.outputs.tag_exists }}"
           VALID="${{ needs.detect-version-change.outputs.valid }}"
           VERSION="${{ needs.detect-version-change.outputs.version }}"
-          
+          LATEST_TAG="${{ needs.detect-version-change.outputs.latest_tag }}"
+          LATEST_VERSION="${{ needs.detect-version-change.outputs.latest_version }}"
+
           echo "📋 Version tagging analysis complete"
           echo "📝 Version: $VERSION"
+          echo "🏷️ Latest tag: ${LATEST_TAG:-none}"
+          echo "🔢 Latest version: $LATEST_VERSION"
           echo "🏷️ Should tag: $SHOULD_TAG"
           echo "🔍 Tag exists: $TAG_EXISTS"
           echo "✅ Valid version: $VALID"
-          
+
           if [[ "$VALID" == "false" ]]; then
             echo "❌ Skipping: Version does not follow semantic versioning"
           elif [[ "$TAG_EXISTS" == "true" ]]; then
@@ -238,5 +126,5 @@ jobs:
           elif [[ "$SHOULD_TAG" == "false" ]]; then
             echo "ℹ️ Skipping: Version unchanged or not newer"
           fi
-          
+
           echo "💡 To force tag creation, use workflow_dispatch with force_tag=true"

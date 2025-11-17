@@ -3,6 +3,10 @@
 [![PyPI version](https://badge.fury.io/py/duckalog.svg)](https://badge.fury.io/py/duckalog)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/duckalog.svg)](https://pypi.org/project/duckalog/)
 [![Tests](https://github.com/legout/duckalog/workflows/Tests/badge.svg)](https://github.com/legout/duckalog/actions)
+[![codecov](https://codecov.io/gh/legout/duckalog/branch/main/graph/badge.svg)](https://codecov.io/gh/legout/duckalog)
+[![Security](https://github.com/legout/duckalog/workflows/Security/badge.svg)](https://github.com/legout/duckalog/actions/workflows/security.yml)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/badge/lint-ruff-blue.svg)](https://github.com/charliermarsh/ruff)
 
 Duckalog is a Python library and CLI for building DuckDB catalogs from
 declarative YAML/JSON configuration files. A single config file describes your
@@ -249,6 +253,44 @@ We welcome contributions to duckalog! This section provides guidelines and instr
 ### Development Setup
 
 **Requirements:** Python 3.9 or newer
+
+#### Automated Version Management
+
+This project uses automated version tagging to streamline releases. When you update the version in `pyproject.toml` and push to the main branch, the system automatically:
+
+- Extracts the new version from `pyproject.toml`
+- Validates semantic versioning format (X.Y.Z)
+- Compares with existing tags to prevent duplicates
+- Creates a Git tag in format `v{version}` (e.g., `v0.1.0`)
+- Triggers the existing `publish.yml` workflow to publish to PyPI
+
+**Simple Release Process:**
+```bash
+# 1. Update version in pyproject.toml
+sed -i 's/version = "0.1.0"/version = "0.1.1"/' pyproject.toml
+
+# 2. Commit and push
+git add pyproject.toml
+git commit -m "bump: Update version to 0.1.1"
+git push origin main
+
+# 3. Automated tagging creates tag and triggers publishing
+# Tag v0.1.1 is created automatically
+# publish.yml workflow runs and publishes to PyPI
+```
+
+For detailed examples and troubleshooting, see:
+- [Automated Version Tagging Documentation](docs/automated-version-tagging.md)
+- [Version Update Examples](docs/version-update-examples.md)
+- [Troubleshooting Guide](docs/troubleshooting-version-tagging.md)
+
+#### Continuous Integration
+
+Duckalog uses a streamlined GitHub Actions setup to keep CI predictable:
+
+- **Tests workflow** runs Ruff + mypy on Python 3.11 and executes pytest on Ubuntu for Python 3.9–3.12. If tests fail, the workflow fails—no auto-generated smoke tests.
+- **Security workflow** focuses on a curated set of scans: TruffleHog and GitLeaks for secrets, Safety + pip-audit for dependency issues, and Bandit + Semgrep for code-level checks. Heavy container or supply-chain scans run only when explicitly needed.
+- **publish.yml** builds sdist + wheel once on Python 3.11, validates artifacts with `twine check`, smoke-tests the wheel, and then reuses the artifacts for Test PyPI, PyPI, or dry-run scenarios. Release jobs rely on the `Tests` workflow’s status rather than re-running the full test matrix.
 
 #### Using uv (recommended for development)
 

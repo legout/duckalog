@@ -28,51 +28,7 @@ env:
   PYTHON_DEFAULT: "3.11"
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine pytest
-          pip install -e .
-
-      - name: Run tests
-        run: |
-          pytest tests/ -v
-
-      - name: Test CLI entry point
-        run: |
-          duckalog --help
-
-      - name: Security check with bandit
-        run: |
-          pip install bandit
-          bandit -r src/ -f json -o bandit-report.json || true
-
-      - name: Upload security report
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: security-report-${{ matrix.python-version }}
-          path: bandit-report.json
-
   build:
-    needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -88,40 +44,22 @@ jobs:
       - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install build twine safety pip-audit
+          pip install build twine
 
-      - name: Build source distribution
-        run: python -m build --sdist
-
-      - name: Build wheel
-        run: python -m build --wheel
+      - name: Build distributions
+        run: python -m build
 
       - name: List distribution files
         run: ls -la dist/
 
-      - name: Check distribution
-        run: |
-          twine check dist/*
+      - name: Validate distributions with Twine
+        run: twine check dist/*
 
-      - name: Verify package metadata
+      - name: Smoke test built wheel
         run: |
-          python -c "
-          import pkg_resources
-          try:
-              dist_info = pkg_resources.get_distribution('duckalog')
-              metadata = dist_info.metadata
-              required_fields = ['Name', 'Version', 'Summary', 'Author']
-              for field in required_fields:
-                  if not metadata.get(field):
-                      raise ValueError(f'Missing required field: {field}')
-              print('✅ Package metadata validation passed')
-              print(f'Name: {metadata.get(\"Name\")}')
-              print(f'Version: {metadata.get(\"Version\")}')
-              print(f'Author: {metadata.get(\"Author\")}')
-          except Exception as e:
-              print(f'❌ Package metadata validation failed: {e}')
-              exit(1)
-          "
+          python -m pip install --force-reinstall dist/*.whl
+          duckalog --help
+          duckalog --version
 
       - name: Store the distribution packages
         uses: actions/upload-artifact@v3
@@ -129,15 +67,13 @@ jobs:
           name: python-package-distributions
           path: dist/
 
-  publish-to-testpypi:
+  publish-testpypi:
     needs: build
     runs-on: ubuntu-latest
     environment:
       name: testpypi
       url: https://test.pypi.org/p/duckalog
-    if: |
-      github.event.inputs.environment == 'testpypi' ||
-      (github.event.inputs.environment == '' && github.event.inputs.dry_run == '')
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'testpypi' && github.event.inputs.dry_run != 'true' }}
 
     steps:
       - name: Download all the dists
@@ -147,27 +83,28 @@ jobs:
           path: dist/
 
       - name: Publish to Test PyPI
-        if: github.event.inputs.dry_run != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           skip-existing: true
 
-      - name: Test package installation
+      - name: Verify Test PyPI installation
         run: |
-          sleep 30
+          sleep 20
           python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ duckalog
           duckalog --help
           duckalog --version
 
-  publish-to-pypi:
+  publish-pypi:
     needs: build
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/duckalog
-    if: github.event.inputs.environment == 'pypi'
+    if: >
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'pypi' && github.event.inputs.dry_run != 'true') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
 
     steps:
       - name: Download all the dists
@@ -182,35 +119,36 @@ jobs:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
 
-      - name: Verify publication
+      - name: Verify PyPI publication
         run: |
-          sleep 30
+          sleep 20
           python -m pip install duckalog
           duckalog --help
           duckalog --version
 
       - name: Get package info from PyPI
         run: |
-          python -c "
-          import requests
-          try:
-              response = requests.get('https://pypi.org/pypi/duckalog/json', timeout=10)
-              if response.status_code == 200:
-                  package_info = response.json()
-                  version = package_info['info']['version']
-                  print(f'✅ Package duckalog v{version} is available on PyPI')
-                  dist_files = [d['filename'] for d in package_info['urls'] if d['packagetype'] == 'bdist_wheel']
-                  print(f'Wheel distributions: {dist_files}')
-              else:
-                  print(f'⚠️ Could not retrieve package info: HTTP {response.status_code}')
-          except Exception as e:
-              print(f'⚠️ Error checking PyPI: {e}')
-          "
+          python - <<'PY'
+import json
+import urllib.error
+import urllib.request
+
+url = "https://pypi.org/pypi/duckalog/json"
+try:
+    with urllib.request.urlopen(url, timeout=10) as response:
+        package_info = json.load(response)
+        version = package_info["info"]["version"]
+        print(f"✅ Package duckalog v{version} is available on PyPI")
+except urllib.error.HTTPError as exc:
+    print(f"⚠️ Could not retrieve package info: HTTP {exc.code}")
+except Exception as exc:
+    print(f"⚠️ Error checking PyPI: {exc}")
+PY
 
   dry-run:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event.inputs.dry_run == 'true'
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true' }}
 
     steps:
       - name: Download all the dists
@@ -227,12 +165,13 @@ jobs:
       - name: Test install from wheel
         run: |
           echo "🧪 Testing installation from built wheel..."
-          pip install dist/*.whl
+          python -m pip install --force-reinstall dist/*.whl
           duckalog --help
+          duckalog --version
           echo "✅ Dry run installation test completed"
 
   create-github-release:
-    needs: [publish-to-pypi]
+    needs: publish-pypi
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
 
@@ -298,78 +237,3 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  test-installation:
-    needs: [publish-to-pypi, publish-to-testpypi]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.9", "3.11"]
-    if: |
-      (github.event.inputs.environment == 'pypi' && needs.publish-to-pypi.result == 'success') ||
-      (github.event.inputs.environment == 'testpypi' && needs.publish-to-testpypi.result == 'success') ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
-
-    steps:
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install from PyPI
-        run: |
-          if [[ "${{ github.event.inputs.environment }}" == "testpypi" ]]; then
-            echo "📦 Installing from Test PyPI..."
-            pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ duckalog
-          else
-            echo "📦 Installing from PyPI..."
-            pip install duckalog
-          fi
-
-      - name: Test installation
-        run: |
-          echo "🧪 Testing CLI..."
-          duckalog --help
-          duckalog --version
-          echo "🧪 Testing Python API..."
-          python -c "import duckalog; print('✅ Duckalog imported successfully')"
-          python -c "from duckalog import load_config; print('✅ load_config function available')"
-
-      - name: Test basic functionality
-        run: |
-          echo "🧪 Testing basic functionality..."
-          cat > test_config.yaml << 'EOF'
-          version: 1
-          duckdb:
-            database: test.duckdb
-          views:
-            - name: test_view
-              source: sql
-              sql: "SELECT 42 as answer"
-          EOF
-
-          duckalog validate test_config.yaml
-          echo "✅ Config validation passed"
-
-          # Test SQL generation
-          duckalog generate-sql test_config.yaml > test_output.sql
-          if grep -q "CREATE OR REPLACE VIEW test_view" test_output.sql; then
-            echo "✅ SQL generation working"
-          else
-            echo "❌ SQL generation failed"
-            exit 1
-          fi
-
-  cleanup:
-    needs: [publish-to-pypi, publish-to-testpypi, dry-run]
-    runs-on: ubuntu-latest
-    if: always()
-
-    steps:
-      - name: Clean up artifacts
-        run: |
-          echo "🧹 Cleaning up workflow artifacts..."
-          # Artifacts are automatically cleaned up by GitHub after retention period
-          echo "✅ Cleanup completed"
