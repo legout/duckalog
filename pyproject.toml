@@ -7,6 +7,43 @@ authors = [
     { name = "legout", email = "ligno.blades@gmail.com" }
 ]
 requires-python = ">=3.9"
+keywords = [
+    "duckdb",
+    "catalog",
+    "yaml",
+    "json",
+    "data-engineering",
+    "database",
+    "views",
+    "configuration",
+    "cli",
+    "python",
+    "etl",
+    "analytics"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Database",
+    "Topic :: Database :: Database Engines/Servers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+    "Topic :: Data Processing",
+    "Topic :: Scientific/Engineering",
+    "Natural Language :: English",
+    "Environment :: Console",
+    "Environment :: Web Environment"
+]
 dependencies = [
     "duckdb>=0.8.0",
     "pyyaml>=6.0",
@@ -21,6 +58,16 @@ build-backend = "setuptools.build_meta"
 
 [project.scripts]
 duckalog = "duckalog.cli:app"
+
+[project.urls]
+Homepage = "https://legout.github.io/duckalog/"
+Repository = "https://github.com/legout/duckalog"
+Documentation = "https://legout.github.io/duckalog/"
+Changelog = "https://github.com/legout/duckalog/blob/main/CHANGELOG.md"
+Issues = "https://github.com/legout/duckalog/issues"
+Discussions = "https://github.com/legout/duckalog/discussions"
+Security = "https://github.com/legout/duckalog/blob/main/SECURITY.md"
+CI = "https://github.com/legout/duckalog/actions"
 
 [tool.setuptools.packages.find]
 where = ["src"]

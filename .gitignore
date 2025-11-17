@@ -9,3 +9,6 @@ wheels/
 # Virtual environments
 .venv
 site/
+.claude
+.opencode
+.github/prompts

@@ -53,6 +53,14 @@ def _redact_value(value: Any, key_hint: str = "") -> Any:
     return value
 
 
+def _emit_std_logger(level: int, message: str, safe_details: Dict[str, Any]) -> None:
+    logger = logging.getLogger(LOGGER_NAME)
+    if safe_details:
+        logger.log(level, "%s %s", message, safe_details)
+    else:
+        logger.log(level, message)
+
+
 def _log(level: int, message: str, **details: Any) -> None:
     safe_details: Dict[str, Any] = {}
     if details:
@@ -66,13 +74,10 @@ def _log(level: int, message: str, **details: Any) -> None:
             _LOGURU_LOGGER.info(text)
         else:
             _LOGURU_LOGGER.debug(text)
+        _emit_std_logger(level, message, safe_details)
         return
 
-    logger = logging.getLogger(LOGGER_NAME)
-    if safe_details:
-        logger.log(level, "%s %s", message, safe_details)
-    else:
-        logger.log(level, message)
+    _emit_std_logger(level, message, safe_details)
 
 
 def log_info(message: str, **details: Any) -> None:

@@ -1,0 +1,221 @@
+name: Auto-Generate Changelog
+
+on:
+  push:
+    branches: [main]
+    paths: ["pyproject.toml"]
+  workflow_dispatch:
+    inputs:
+      force_changelog:
+        description: "Force changelog generation even if no version changes"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  analyze-version-change:
+    runs-on: ubuntu-latest
+    outputs:
+      version_changed: ${{ steps.version_info.outputs.version_changed }}
+      current_version: ${{ steps.version_info.outputs.current_version }}
+      latest_version: ${{ steps.version_info.outputs.latest_version }}
+      latest_tag: ${{ steps.version_info.outputs.latest_tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect version information
+        id: version_info
+        run: python .github/scripts/version_info.py --output "$GITHUB_OUTPUT"
+
+  generate-changelog:
+    needs: analyze-version-change
+    if: |
+      needs.analyze-version-change.outputs.version_changed == 'true' ||
+      (github.event.inputs.force_changelog == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: generate_changelog
+        run: |
+          echo "📝 Generating changelog..."
+
+          CURRENT_VERSION="${{ needs.analyze-version-change.outputs.current_version }}"
+          LAST_VERSION="${{ needs.analyze-version-change.outputs.latest_version }}"
+
+          # Get git commits since last tag
+          if [[ -n "${{ needs.analyze-version-change.outputs.latest_tag }}" ]]; then
+            GIT_RANGE="${{ needs.analyze-version-change.outputs.latest_tag }}..HEAD"
+          else
+            GIT_RANGE="HEAD"
+          fi
+
+          # Analyze commits
+          COMMITS=$(git log --pretty=format:"%h|%s" --grep="feat\|fix\|docs\|chore\|refactor\|test" $GIT_RANGE 2>/dev/null | grep -v "^$" || echo "")
+
+          echo "Found commits:"
+          echo "$COMMITS"
+
+          # Generate changelog entries
+          python3 -c "
+          import sys
+          from datetime import datetime
+          import re
+
+          commits = '''$COMMITS'''
+          current_version = '$CURRENT_VERSION'
+
+          # Parse commits
+          commit_entries = []
+          for line in commits.strip().split('\n'):
+              if not line or '|' not in line:
+                  continue
+              hash_part, message = line.split('|', 1)
+              hash_part = hash_part.strip()
+              message = message.strip()
+
+              # Determine change type
+              if re.search(r'feat|add', message, re.IGNORECASE):
+                  change_type = 'Added'
+              elif re.search(r'fix|bugfix', message, re.IGNORECASE):
+                  change_type = 'Fixed'
+              elif re.search(r'docs|doc', message, re.IGNORECASE):
+                  change_type = 'Changed'
+              elif re.search(r'breaking|major', message, re.IGNORECASE):
+                  change_type = 'Changed'
+              elif re.search(r'deprecate', message, re.IGNORECASE):
+                  change_type = 'Deprecated'
+              elif re.search(r'remove', message, re.IGNORECASE):
+                  change_type = 'Removed'
+              elif re.search(r'security', message, re.IGNORECASE):
+                  change_type = 'Security'
+              else:
+                  change_type = 'Changed'
+
+              # Clean up commit message
+              clean_message = re.sub(r'^(feat|fix|docs|chore|refactor|test)\((\w+)\):\s*', '', message, flags=re.IGNORECASE)
+              clean_message = clean_message.strip().capitalize()
+
+              commit_entries.append({
+                  'type': change_type,
+                  'message': clean_message,
+                  'hash': hash_part
+              })
+
+          # Generate changelog
+          changelog_entries = []
+          current_date = datetime.now().strftime('%Y-%m-%d')
+
+          # Group by type
+          types = ['Added', 'Fixed', 'Changed', 'Deprecated', 'Removed', 'Security']
+          for change_type in types:
+              type_entries = [e for e in commit_entries if e['type'] == change_type]
+              if type_entries:
+                  changelog_entries.append(f'### {change_type}')
+                  for entry in type_entries:
+                      changelog_entry = f'- {entry[\"message\"]}'
+                      if entry['hash']:
+                          changelog_entry += f' ({entry[\"hash\"]})'
+                      changelog_entries.append(changelog_entry)
+                  changelog_entries.append('')
+
+          # Add version header
+          header = f'## [{current_date}] - {current_version}'
+          full_entry = header + '\n\n' + '\n'.join(changelog_entries).strip() + '\n'
+
+          print('Generated changelog:')
+          print(full_entry)
+
+          # Write to file
+          with open('changelog_entry.md', 'w') as f:
+              f.write(full_entry)
+          "
+
+      - name: Update CHANGELOG.md
+        run: |
+          echo "📄 Updating CHANGELOG.md..."
+
+          CURRENT_VERSION="${{ needs.analyze-version-change.outputs.current_version }}"
+
+          # Create or update CHANGELOG.md
+          if [[ -f "CHANGELOG.md" ]]; then
+            echo "✅ CHANGELOG.md exists, adding new entry..."
+
+            # Read existing content
+            EXISTING_CONTENT=$(cat CHANGELOG.md)
+
+            # Check if this version already exists
+            if grep -q "$CURRENT_VERSION" CHANGELOG.md; then
+              echo "⚠️ Version $CURRENT_VERSION already exists in CHANGELOG.md"
+              # Replace existing entry
+              python3 -c "
+              import sys
+              current_version = '$CURRENT_VERSION'
+
+              with open('CHANGELOG.md', 'r') as f:
+                  content = f.read()
+
+              # Find and replace existing version entry
+              import re
+
+              # Split by version headers and replace the relevant one
+              pattern = r'(## \[.*?\] - )' + re.escape(current_version) + r'.*?(?=\n## \[|\n# |$)'
+
+              # Read new entry
+              with open('changelog_entry.md', 'r') as f:
+                  new_entry = f.read().strip()
+
+              # Replace
+              updated_content = re.sub(pattern, new_entry, content, flags=re.DOTALL)
+
+              with open('CHANGELOG.md', 'w') as f:
+                  f.write(updated_content)
+              "
+            else
+              echo "➕ Adding new version entry to CHANGELOG.md"
+
+              # Add new entry at the top (after any header)
+              EXISTING_CONTENT=$(tail -n +3 CHANGELOG.md) # Skip first two lines (changelog title and version)
+              NEW_CONTENT="changelog_entry.md"
+
+              # Create full CHANGELOG.md
+              echo "# Changelog" > CHANGELOG.md
+              cat changelog_entry.md >> CHANGELOG.md
+              echo "" >> CHANGELOG.md
+              echo "$EXISTING_CONTENT" >> CHANGELOG.md
+            fi
+          else
+            echo "📄 Creating new CHANGELOG.md..."
+            echo "# Changelog" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            cat changelog_entry.md >> CHANGELOG.md
+          fi
+
+      - name: Commit and push changelog
+        run: |
+          echo "📋 Committing changelog changes..."
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add CHANGELOG.md
+          git commit -m "docs: Auto-update CHANGELOG.md for version ${{ needs.analyze-version-change.outputs.current_version }}"
+
+          if git status --porcelain | grep -q "."; then
+            echo "🚀 Pushing changelog changes..."
+            git push origin main
+          else
+            echo "ℹ️ No changes to commit"
+          fi
