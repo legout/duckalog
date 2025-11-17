@@ -1,0 +1,2403 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Build DuckDB catalogs from declarative YAML/JSON configs.">
+      
+      
+      
+        <link rel="canonical" href="https://legout.github.io/duckalog/architecture/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../guides/usage/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Architecture - Duckalog</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#duckalog-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Duckalog" class="md-header__button md-logo" aria-label="Duckalog" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Duckalog
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/legout/duckalog" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    legout/duckalog
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Duckalog" class="md-nav__button md-logo" aria-label="Duckalog" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Duckalog
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/legout/duckalog" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    legout/duckalog
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#system-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="System Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-philosophy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Philosophy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#high-level-system-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-Level System Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-architecture-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Architecture Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Architecture Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-configuration-module-configpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Configuration Module (config.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-model-module-modelpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Model Module (model.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-sql-generation-module-sqlgenpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. SQL Generation Module (sqlgen.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-engine-module-enginepy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Engine Module (engine.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-cli-module-clipy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. CLI Module (cli.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-flow-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Flow Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-data-flow-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Data Flow Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-patterns-and-architectural-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Patterns and Architectural Decisions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design Patterns and Architectural Decisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-separation-of-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Separation of Concerns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-config-driven-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Config-Driven Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-idempotent-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Idempotent Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-layered-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Layered Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-error-handling-and-logging-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Error Handling and Logging Patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-schema-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Schema Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-dependency-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component Dependency Graph
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component Dependency Graph">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dependency-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependency Rules:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extension-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extension Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-source-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding New Source Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-attachment-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding New Attachment Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-and-scalability-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance and Scalability Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance and Scalability Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-architecture-supports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Architecture Supports:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scaling-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scaling Patterns:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Principles:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-measures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Measures:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development-and-testing-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development and Testing Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Development and Testing Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Strategy:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#development-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development Workflow:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#future-architecture-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Future Architecture Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Future Architecture Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#potential-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Potential Extensions:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architectural-evolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architectural Evolution:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started-with-the-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Started with the Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Getting Started with the Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-new-developers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For New Developers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-contributors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Contributors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-system-integrators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For System Integrators
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duckalog Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/duckdb-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DuckDB Secrets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/duckdb-settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DuckDB Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/environment-vars/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/local-attachments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Attachments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/multi-source-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Source Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/simple-parquet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simple Parquet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    duckalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#system-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="System Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-philosophy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Philosophy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#high-level-system-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-Level System Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-architecture-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Architecture Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Architecture Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-configuration-module-configpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Configuration Module (config.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-model-module-modelpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Model Module (model.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-sql-generation-module-sqlgenpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. SQL Generation Module (sqlgen.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-engine-module-enginepy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Engine Module (engine.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-cli-module-clipy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. CLI Module (cli.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-flow-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Flow Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-data-flow-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Data Flow Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-patterns-and-architectural-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Patterns and Architectural Decisions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design Patterns and Architectural Decisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-separation-of-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Separation of Concerns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-config-driven-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Config-Driven Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-idempotent-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Idempotent Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-layered-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Layered Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-error-handling-and-logging-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Error Handling and Logging Patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-schema-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Schema Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-dependency-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component Dependency Graph
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component Dependency Graph">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dependency-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependency Rules:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extension-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extension Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extension Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-source-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding New Source Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-new-attachment-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding New Attachment Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-and-scalability-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance and Scalability Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance and Scalability Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-architecture-supports" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Architecture Supports:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scaling-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scaling Patterns:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Principles:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-measures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Measures:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development-and-testing-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development and Testing Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Development and Testing Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Strategy:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#development-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development Workflow:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#future-architecture-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Future Architecture Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Future Architecture Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#potential-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Potential Extensions:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#architectural-evolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architectural Evolution:
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started-with-the-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Started with the Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Getting Started with the Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#for-new-developers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For New Developers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-contributors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For Contributors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#for-system-integrators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For System Integrators
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="duckalog-architecture">Duckalog Architecture<a class="headerlink" href="#duckalog-architecture" title="Permanent link">&para;</a></h1>
+<p>Duckalog is a Python library and CLI for building DuckDB catalogs from declarative YAML/JSON configuration files. This document provides a comprehensive architectural overview of the system, its components, and how they work together to transform configuration files into functional DuckDB catalogs.</p>
+<h2 id="system-overview">System Overview<a class="headerlink" href="#system-overview" title="Permanent link">&para;</a></h2>
+<p>Duckalog follows a <strong>config-driven, idempotent architecture</strong> that transforms declarative configuration into functional DuckDB catalogs. The system is designed around separation of concerns, with clear boundaries between configuration loading, validation, SQL generation, and catalog execution.</p>
+<h3 id="core-philosophy">Core Philosophy<a class="headerlink" href="#core-philosophy" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Configuration as Code</strong>: Catalogs are defined in version-controllable YAML/JSON files</li>
+<li><strong>Idempotent Operations</strong>: Running the same config produces the same catalog every time</li>
+<li><strong>Multi-Source Integration</strong>: Unified interface for S3 Parquet, Delta Lake, Iceberg, and relational databases</li>
+<li><strong>Environment-Driven</strong>: Credentials and connection details sourced from environment variables</li>
+<li><strong>Separation of Concerns</strong>: Clear boundaries between configuration, validation, generation, and execution</li>
+</ul>
+<h3 id="high-level-system-architecture">High-Level System Architecture<a class="headerlink" href="#high-level-system-architecture" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph "External Systems"
+        S3[S3 Object Storage&lt;br/&gt;Parquet Files]
+        DELTA[Delta Lake&lt;br/&gt;Tables]
+        ICEBERG[Iceberg&lt;br/&gt;Catalog/Tables]
+        DUCKDB_EXT[External DuckDB&lt;br/&gt;Files]
+        SQLITE[SQLite&lt;br/&gt;Databases]
+        POSTGRES[PostgreSQL&lt;br/&gt;Databases]
+    end
+
+    subgraph "Duckalog System"
+        CLI[CLI Interface&lt;br/&gt;Commands &amp; Validation]
+        CONFIG[Config Loading&lt;br/&gt;YAML/JSON + Environment]
+        MODEL[Pydantic Models&lt;br/&gt;Validation &amp; Types]
+        SQLGEN[SQL Generation&lt;br/&gt;CREATE VIEW Statements]
+        ENGINE[DuckDB Engine&lt;br/&gt;Execution &amp; Connections]
+    end
+
+    subgraph "Output"
+        CATALOG[(DuckDB Catalog&lt;br/&gt;Views &amp; Attachments)]
+    end
+
+    CLI --&gt; CONFIG
+    CONFIG --&gt; MODEL
+    MODEL --&gt; SQLGEN
+    SQLGEN --&gt; ENGINE
+    ENGINE --&gt; CATALOG
+
+    ENGINE -.-&gt;|S3 Parquet Access| S3
+    ENGINE -.-&gt;|Delta Tables| DELTA
+    ENGINE -.-&gt;|Iceberg Integration| ICEBERG
+    ENGINE -.-&gt;|DuckDB Attachments| DUCKDB_EXT
+    ENGINE -.-&gt;|SQLite Connections| SQLITE
+    ENGINE -.-&gt;|PostgreSQL Access| POSTGRES</code></pre>
+<h2 id="core-architecture-components">Core Architecture Components<a class="headerlink" href="#core-architecture-components" title="Permanent link">&para;</a></h2>
+<p>The system consists of five primary modules that work together to process configurations and create DuckDB catalogs:</p>
+<pre class="mermaid"><code>graph TB
+    subgraph "Duckalog Core Components"
+        CLI[CLI Module&lt;br/&gt;Command parsing &amp; dispatch]
+        CONFIG[Config Module&lt;br/&gt;Loading &amp; env interpolation]
+        MODEL[Model Module&lt;br/&gt;Pydantic validation]
+        SQLGEN[SQL Generation&lt;br/&gt;CREATE VIEW statements]
+        ENGINE[Engine Module&lt;br/&gt;DuckDB execution]
+
+        CLI -.-&gt;|typer commands| CONFIG
+        CONFIG -.-&gt;|validated dict| MODEL
+        MODEL -.-&gt;|typed objects| SQLGEN
+        SQLGEN -.-&gt;|SQL strings| ENGINE
+        ENGINE -.-&gt;|executed SQL| DB[(DuckDB Catalog)]
+    end
+
+    subgraph "Detailed Component Interactions"
+        direction LR
+        CONFIG_A[File I/O]
+        CONFIG_B[Env Interpolation]
+        CONFIG_C[Error Handling]
+
+        MODEL_A[Schema Validation]
+        MODEL_B[Type Conversion]
+        MODEL_C[Business Rules]
+
+        SQLGEN_A[Source Detection]
+        SQLGEN_B[Template Selection]
+        SQLGEN_C[Statement Building]
+
+        ENGINE_A[Connection Mgmt]
+        ENGINE_B[Attachment Setup]
+        ENGINE_C[View Creation]
+        ENGINE_D[Transaction Control]
+    end</code></pre>
+<h3 id="1-configuration-module-configpy">1. Configuration Module (<code>config.py</code>)<a class="headerlink" href="#1-configuration-module-configpy" title="Permanent link">&para;</a></h3>
+<p><strong>Responsibilities:</strong>
+- Load YAML/JSON configuration files
+- Perform environment variable interpolation
+- Parse and prepare raw configuration data
+- Handle file I/O and error management</p>
+<p><strong>Key Features:</strong>
+- Supports both YAML and JSON formats
+- Environment variable substitution using <code>${env:VAR_NAME}</code> pattern
+- Recursive traversal of configuration structures
+- Comprehensive error handling with descriptive messages</p>
+<p><strong>Example Flow:</strong>
+<pre class="mermaid"><code>sequenceDiagram
+    participant CLI
+    participant Config
+    participant File
+    participant Env
+
+    CLI-&gt;&gt;Config: load_config("catalog.yaml")
+    Config-&gt;&gt;File: Read file content
+    File--&gt;&gt;Config: Raw YAML content
+    Config-&gt;&gt;Config: Parse YAML/JSON
+    Config-&gt;&gt;Config: interpolate_env(raw_dict)
+    Config-&gt;&gt;Env: Get ${env:VAR} values
+    Env--&gt;&gt;Config: Real values
+    Config--&gt;&gt;CLI: Validated Config object</code></pre></p>
+<h3 id="2-model-module-modelpy">2. Model Module (<code>model.py</code>)<a class="headerlink" href="#2-model-module-modelpy" title="Permanent link">&para;</a></h3>
+<p><strong>Responsibilities:</strong>
+- Define Pydantic models for configuration schema
+- Provide data validation and type checking
+- Ensure configuration consistency
+- Support extensibility for new configuration types</p>
+<p><strong>Core Models:</strong>
+- <code>DuckDBConfig</code>: Database file and session settings
+- <code>AttachmentConfig</code>: External database connections (DuckDB, SQLite, Postgres)
+- <code>IcebergCatalogConfig</code>: Iceberg catalog connections
+- <code>ViewConfig</code>: Individual view definitions and source specifications
+- <code>Config</code>: Root configuration aggregating all components</p>
+<p><strong>Validation Flow:</strong>
+<pre class="mermaid"><code>flowchart LR
+    A[Raw Config Dict] --&gt; B[Pydantic Validation]
+    B --&gt; C{Valid?}
+    C --&gt;|Yes| D[Typed Config Object]
+    C --&gt;|No| E[ConfigError]
+    D --&gt; F[Schema Validation]
+    F --&gt; G[Business Rule Validation]
+    G --&gt; H[Validated Config]</code></pre></p>
+<h3 id="3-sql-generation-module-sqlgenpy">3. SQL Generation Module (<code>sqlgen.py</code>)<a class="headerlink" href="#3-sql-generation-module-sqlgenpy" title="Permanent link">&para;</a></h3>
+<p><strong>Responsibilities:</strong>
+- Transform typed configuration objects into SQL statements
+- Generate <code>CREATE VIEW</code> statements for different source types
+- Handle SQL escaping and identifier quoting
+- Support complex view definitions with joins and aggregations</p>
+<p><strong>Source Types Supported:</strong>
+- <strong>Parquet</strong>: S3-based Parquet file views
+- <strong>Delta Lake</strong>: Delta table references
+- <strong>Iceberg</strong>: Iceberg table and catalog views
+- <strong>Database</strong>: Attached DuckDB/SQLite/Postgres tables
+- <strong>SQL</strong>: Raw SQL query views</p>
+<p><strong>SQL Generation Process:</strong>
+<pre class="mermaid"><code>graph TD
+    A[ViewConfig] --&gt; B{Source Type Detection}
+    B --&gt;|parquet| C[Generate Parquet CREATE VIEW]
+    B --&gt;|delta| D[Generate Delta CREATE VIEW]
+    B --&gt;|iceberg| E[Generate Iceberg CREATE VIEW]
+    B --&gt;|duckdb/sqlite/postgres| F[Generate DB CREATE VIEW]
+    B --&gt;|sql| G[Validate &amp; Pass Through SQL]
+
+    C --&gt; H[Add Options &amp; Settings]
+    D --&gt; H
+    E --&gt; H
+    F --&gt; H
+    G --&gt; H
+    H --&gt; I[Complete SQL Statement]
+
+    subgraph "Source-Specific Logic"
+        J[URI Processing]
+        K[Authentication Config]
+        L[Table Reference Resolution]
+        M[Option Normalization]
+    end
+
+    C -.-&gt; J
+    D -.-&gt; J
+    E -.-&gt; L
+    F -.-&gt; L</code></pre></p>
+<h3 id="4-engine-module-enginepy">4. Engine Module (<code>engine.py</code>)<a class="headerlink" href="#4-engine-module-enginepy" title="Permanent link">&para;</a></h3>
+<p><strong>Responsibilities:</strong>
+- Manage DuckDB connections and sessions
+- Set up external attachments and catalogs
+- Execute generated SQL statements
+- Handle transaction management and error recovery</p>
+<p><strong>Key Operations:</strong>
+- <strong>Connection Management</strong>: Open and maintain DuckDB connections
+- <strong>Attachment Setup</strong>: Configure DuckDB, SQLite, and Postgres connections
+- <strong>Catalog Configuration</strong>: Set up Iceberg catalogs with proper authentication
+- <strong>View Execution</strong>: Apply generated SQL to create views in the catalog
+- <strong>Session Management</strong>: Configure pragmas and session settings</p>
+<p><strong>Engine Workflow:</strong>
+<pre class="mermaid"><code>sequenceDiagram
+    participant Config
+    participant Engine
+    participant DuckDB
+    participant External
+
+    Config-&gt;&gt;Engine: execute(config)
+    Engine-&gt;&gt;DuckDB: Open connection
+    Engine-&gt;&gt;DuckDB: Apply pragmas
+    Engine-&gt;&gt;DuckDB: Install extensions
+    Config-&gt;&gt;Engine: Process attachments
+    Engine-&gt;&gt;DuckDB: ATTACH external DBs
+    Config-&gt;&gt;Engine: Process catalogs
+    Engine-&gt;&gt;DuckDB: CREATE iceberg catalogs
+    Config-&gt;&gt;Engine: Process views
+    loop For each view
+        Engine-&gt;&gt;SQLGEN: generate_sql(view)
+        SQLGEN--&gt;&gt;Engine: SQL statement
+        Engine-&gt;&gt;DuckDB: Execute SQL
+        DuckDB--&gt;&gt;Engine: Success/Error
+    end
+    Engine--&gt;&gt;Config: Complete catalog</code></pre></p>
+<h3 id="5-cli-module-clipy">5. CLI Module (<code>cli.py</code>)<a class="headerlink" href="#5-cli-module-clipy" title="Permanent link">&para;</a></h3>
+<p><strong>Responsibilities:</strong>
+- Provide command-line interface for users
+- Parse command-line arguments and options
+- Dispatch to appropriate library functions
+- Handle user input validation and error reporting</p>
+<p><strong>Available Commands:</strong>
+- <code>build</code>: Create or update a DuckDB catalog from configuration
+- <code>generate-sql</code>: Generate SQL statements without executing them
+- <code>validate</code>: Validate configuration files for syntax and schema correctness</p>
+<h2 id="data-flow-architecture">Data Flow Architecture<a class="headerlink" href="#data-flow-architecture" title="Permanent link">&para;</a></h2>
+<p>The complete data flow from configuration file to functional catalog follows this pipeline:</p>
+<pre class="mermaid"><code>flowchart TD
+    A[YAML/JSON Config File] --&gt; B[Config Loading]
+    B --&gt; C[Environment Interpolation]
+    C --&gt; D[Pydantic Validation]
+    D --&gt; E[Business Rule Validation]
+    E --&gt; F[SQL Generation]
+    F --&gt; G[Catalog Building]
+    G --&gt; H[(DuckDB Catalog)]
+
+    subgraph "Validation Stages"
+        C --&gt; C1[Syntax Check]
+        C1 --&gt; C2[Schema Validation]
+        C2 --&gt; C3[Reference Validation]
+    end
+
+    subgraph "SQL Generation"
+        F --&gt; F1[Source Type Detection]
+        F1 --&gt; F2[Template Selection]
+        F2 --&gt; F3[Statement Building]
+        F3 --&gt; F4[Option Processing]
+    end
+
+    subgraph "Catalog Building"
+        G --&gt; G1[Connection Setup]
+        G1 --&gt; G2[Attachment Configuration]
+        G2 --&gt; G3[Catalog Setup]
+        G3 --&gt; G4[View Creation]
+    end</code></pre>
+<h2 id="complete-data-flow-architecture">Complete Data Flow Architecture<a class="headerlink" href="#complete-data-flow-architecture" title="Permanent link">&para;</a></h2>
+<p>Here's the complete end-to-end data flow from configuration file to functional DuckDB catalog:</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant User
+    participant CLI
+    participant Config
+    participant Model
+    participant SQLGen
+    participant Engine
+    participant DuckDB
+    participant External
+
+    User-&gt;&gt;CLI: duckalog build config.yaml
+    CLI-&gt;&gt;Config: load_config()
+    Config-&gt;&gt;External: Read file
+    Config-&gt;&gt;External: Environment variables
+    Config-&gt;&gt;Model: Raw config dict
+
+    par Parallel Processing
+        Model-&gt;&gt;Model: Schema validation
+        Model-&gt;&gt;Model: Type conversion
+        Model-&gt;&gt;Model: Business rule validation
+    end
+
+    Model-&gt;&gt;SQLGen: Validated ViewConfig list
+
+    par For Each View
+        SQLGen-&gt;&gt;SQLGen: Detect source type
+        SQLGen-&gt;&gt;SQLGen: Generate SQL statement
+        SQLGen-&gt;&gt;SQLGen: Apply source-specific options
+        SQLGen-&gt;&gt;Engine: SQL string
+    end
+
+    Engine-&gt;&gt;DuckDB: Open connection
+    Engine-&gt;&gt;DuckDB: Apply pragmas
+    Engine-&gt;&gt;External: Setup attachments (if any)
+    Engine-&gt;&gt;External: Setup catalogs (if any)
+
+    par For Each Generated SQL
+        Engine-&gt;&gt;DuckDB: Execute CREATE VIEW
+        DuckDB--&gt;&gt;Engine: Success/Error
+    end
+
+    Engine--&gt;&gt;Model: Completion status
+    Model--&gt;&gt;CLI: Success/Error
+    CLI--&gt;&gt;User: Operation complete</code></pre>
+<h2 id="design-patterns-and-architectural-decisions">Design Patterns and Architectural Decisions<a class="headerlink" href="#design-patterns-and-architectural-decisions" title="Permanent link">&para;</a></h2>
+<h3 id="1-separation-of-concerns">1. Separation of Concerns<a class="headerlink" href="#1-separation-of-concerns" title="Permanent link">&para;</a></h3>
+<p>Duckalog strictly separates different responsibilities into distinct modules:</p>
+<ul>
+<li><strong>Configuration Layer</strong>: File I/O, parsing, environment interpolation</li>
+<li><strong>Validation Layer</strong>: Schema validation, type checking, business rules</li>
+<li><strong>Generation Layer</strong>: SQL statement creation, template management</li>
+<li><strong>Execution Layer</strong>: Database operations, connection management</li>
+<li><strong>Interface Layer</strong>: CLI commands, user interaction</li>
+</ul>
+<p>This separation provides several benefits:
+- Easier testing and debugging
+- Independent module evolution
+- Clear extension points
+- Reduced coupling between components</p>
+<h3 id="2-config-driven-design">2. Config-Driven Design<a class="headerlink" href="#2-config-driven-design" title="Permanent link">&para;</a></h3>
+<p>The entire system revolves around declarative configuration:</p>
+<p><strong>Benefits:</strong>
+- <strong>Reproducibility</strong>: Same config always produces same results
+- <strong>Version Control</strong>: Configuration files can be tracked in Git
+- <strong>Testing</strong>: Easy to create test scenarios with different configs
+- <strong>Collaboration</strong>: Non-developers can understand and modify configurations
+- <strong>Documentation</strong>: Config files serve as living documentation</p>
+<p><strong>Extensibility:</strong>
+New source types can be added by:
+1. Extending the <code>ViewConfig</code> Pydantic model
+2. Adding SQL generation logic for the new source type
+3. Implementing engine-side setup if needed
+4. Updating documentation and examples</p>
+<h3 id="3-idempotent-operations">3. Idempotent Operations<a class="headerlink" href="#3-idempotent-operations" title="Permanent link">&para;</a></h3>
+<p>All catalog building operations are designed to be idempotent:</p>
+<ul>
+<li><strong>View Replacement</strong>: <code>CREATE OR REPLACE VIEW</code> ensures consistent results</li>
+<li><strong>Attachment Management</strong>: Consistent attachment procedures regardless of current state</li>
+<li><strong>Schema Evolution</strong>: Config changes are applied predictably</li>
+<li><strong>Rollback Safety</strong>: Failed operations leave the catalog in a consistent state</li>
+</ul>
+<h3 id="4-layered-architecture">4. Layered Architecture<a class="headerlink" href="#4-layered-architecture" title="Permanent link">&para;</a></h3>
+<p>The system follows a strict layered approach:</p>
+<div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌─────────────────────┐
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│   CLI Interface     │  ← User interaction, command parsing
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├─────────────────────┤
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│   Config Layer      │  ← File I/O, environment handling
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├─────────────────────┤
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   Validation Layer  │  ← Schema validation, type checking
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├─────────────────────┤
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   Generation Layer  │  ← SQL creation, template management
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├─────────────────────┤
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   Execution Layer   │  ← Database operations, connections
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├─────────────────────┤
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│   External Systems  │  ← DuckDB, S3, databases, catalogs
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>└─────────────────────┘
+</span></code></pre></div>
+<p>Each layer depends only on the layer directly below it, ensuring clear dependencies and testability.</p>
+<h3 id="5-error-handling-and-logging-patterns">5. Error Handling and Logging Patterns<a class="headerlink" href="#5-error-handling-and-logging-patterns" title="Permanent link">&para;</a></h3>
+<p><strong>Error Handling Strategy:</strong>
+- <strong>Fail Fast</strong>: Validate configuration early to catch issues quickly
+- <strong>Descriptive Errors</strong>: Provide actionable error messages with context
+- <strong>Graceful Degradation</strong>: Continue processing non-dependent items when possible
+- <strong>Error Categorization</strong>: Different exception types for different failure modes</p>
+<p><strong>Logging Approach:</strong>
+- <strong>Structured Logging</strong>: Use consistent log formats and levels
+- <strong>Security Conscious</strong>: Never log sensitive information (passwords, tokens)
+- <strong>Debug Support</strong>: Detailed logging available for troubleshooting
+- <strong>User-Friendly</strong>: Important operations logged at appropriate levels</p>
+<h2 id="configuration-schema-architecture">Configuration Schema Architecture<a class="headerlink" href="#configuration-schema-architecture" title="Permanent link">&para;</a></h2>
+<p>The configuration schema follows a hierarchical structure:</p>
+<pre class="mermaid"><code>graph TD
+    ROOT[Config Root&lt;br/&gt;version, duckdb, attachments, views] --&gt; DB[DuckDB Config&lt;br/&gt;database, pragmas]
+    ROOT --&gt; ATTACH[Attachments Config&lt;br/&gt;duckdb, sqlite, postgres]
+    ROOT --&gt; ICEBERG[Iceberg Catalogs&lt;br/&gt;catalog configs]
+    ROOT --&gt; VIEWS[Views List&lt;br/&gt;view definitions]
+
+    ATTACH --&gt; DUCKDB_ATTACH[DuckDB Attachment&lt;br/&gt;alias, path, read_only]
+    ATTACH --&gt; SQLITE_ATTACH[SQLite Attachment&lt;br/&gt;alias, path]
+    ATTACH --&gt; POSTGRES_ATTACH[Postgres Attachment&lt;br/&gt;alias, host, port, user, password]
+
+    ICEBERG --&gt; IC_CONFIG[Iceberg Catalog Config&lt;br/&gt;name, catalog_type, uri, warehouse]
+
+    VIEWS --&gt; PARQUET_VIEW[Parquet View&lt;br/&gt;source: parquet, uri, options]
+    VIEWS --&gt; DELTA_VIEW[Delta View&lt;br/&gt;source: delta, uri]
+    VIEWS --&gt; ICEBERG_VIEW[Iceberg View&lt;br/&gt;source: iceberg, catalog, table]
+    VIEWS --&gt; DB_VIEW[Database View&lt;br/&gt;source: duckdb/sqlite/postgres, database, table]
+    VIEWS --&gt; SQL_VIEW[SQL View&lt;br/&gt;source: sql, query]</code></pre>
+<h2 id="component-dependency-graph">Component Dependency Graph<a class="headerlink" href="#component-dependency-graph" title="Permanent link">&para;</a></h2>
+<p>Understanding the dependencies between components helps in maintenance and extension:</p>
+<pre class="mermaid"><code>graph TD
+    subgraph "Layer 1: Interface"
+        CLI[CLI Module&lt;br/&gt;Commands: build, validate, generate-sql]
+    end
+
+    subgraph "Layer 2: Configuration"
+        CONFIG[Config Module&lt;br/&gt;File loading &amp; env interpolation]
+    end
+
+    subgraph "Layer 3: Validation"
+        MODEL[Model Module&lt;br/&gt;Pydantic validation &amp; types]
+    end
+
+    subgraph "Layer 4: Generation"
+        SQLGEN[SQL Generation&lt;br/&gt;Statement creation]
+    end
+
+    subgraph "Layer 5: Execution"
+        ENGINE[Engine Module&lt;br/&gt;DuckDB operations]
+    end
+
+    subgraph "External Dependencies"
+        DUCKDB[DuckDB Engine]
+        YAML[YAML/JSON Parser]
+        PYDANTIC[Pydantic Validator]
+        TYPER[Typer CLI Framework]
+    end
+
+    CLI --&gt; CONFIG
+    CONFIG --&gt; MODEL
+    MODEL --&gt; SQLGEN
+    SQLGEN --&gt; ENGINE
+
+    CONFIG -.-&gt; YAML
+    MODEL -.-&gt; PYDANTIC
+    CLI -.-&gt; TYPER
+    ENGINE -.-&gt; DUCKDB</code></pre>
+<h3 id="dependency-rules">Dependency Rules:<a class="headerlink" href="#dependency-rules" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>No backward dependencies</strong> - higher layers never depend on lower layers</li>
+<li><strong>Clear interfaces</strong> - each layer exposes well-defined interfaces</li>
+<li><strong>Minimal coupling</strong> - components only know about their direct dependencies</li>
+<li><strong>Testable units</strong> - each layer can be tested independently</li>
+</ol>
+<h2 id="extension-patterns">Extension Patterns<a class="headerlink" href="#extension-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="adding-new-source-types">Adding New Source Types<a class="headerlink" href="#adding-new-source-types" title="Permanent link">&para;</a></h3>
+<p>To extend Duckalog with a new data source type:</p>
+<ol>
+<li>
+<p><strong>Model Extension</strong>:
+   <div class="highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">NewSourceViewConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">source</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;new_source&quot;</span><span class="p">]</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">uri</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">options</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+</span></code></pre></div></p>
+</li>
+<li>
+<p><strong>SQL Generation</strong>:
+   <div class="highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">generate_new_source_sql</span><span class="p">(</span><span class="n">view</span><span class="p">:</span> <span class="n">NewSourceViewConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="c1"># Generate appropriate CREATE VIEW statement</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;CREATE OR REPLACE VIEW </span><span class="si">{</span><span class="n">view</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> AS ...&quot;</span>
+</span></code></pre></div></p>
+</li>
+<li>
+<p><strong>Engine Integration</strong> (if needed):
+   <div class="highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">setup_new_source</span><span class="p">(</span><span class="n">engine</span><span class="p">,</span> <span class="n">view</span><span class="p">:</span> <span class="n">NewSourceViewConfig</span><span class="p">):</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="c1"># Set up any required connections or configurations</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="k">pass</span>
+</span></code></pre></div></p>
+</li>
+</ol>
+<h3 id="adding-new-attachment-types">Adding New Attachment Types<a class="headerlink" href="#adding-new-attachment-types" title="Permanent link">&para;</a></h3>
+<p>Similar extension pattern for database attachments:</p>
+<ol>
+<li>Extend <code>AttachmentsConfig</code> model</li>
+<li>Add attachment setup logic in engine</li>
+<li>Update SQL generation if needed</li>
+<li>Add validation rules</li>
+</ol>
+<h2 id="performance-and-scalability-considerations">Performance and Scalability Considerations<a class="headerlink" href="#performance-and-scalability-considerations" title="Permanent link">&para;</a></h2>
+<h3 id="current-architecture-supports">Current Architecture Supports:<a class="headerlink" href="#current-architecture-supports" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Large Configuration Files</strong>: Efficient parsing and validation</li>
+<li><strong>Multiple Views</strong>: Batch processing and optimization</li>
+<li><strong>Concurrent Operations</strong>: Thread-safe where appropriate</li>
+<li><strong>Memory Management</strong>: Streaming and chunked processing where needed</li>
+</ul>
+<h3 id="scaling-patterns">Scaling Patterns:<a class="headerlink" href="#scaling-patterns" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Horizontal Scaling</strong>: Multiple catalogs can be processed independently</li>
+<li><strong>Vertical Scaling</strong>: DuckDB's in-memory processing for complex queries</li>
+<li><strong>External Optimization</strong>: Leverage underlying system optimizations (S3, databases)</li>
+</ul>
+<h2 id="security-architecture">Security Architecture<a class="headerlink" href="#security-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="security-principles">Security Principles:<a class="headerlink" href="#security-principles" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Zero Secrets in Config</strong>: All sensitive data via environment variables</li>
+<li><strong>Connection Security</strong>: SSL/TLS support for external connections</li>
+<li><strong>Access Control</strong>: DuckDB's built-in security features</li>
+<li><strong>Audit Trail</strong>: Config-driven approach provides built-in change tracking</li>
+</ul>
+<h3 id="security-measures">Security Measures:<a class="headerlink" href="#security-measures" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Environment variable validation</li>
+<li>Secure credential handling</li>
+<li>Connection security options (SSL modes)</li>
+<li>No credential logging or exposure</li>
+</ul>
+<h2 id="development-and-testing-architecture">Development and Testing Architecture<a class="headerlink" href="#development-and-testing-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="testing-strategy">Testing Strategy:<a class="headerlink" href="#testing-strategy" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Unit Tests</strong>: Individual module functionality</li>
+<li><strong>Integration Tests</strong>: End-to-end catalog building</li>
+<li><strong>Configuration Tests</strong>: Schema validation and parsing</li>
+<li><strong>SQL Generation Tests</strong>: Output verification for different source types</li>
+</ul>
+<h3 id="development-workflow">Development Workflow:<a class="headerlink" href="#development-workflow" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Configuration-driven development</li>
+<li>Test-first approach for new features</li>
+<li>Documentation integration</li>
+<li>Continuous validation against specifications</li>
+</ol>
+<h2 id="future-architecture-considerations">Future Architecture Considerations<a class="headerlink" href="#future-architecture-considerations" title="Permanent link">&para;</a></h2>
+<h3 id="potential-extensions">Potential Extensions:<a class="headerlink" href="#potential-extensions" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Plugin System</strong>: Dynamic loading of new source types</li>
+<li><strong>Caching Layer</strong>: Configuration and SQL result caching</li>
+<li><strong>Monitoring Integration</strong>: Metrics and observability</li>
+<li><strong>Multi-Catalog Management</strong>: Orchestrating multiple catalog deployments</li>
+</ul>
+<h3 id="architectural-evolution">Architectural Evolution:<a class="headerlink" href="#architectural-evolution" title="Permanent link">&para;</a></h3>
+<p>The current architecture is designed to accommodate these future needs without major restructuring, thanks to its separation of concerns and extensibility patterns.</p>
+<h2 id="conclusion">Conclusion<a class="headerlink" href="#conclusion" title="Permanent link">&para;</a></h2>
+<p>Duckalog's architecture provides a robust, maintainable, and extensible foundation for building DuckDB catalogs from declarative configurations. The separation of concerns, config-driven design, and idempotent operations make it suitable for both development and production use cases, while the clear extension patterns support future growth and adaptation to new data sources and requirements.</p>
+<h2 id="getting-started-with-the-architecture">Getting Started with the Architecture<a class="headerlink" href="#getting-started-with-the-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="for-new-developers">For New Developers<a class="headerlink" href="#for-new-developers" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Start with the system overview</strong> to understand Duckalog's purpose and high-level design</li>
+<li><strong>Review the component descriptions</strong> to understand each module's responsibilities</li>
+<li><strong>Follow the data flow</strong> to see how configuration becomes a catalog</li>
+<li><strong>Examine the design patterns</strong> to understand architectural decisions</li>
+<li><strong>Look at extension examples</strong> if you need to add new functionality</li>
+</ol>
+<h3 id="for-contributors">For Contributors<a class="headerlink" href="#for-contributors" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Code contributions</strong> should respect the separation of concerns</li>
+<li><strong>New source types</strong> follow the documented extension patterns</li>
+<li><strong>Architecture changes</strong> require OpenSpec proposals</li>
+<li><strong>Documentation updates</strong> should maintain consistency across documents</li>
+</ul>
+<h3 id="for-system-integrators">For System Integrators<a class="headerlink" href="#for-system-integrators" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>API stability</strong> is maintained through well-defined interfaces</li>
+<li><strong>Configuration evolution</strong> follows semantic versioning principles</li>
+<li><strong>Extension points</strong> are documented and tested</li>
+<li><strong>Error handling</strong> provides actionable feedback for troubleshooting</li>
+</ul>
+<h2 id="related-documentation">Related Documentation<a class="headerlink" href="#related-documentation" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><a href="../guides/usage/">User Guide</a></strong>: How to use Duckalog in practice</li>
+<li><strong><a href="../reference/api/">API Reference</a></strong>: Complete API documentation</li>
+<li><strong>Examples</strong>: See the <code>examples/</code> directory for configuration samples</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
