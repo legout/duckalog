@@ -1,5 +1,10 @@
 # Changelog
-## [2025-11-17] - 0.1.0.1
+## [2025-11-17] - 0.1.1
+
+### Changed
+- Docs: auto-update changelog.md for version 0.1.0.1 (ad25b43)
+- Finish ci lint formatting, logging, and config type safety improvements (224f0d3)
+
 
 ### Changed
 - Finish ci lint formatting, logging, and config type safety improvements (224f0d3)
