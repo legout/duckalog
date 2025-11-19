@@ -741,3 +741,502 @@ def test_duckdb_secrets_no_secrets(tmp_path):
 
     config = load_config(str(config_path))
     assert config.duckdb.secrets == []
+
+
+def test_semantic_models_basic_config(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            label: "Sales Analytics"
+            description: "Business metrics for sales analysis"
+            tags: ["sales", "revenue"]
+            dimensions:
+              - name: order_date
+                expression: "created_at::date"
+                label: "Order Date"
+                type: "date"
+              - name: customer_region
+                expression: "UPPER(customer_region)"
+                label: "Customer Region"
+                type: "string"
+            measures:
+              - name: total_revenue
+                expression: "SUM(amount)"
+                label: "Total Revenue"
+                type: "number"
+              - name: order_count
+                expression: "COUNT(*)"
+                label: "Order Count"
+                type: "number"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert len(config.semantic_models) == 1
+    semantic_model = config.semantic_models[0]
+    assert semantic_model.name == "sales_analytics"
+    assert semantic_model.base_view == "sales_data"
+    assert semantic_model.label == "Sales Analytics"
+    assert semantic_model.description == "Business metrics for sales analysis"
+    assert semantic_model.tags == ["sales", "revenue"]
+
+    # Check dimensions
+    assert len(semantic_model.dimensions) == 2
+    order_date = semantic_model.dimensions[0]
+    assert order_date.name == "order_date"
+    assert order_date.expression == "created_at::date"
+    assert order_date.label == "Order Date"
+    assert order_date.type == "date"
+
+    customer_region = semantic_model.dimensions[1]
+    assert customer_region.name == "customer_region"
+    assert customer_region.expression == "UPPER(customer_region)"
+    assert customer_region.label == "Customer Region"
+    assert customer_region.type == "string"
+
+    # Check measures
+    assert len(semantic_model.measures) == 2
+    total_revenue = semantic_model.measures[0]
+    assert total_revenue.name == "total_revenue"
+    assert total_revenue.expression == "SUM(amount)"
+    assert total_revenue.label == "Total Revenue"
+    assert total_revenue.type == "number"
+
+    order_count = semantic_model.measures[1]
+    assert order_count.name == "order_count"
+    assert order_count.expression == "COUNT(*)"
+    assert order_count.label == "Order Count"
+    assert order_count.type == "number"
+
+
+def test_semantic_models_minimal_config(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: users
+            sql: "SELECT * FROM users"
+        semantic_models:
+          - name: user_analytics
+            base_view: users
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert len(config.semantic_models) == 1
+    semantic_model = config.semantic_models[0]
+    assert semantic_model.name == "user_analytics"
+    assert semantic_model.base_view == "users"
+    assert semantic_model.label is None
+    assert semantic_model.description is None
+    assert semantic_model.tags == []
+    assert semantic_model.dimensions == []
+    assert semantic_model.measures == []
+
+
+def test_semantic_models_empty_list(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        semantic_models: []
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert config.semantic_models == []
+
+
+def test_semantic_models_no_section(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    assert config.semantic_models == []
+
+
+def test_semantic_models_duplicate_names_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: view1
+            sql: "SELECT 1"
+          - name: view2
+            sql: "SELECT 2"
+        semantic_models:
+          - name: duplicate_model
+            base_view: view1
+          - name: duplicate_model
+            base_view: view2
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Duplicate semantic model name" in str(exc.value)
+    assert "duplicate_model" in str(exc.value)
+
+
+def test_semantic_models_missing_base_view_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: existing_view
+            sql: "SELECT 1"
+        semantic_models:
+          - name: broken_model
+            base_view: missing_view
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "reference undefined base view" in str(exc.value)
+    assert "broken_model -> missing_view" in str(exc.value)
+
+
+def test_semantic_models_duplicate_dimension_names_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        semantic_models:
+          - name: test_model
+            base_view: test_view
+            dimensions:
+              - name: duplicate_dim
+                expression: "col1"
+              - name: duplicate_dim
+                expression: "col2"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Duplicate dimension name" in str(exc.value)
+    assert "duplicate_dim" in str(exc.value)
+
+
+def test_semantic_models_duplicate_measure_names_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        semantic_models:
+          - name: test_model
+            base_view: test_view
+            measures:
+              - name: duplicate_measure
+                expression: "SUM(col1)"
+              - name: duplicate_measure
+                expression: "SUM(col2)"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Duplicate measure name" in str(exc.value)
+    assert "duplicate_measure" in str(exc.value)
+
+
+def test_semantic_models_dimension_measure_name_conflict_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        semantic_models:
+          - name: test_model
+            base_view: test_view
+            dimensions:
+              - name: conflict_name
+                expression: "col1"
+            measures:
+              - name: conflict_name
+                expression: "SUM(col2)"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Dimension and measure name(s) conflict" in str(exc.value)
+    assert "conflict_name" in str(exc.value)
+
+
+def test_semantic_models_empty_name_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        semantic_models:
+          - name: ""
+            base_view: test_view
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Semantic model name cannot be empty" in str(exc.value)
+
+
+def test_semantic_models_empty_base_view_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        semantic_models:
+          - name: test_model
+            base_view: ""
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Base view cannot be empty" in str(exc.value)
+
+
+def test_semantic_models_empty_dimension_name_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        semantic_models:
+          - name: test_model
+            base_view: test_view
+            dimensions:
+              - name: ""
+                expression: "col1"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Dimension name cannot be empty" in str(exc.value)
+
+
+def test_semantic_models_empty_dimension_expression_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        semantic_models:
+          - name: test_model
+            base_view: test_view
+            dimensions:
+              - name: test_dim
+                expression: ""
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Dimension expression cannot be empty" in str(exc.value)
+
+
+def test_semantic_models_empty_measure_name_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        semantic_models:
+          - name: test_model
+            base_view: test_view
+            measures:
+              - name: ""
+                expression: "SUM(col1)"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Measure name cannot be empty" in str(exc.value)
+
+
+def test_semantic_models_empty_measure_expression_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        semantic_models:
+          - name: test_model
+            base_view: test_view
+            measures:
+              - name: test_measure
+                expression: ""
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Measure expression cannot be empty" in str(exc.value)
+
+
+def test_semantic_models_with_env_interpolation(monkeypatch, tmp_path):
+    monkeypatch.setenv("SALES_VIEW_NAME", "sales_data")
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+        semantic_models:
+          - name: sales_analytics
+            base_view: ${env:SALES_VIEW_NAME}
+            dimensions:
+              - name: order_date
+                expression: "created_at::date"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert len(config.semantic_models) == 1
+    semantic_model = config.semantic_models[0]
+    assert semantic_model.name == "sales_analytics"
+    assert semantic_model.base_view == "sales_data"
+
+
+def test_semantic_models_python_api_access(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+          - name: user_data
+            sql: "SELECT * FROM users"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            dimensions:
+              - name: order_date
+                expression: "created_at::date"
+            measures:
+              - name: total_revenue
+                expression: "SUM(amount)"
+          - name: user_analytics
+            base_view: user_data
+            dimensions:
+              - name: user_type
+                expression: "user_type"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    # Test accessing semantic models via Python API
+    assert len(config.semantic_models) == 2
+
+    # Find specific semantic models
+    sales_model = next(
+        (sm for sm in config.semantic_models if sm.name == "sales_analytics"), None
+    )
+    assert sales_model is not None
+    assert sales_model.base_view == "sales_data"
+    assert len(sales_model.dimensions) == 1
+    assert len(sales_model.measures) == 1
+
+    user_model = next(
+        (sm for sm in config.semantic_models if sm.name == "user_analytics"), None
+    )
+    assert user_model is not None
+    assert user_model.base_view == "user_data"
+    assert len(user_model.dimensions) == 1
+    assert len(user_model.measures) == 0

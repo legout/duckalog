@@ -424,6 +424,164 @@ class ViewConfig(BaseModel):
         return self
 
 
+class SemanticDimensionConfig(BaseModel):
+    """Definition of a semantic dimension.
+
+    A dimension represents a business attribute that maps to an expression
+    over the base view of a semantic model.
+
+    Attributes:
+        name: Unique dimension name within the semantic model.
+        expression: SQL expression referencing columns from the base view.
+        label: Human-readable display name.
+        description: Optional detailed description.
+        type: Optional data type hint.
+    """
+
+    name: str
+    expression: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    type: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Dimension name cannot be empty")
+        return value
+
+    @field_validator("expression")
+    @classmethod
+    def _validate_expression(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Dimension expression cannot be empty")
+        return value
+
+
+class SemanticMeasureConfig(BaseModel):
+    """Definition of a semantic measure.
+
+    A measure represents a business metric that typically involves aggregation
+    or calculation over the base view of a semantic model.
+
+    Attributes:
+        name: Unique measure name within the semantic model.
+        expression: SQL expression (often aggregated) over the base view.
+        label: Human-readable display name.
+        description: Optional detailed description.
+        type: Optional data type hint.
+    """
+
+    name: str
+    expression: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    type: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Measure name cannot be empty")
+        return value
+
+    @field_validator("expression")
+    @classmethod
+    def _validate_expression(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Measure expression cannot be empty")
+        return value
+
+
+class SemanticModelConfig(BaseModel):
+    """Definition of a semantic model.
+
+    A semantic model provides business-friendly metadata on top of an existing
+    Duckalog view, defining dimensions and measures for analytics and BI use cases.
+
+    Attributes:
+        name: Unique semantic model name within the config.
+        base_view: Name of an existing view in the views section.
+        dimensions: Optional list of dimension definitions.
+        measures: Optional list of measure definitions.
+        label: Human-readable display name.
+        description: Optional detailed description.
+        tags: Optional list of classification tags.
+    """
+
+    name: str
+    base_view: str
+    dimensions: List[SemanticDimensionConfig] = Field(default_factory=list)
+    measures: List[SemanticMeasureConfig] = Field(default_factory=list)
+    label: Optional[str] = None
+    description: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Semantic model name cannot be empty")
+        return value
+
+    @field_validator("base_view")
+    @classmethod
+    def _validate_base_view(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Base view cannot be empty")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_uniqueness(self) -> "SemanticModelConfig":
+        """Validate that dimension and measure names are unique within the model."""
+        dimension_names = {dim.name for dim in self.dimensions}
+        measure_names = {measure.name for measure in self.measures}
+
+        # Check for duplicate dimension names
+        if len(dimension_names) != len(self.dimensions):
+            duplicates = [
+                name
+                for name in dimension_names
+                if sum(1 for dim in self.dimensions if dim.name == name) > 1
+            ]
+            raise ValueError(
+                f"Duplicate dimension name(s) found: {', '.join(duplicates)}"
+            )
+
+        # Check for duplicate measure names
+        if len(measure_names) != len(self.measures):
+            duplicates = [
+                name
+                for name in measure_names
+                if sum(1 for measure in self.measures if measure.name == name) > 1
+            ]
+            raise ValueError(
+                f"Duplicate measure name(s) found: {', '.join(duplicates)}"
+            )
+
+        # Check for conflicts between dimensions and measures
+        conflicts = dimension_names.intersection(measure_names)
+        if conflicts:
+            raise ValueError(
+                f"Dimension and measure name(s) conflict: {', '.join(sorted(conflicts))}"
+            )
+
+        return self
+
+
 class Config(BaseModel):
     """Top-level Duckalog configuration.
 
@@ -433,6 +591,7 @@ class Config(BaseModel):
         views: List of view definitions to create in the catalog.
         attachments: Optional attachments to external databases.
         iceberg_catalogs: Optional Iceberg catalog definitions.
+        semantic_models: Optional semantic model definitions for business metadata.
     """
 
     version: int
@@ -440,6 +599,7 @@ class Config(BaseModel):
     views: List[ViewConfig]
     attachments: AttachmentsConfig = Field(default_factory=AttachmentsConfig)
     iceberg_catalogs: List[IcebergCatalogConfig] = Field(default_factory=list)
+    semantic_models: List[SemanticModelConfig] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -488,6 +648,33 @@ class Config(BaseModel):
             raise ValueError(
                 "Iceberg view(s) reference undefined catalog(s): "
                 f"{details}. Define each catalog under `iceberg_catalogs`."
+            )
+
+        # Validate semantic models
+        semantic_model_names: Dict[str, int] = {}
+        duplicates = []
+        for semantic_model in self.semantic_models:
+            if semantic_model.name in semantic_model_names:
+                duplicates.append(semantic_model.name)
+            else:
+                semantic_model_names[semantic_model.name] = 1
+        if duplicates:
+            dup_list = ", ".join(sorted(set(duplicates)))
+            raise ValueError(f"Duplicate semantic model name(s) found: {dup_list}")
+
+        # Validate that semantic model base views exist
+        view_names = {view.name for view in self.views}
+        missing_base_views: List[str] = []
+        for semantic_model in self.semantic_models:
+            if semantic_model.base_view not in view_names:
+                missing_base_views.append(
+                    f"{semantic_model.name} -> {semantic_model.base_view}"
+                )
+        if missing_base_views:
+            details = ", ".join(missing_base_views)
+            raise ValueError(
+                "Semantic model(s) reference undefined base view(s): "
+                f"{details}. Define each view under `views`."
             )
 
         return self
@@ -668,6 +855,7 @@ def _load_sql_files_from_config(
         attachments=config.attachments,
         iceberg_catalogs=config.iceberg_catalogs,
         views=updated_views,
+        semantic_models=config.semantic_models,
     )
 
     log_info(
@@ -717,5 +905,8 @@ __all__ = [
     "PostgresAttachment",
     "IcebergCatalogConfig",
     "ViewConfig",
+    "SemanticModelConfig",
+    "SemanticDimensionConfig",
+    "SemanticMeasureConfig",
     "load_config",
 ]

@@ -26,6 +26,7 @@ apply in local workflows and automated pipelines.
   attached DuckDB/SQLite/Postgres databases.
 - **Attachments & catalogs** – Configure attachments and Iceberg catalogs in
   the same config and reuse them across views.
+- **Semantic layer** – Define business-friendly dimensions and measures on top of existing views for BI and analytics.
 - **Safe credentials** – Use environment variables (e.g. `${env:AWS_ACCESS_KEY_ID}`)
   instead of embedding secrets.
 - **CLI + Python API** – Build catalogs from the command line or from Python
@@ -227,7 +228,48 @@ views:
       SELECT *
       FROM users
       WHERE is_vip = TRUE
+
+semantic_models:
+  # Business-friendly semantic model on top of existing view
+  - name: sales_analytics
+    base_view: sales_data
+    label: "Sales Analytics"
+    description: "Business metrics for sales analysis"
+    tags: ["sales", "revenue"]
+    dimensions:
+      - name: order_date
+        expression: "created_at::date"
+        label: "Order Date"
+        type: "date"
+      - name: customer_region
+        expression: "UPPER(customer_region)"
+        label: "Customer Region"
+        type: "string"
+    measures:
+      - name: total_revenue
+        expression: "SUM(amount)"
+        label: "Total Revenue"
+        type: "number"
+      - name: order_count
+        expression: "COUNT(*)"
+        label: "Order Count"
+        type: "number"
 ```
+
+### Semantic Models (v1)
+
+Semantic models provide business-friendly metadata on top of existing views. **v1 is metadata-only** - no new DuckDB views are created, and no automatic query generation is performed.
+
+**Key limitations in v1:**
+- No joins between semantic models
+- No automatic query generation 
+- No time dimension handling
+- Single base view per model
+
+**Use semantic models to:**
+- Define business-friendly names for technical columns
+- Document dimensions and measures for BI tools
+- Provide structured metadata for future UI features
 
 ### Environment variable interpolation
 

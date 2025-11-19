@@ -151,3 +151,28 @@ The system SHALL allow users to define DuckDB session settings in the catalog co
 - **WHEN** a user does not provide settings or provides an empty value
 - **THEN** the system SHALL continue without error and apply no additional settings
 
+### Requirement: Semantic Models Configuration
+The system SHALL allow users to define optional semantic models that provide business-friendly metadata on top of existing views.
+
+#### Scenario: Semantic model with dimensions and measures
+- **WHEN** a user provides a `semantic_models` section with models containing `name`, `base_view`, `dimensions`, and `measures`
+- **THEN** the system SHALL validate that each semantic model has a unique name
+- **AND** the system SHALL validate that each `base_view` references an existing view in the `views` section
+- **AND** the system SHALL validate that dimension and measure names are unique within each model
+
+#### Scenario: Semantic model validation errors
+- **WHEN** a user provides a semantic model with a duplicate name
+- **THEN** the system SHALL raise a validation error indicating the duplicate semantic model name
+- **WHEN** a user provides a semantic model with a `base_view` that doesn't exist
+- **THEN** the system SHALL raise a validation error indicating the missing base view
+- **WHEN** a user provides dimensions or measures with duplicate names within the same model
+- **THEN** the system SHALL raise a validation error indicating the duplicate dimension/measure name
+
+#### Scenario: Empty semantic models
+- **WHEN** a user does not provide semantic models or provides an empty list
+- **THEN** the system SHALL continue without error and no semantic models are available
+
+#### Scenario: Semantic model metadata
+- **WHEN** a user provides optional metadata like `label`, `description`, or `tags` on semantic models, dimensions, or measures
+- **THEN** the system SHALL accept and preserve this metadata without validation beyond basic type checking
+
