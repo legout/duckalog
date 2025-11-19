@@ -32,4 +32,4 @@
 ## 4. Validation
 
 - [x] 4.1 Run `uv run mypy src/duckalog` and ensure the config/engine-related errors are resolved.
-- [ ] 4.2 Run the `Tests` GitHub workflow to confirm that type changes do not break runtime behavior.
+- [x] 4.2 Run the `Tests` GitHub workflow to confirm that type changes do not break runtime behavior.

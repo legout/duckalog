@@ -21,7 +21,7 @@
 ## 3. Validation and Documentation
 
 - [x] 3.1 Run `uv run ruff check src/ tests/` and `uv run ruff format --check src/ tests/` locally to confirm behavior matches the updated CI workflow.
-- [ ] 3.2 Trigger the `Tests` GitHub workflow on a feature branch to verify:
+- [x] 3.2 Trigger the `Tests` GitHub workflow on a feature branch to verify:
   - Lint failures behave as expected.
   - Formatting-only issues do not break CI beyond what the spec allows.
 - [x] 3.3 Update CONTRIBUTING/README sections (if needed) to:

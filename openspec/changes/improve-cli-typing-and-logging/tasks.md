@@ -31,4 +31,4 @@
 ## 5. Validation
 
 - [x] 5.1 Run `uv run mypy src/duckalog` and confirm that logging and CLI-related errors are resolved.
-- [ ] 5.2 Trigger the `Tests` workflow to ensure CLI and logging behavior remain correct under the new typing.
+- [x] 5.2 Trigger the `Tests` workflow to ensure CLI and logging behavior remain correct under the new typing.

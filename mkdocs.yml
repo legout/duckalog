@@ -10,18 +10,9 @@ theme:
 nav:
   - Home: index.md
   - Architecture: architecture.md
-  - User Guide:
-      - Usage: guides/usage.md
-      - Examples:
-          - examples/index.md
-          - DuckDB Secrets: examples/duckdb-secrets.md
-          - DuckDB Settings: examples/duckdb-settings.md
-          - Environment Variables: examples/environment-vars.md
-          - Local Attachments: examples/local-attachments.md
-          - Multi-Source Analytics: examples/multi-source-analytics.md
-          - Simple Parquet: examples/simple-parquet.md
-  - API Reference:
-      - duckalog: reference/api.md
+  - User Guide: guides/index.md
+  - Examples: examples/index.md
+  - API Reference: reference/index.md
 
 plugins:
   - search

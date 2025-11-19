@@ -613,6 +613,6 @@ Duckalog's architecture provides a robust, maintainable, and extensible foundati
 
 ## Related Documentation
 
-- **[User Guide](guides/usage.md)**: How to use Duckalog in practice
-- **[API Reference](reference/api.md)**: Complete API documentation
+- **[User Guide](guides/index.md)**: How to use Duckalog in practice
+- **[API Reference](reference/index.md)**: Complete API documentation
 - **Examples**: See the `examples/` directory for configuration samples

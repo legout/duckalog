@@ -133,8 +133,8 @@ All examples demonstrate these important Duckalog concepts:
 
 After working through examples:
 
-- **Read the User Guide** in `../guides/usage.md` for comprehensive documentation
-- **Explore the API Reference** in `../reference/api.md` for detailed function documentation
+- **Read the User Guide** in `../guides/index.md` for comprehensive documentation
+- **Explore the API Reference** in `../reference/index.md` for detailed function documentation
 - **Review the Architecture** in `../architecture.md` for high-level design details
 - **Join the community** for questions and discussions
 
@@ -151,8 +151,8 @@ Have a great Duckalog pattern to share? Consider contributing:
 ## Need Help?
 
 - **Configuration Issues**: Check [troubleshooting sections](simple-parquet.md#troubleshooting) in examples
-- **API Questions**: See [API Reference](../reference/api.md)
-- **General Usage**: Review [User Guide](../guides/usage.md)
+- **API Questions**: See [API Reference](../reference/index.md)
+- **General Usage**: Review [User Guide](../guides/index.md)
 - **Technical Details**: Read [Architecture](../architecture.md)
 
 Choose an example above to get started, or explore them in order to build your Duckalog expertise progressively!
