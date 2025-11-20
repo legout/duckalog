@@ -10,15 +10,19 @@
       
       
       
-        <link rel="canonical" href="https://legout.github.io/duckalog/guides/usage/">
+        <link rel="canonical" href="https://legout.github.io/duckalog/guides/">
       
       
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="../examples/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
     
     
@@ -27,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
       
       
 
@@ -46,9 +50,9 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -82,7 +86,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Duckalog" class="md-header__button md-logo" aria-label="Duckalog" data-md-component="logo">
+    <a href=".." title="Duckalog" class="md-header__button md-logo" aria-label="Duckalog" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -192,7 +196,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Duckalog" class="md-nav__button md-logo" aria-label="Duckalog" data-md-component="logo">
+    <a href=".." title="Duckalog" class="md-nav__button md-logo" aria-label="Duckalog" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -222,7 +226,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -249,7 +253,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/" class="md-nav__link">
+      <a href="../architecture/" class="md-nav__link">
         
   
   
@@ -273,10 +277,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -292,6 +323,287 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Started
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Getting Started">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attachments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attachments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iceberg-catalogs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iceberg Catalogs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parquet-only-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parquet-only Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attachments-only-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attachments-only Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iceberg-only-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iceberg-only Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-source-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-source Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Errors
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-invalid-configuration-syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Invalid Configuration Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-missing-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Missing Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-connection-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Connection Failures
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-sql-errors-in-views" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. SQL Errors in Views
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-iceberg-catalog-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Iceberg Catalog Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging Tips
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -303,7 +615,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/" class="md-nav__link">
+      <a href="../examples/" class="md-nav__link">
         
   
   
@@ -330,7 +642,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/" class="md-nav__link">
+      <a href="../reference/" class="md-nav__link">
         
   
   
@@ -377,28 +689,57 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#getting-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Started
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Getting Started">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#configuration-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration structure
+        Configuration Structure
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Environment variables
+        Environment Variables
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Concepts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Concepts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#attachments" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -408,35 +749,40 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#iceberg-catalogs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Iceberg catalogs
+        Iceberg Catalogs
       
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#common-configuration-patterns" class="md-nav__link">
+  <a href="#configuration-patterns" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Common Configuration Patterns
+        Configuration Patterns
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Common Configuration Patterns">
+    <nav class="md-nav" aria-label="Configuration Patterns">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#parquet-only-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Parquet-only configuration
+        Parquet-only Configuration
       
     </span>
   </a>
@@ -447,7 +793,7 @@
   <a href="#attachments-only-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Attachments-only configuration
+        Attachments-only Configuration
       
     </span>
   </a>
@@ -458,7 +804,7 @@
   <a href="#iceberg-only-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Iceberg-only configuration
+        Iceberg-only Configuration
       
     </span>
   </a>
@@ -469,7 +815,7 @@
   <a href="#multi-source-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Multi-source configuration
+        Multi-source Configuration
       
     </span>
   </a>
@@ -497,19 +843,19 @@
   <a href="#common-errors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Common errors
+        Common Errors
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Common errors">
+    <nav class="md-nav" aria-label="Common Errors">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#1-invalid-configuration-syntax" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Invalid configuration syntax
+        1. Invalid Configuration Syntax
       
     </span>
   </a>
@@ -520,7 +866,7 @@
   <a href="#2-missing-environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Missing environment variables
+        2. Missing Environment Variables
       
     </span>
   </a>
@@ -531,7 +877,7 @@
   <a href="#3-connection-failures" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Connection failures
+        3. Connection Failures
       
     </span>
   </a>
@@ -542,7 +888,7 @@
   <a href="#4-sql-errors-in-views" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. SQL errors in views
+        4. SQL Errors in Views
       
     </span>
   </a>
@@ -553,7 +899,7 @@
   <a href="#5-iceberg-catalog-issues" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Iceberg catalog issues
+        5. Iceberg Catalog Issues
       
     </span>
   </a>
@@ -569,7 +915,7 @@
   <a href="#debugging-tips" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Debugging tips
+        Debugging Tips
       
     </span>
   </a>
@@ -596,7 +942,7 @@
   <a href="#next-steps" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Next steps
+        Next Steps
       
     </span>
   </a>
@@ -624,10 +970,10 @@
 
 
 <h1 id="user-guide">User Guide<a class="headerlink" href="#user-guide" title="Permanent link">&para;</a></h1>
-<p>This guide explains how to structure Duckalog configuration files, common configuration patterns,
-and how to troubleshoot issues.</p>
-<h2 id="configuration-structure">Configuration structure<a class="headerlink" href="#configuration-structure" title="Permanent link">&para;</a></h2>
-<p>At a high level, a config looks like this:</p>
+<p>Welcome to the Duckalog User Guide. This section covers how to use Duckalog effectively, from basic configuration to advanced patterns and troubleshooting.</p>
+<h2 id="getting-started">Getting Started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h2>
+<h3 id="configuration-structure">Configuration Structure<a class="headerlink" href="#configuration-structure" title="Permanent link">&para;</a></h3>
+<p>At a high level, a Duckalog config looks like this:</p>
 <div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">duckdb</span><span class="p">:</span>
@@ -686,36 +1032,32 @@ and how to troubleshoot issues.</p>
 </span><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="w">      </span><span class="no">FROM users</span>
 </span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="w">      </span><span class="no">WHERE is_vip = TRUE</span>
 </span></code></pre></div>
-<h2 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
-<p>Any string may contain <code>${env:VAR_NAME}</code> placeholders. Duckalog resolves these
-using the process environment before validation. If a variable is missing, a
-<code>ConfigError</code> is raised.</p>
-<p>Example:</p>
+<h3 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
+<p>Any string may contain <code>${env:VAR_NAME}</code> placeholders. Duckalog resolves these using the process environment before validation. If a variable is missing, a <code>ConfigError</code> is raised.</p>
+<p>Example:
 <div class="highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">duckdb</span><span class="p">:</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">pragmas</span><span class="p">:</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;SET</span><span class="nv"> </span><span class="s">s3_access_key_id=&#39;${env:AWS_ACCESS_KEY_ID}&#39;&quot;</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;SET</span><span class="nv"> </span><span class="s">s3_secret_access_key=&#39;${env:AWS_SECRET_ACCESS_KEY}&#39;&quot;</span>
-</span></code></pre></div>
-<h2 id="attachments">Attachments<a class="headerlink" href="#attachments" title="Permanent link">&para;</a></h2>
+</span></code></pre></div></p>
+<h2 id="core-concepts">Core Concepts<a class="headerlink" href="#core-concepts" title="Permanent link">&para;</a></h2>
+<h3 id="attachments">Attachments<a class="headerlink" href="#attachments" title="Permanent link">&para;</a></h3>
 <p>Attachments let you expose tables from other databases inside DuckDB.</p>
 <ul>
 <li><strong>DuckDB attachments</strong>: attach additional <code>.duckdb</code> files.</li>
 <li><strong>SQLite attachments</strong>: attach local SQLite databases.</li>
 <li><strong>Postgres attachments</strong>: connect to external Postgres instances.</li>
 </ul>
-<p>Views that use attached databases set <code>source</code> to <code>duckdb</code>, <code>sqlite</code>, or
-<code>postgres</code> and provide <code>database</code> (attachment alias) and <code>table</code>.</p>
-<h2 id="iceberg-catalogs">Iceberg catalogs<a class="headerlink" href="#iceberg-catalogs" title="Permanent link">&para;</a></h2>
-<p>Iceberg catalogs are configured under <code>iceberg_catalogs</code>. Iceberg views can
-either:</p>
+<p>Views that use attached databases set <code>source</code> to <code>duckdb</code>, <code>sqlite</code>, or <code>postgres</code> and provide <code>database</code> (attachment alias) and <code>table</code>.</p>
+<h3 id="iceberg-catalogs">Iceberg Catalogs<a class="headerlink" href="#iceberg-catalogs" title="Permanent link">&para;</a></h3>
+<p>Iceberg catalogs are configured under <code>iceberg_catalogs</code>. Iceberg views can either:</p>
 <ul>
 <li>Use a <code>uri</code> directly, or</li>
 <li>Refer to a <code>catalog</code> + <code>table</code> combination.</li>
 </ul>
-<p>Duckalog validates that any <code>catalog</code> used by a view is defined in
-<code>iceberg_catalogs</code>.</p>
-<h2 id="common-configuration-patterns">Common Configuration Patterns<a class="headerlink" href="#common-configuration-patterns" title="Permanent link">&para;</a></h2>
-<h3 id="parquet-only-configuration">Parquet-only configuration<a class="headerlink" href="#parquet-only-configuration" title="Permanent link">&para;</a></h3>
+<p>Duckalog validates that any <code>catalog</code> used by a view is defined in <code>iceberg_catalogs</code>.</p>
+<h2 id="configuration-patterns">Configuration Patterns<a class="headerlink" href="#configuration-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="parquet-only-configuration">Parquet-only Configuration<a class="headerlink" href="#parquet-only-configuration" title="Permanent link">&para;</a></h3>
 <p>For simple cases where you only need to create views over Parquet files:</p>
 <div class="highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
@@ -746,7 +1088,7 @@ either:</p>
 </span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="w">      </span><span class="no">JOIN sales_data s ON c.customer_id = s.customer_id</span>
 </span><span id="__span-2-28"><a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="w">      </span><span class="no">GROUP BY c.customer_id, c.name, c.region</span>
 </span></code></pre></div>
-<h3 id="attachments-only-configuration">Attachments-only configuration<a class="headerlink" href="#attachments-only-configuration" title="Permanent link">&para;</a></h3>
+<h3 id="attachments-only-configuration">Attachments-only Configuration<a class="headerlink" href="#attachments-only-configuration" title="Permanent link">&para;</a></h3>
 <p>For joining data from existing databases:</p>
 <div class="highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
@@ -795,7 +1137,7 @@ either:</p>
 </span><span id="__span-3-45"><a id="__codelineno-3-45" name="__codelineno-3-45" href="#__codelineno-3-45"></a><span class="w">      </span><span class="no">JOIN user_orders o ON p.user_id = o.user_id</span>
 </span><span id="__span-3-46"><a id="__codelineno-3-46" name="__codelineno-3-46" href="#__codelineno-3-46"></a><span class="w">      </span><span class="no">LEFT JOIN legacy_customers l ON p.user_id = l.id</span>
 </span></code></pre></div>
-<h3 id="iceberg-only-configuration">Iceberg-only configuration<a class="headerlink" href="#iceberg-only-configuration" title="Permanent link">&para;</a></h3>
+<h3 id="iceberg-only-configuration">Iceberg-only Configuration<a class="headerlink" href="#iceberg-only-configuration" title="Permanent link">&para;</a></h3>
 <p>For working exclusively with Iceberg tables:</p>
 <div class="highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
@@ -839,7 +1181,7 @@ either:</p>
 </span><span id="__span-4-40"><a id="__codelineno-4-40" name="__codelineno-4-40" href="#__codelineno-4-40"></a><span class="w">      </span><span class="no">FROM production_customers p</span>
 </span><span id="__span-4-41"><a id="__codelineno-4-41" name="__codelineno-4-41" href="#__codelineno-4-41"></a><span class="w">      </span><span class="no">FULL OUTER JOIN staging_customers s ON p.id = s.id</span>
 </span></code></pre></div>
-<h3 id="multi-source-configuration">Multi-source configuration<a class="headerlink" href="#multi-source-configuration" title="Permanent link">&para;</a></h3>
+<h3 id="multi-source-configuration">Multi-source Configuration<a class="headerlink" href="#multi-source-configuration" title="Permanent link">&para;</a></h3>
 <p>This example combines multiple data sources in a single catalog:</p>
 <div class="highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
@@ -898,41 +1240,41 @@ either:</p>
 </span><span id="__span-5-55"><a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a><span class="w">      </span><span class="no">WHERE e.timestamp &gt;= CURRENT_DATE - INTERVAL 30 DAYS</span>
 </span></code></pre></div>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<h3 id="common-errors">Common errors<a class="headerlink" href="#common-errors" title="Permanent link">&para;</a></h3>
-<h4 id="1-invalid-configuration-syntax">1. Invalid configuration syntax<a class="headerlink" href="#1-invalid-configuration-syntax" title="Permanent link">&para;</a></h4>
+<h3 id="common-errors">Common Errors<a class="headerlink" href="#common-errors" title="Permanent link">&para;</a></h3>
+<h4 id="1-invalid-configuration-syntax">1. Invalid Configuration Syntax<a class="headerlink" href="#1-invalid-configuration-syntax" title="Permanent link">&para;</a></h4>
 <p>Error message: <code>ConfigError: Invalid configuration file</code></p>
 <p>Solutions:
 - Validate YAML syntax first with <code>yamllint</code> or an online YAML validator
 - Ensure proper indentation (YAML is sensitive to spaces)
 - Check for unescaped special characters in strings</p>
-<h4 id="2-missing-environment-variables">2. Missing environment variables<a class="headerlink" href="#2-missing-environment-variables" title="Permanent link">&para;</a></h4>
+<h4 id="2-missing-environment-variables">2. Missing Environment Variables<a class="headerlink" href="#2-missing-environment-variables" title="Permanent link">&para;</a></h4>
 <p>Error message: <code>ConfigError: Environment variable 'AWS_ACCESS_KEY_ID' not found</code></p>
 <p>Solutions:
 - Check that all <code>env:VAR_NAME</code> variables are set
 - Use <code>duckalog validate config.yaml</code> to check environment variables without building
 - Consider using a <code>.env</code> file with <code>export</code> commands or a tool like <code>direnv</code></p>
-<h4 id="3-connection-failures">3. Connection failures<a class="headerlink" href="#3-connection-failures" title="Permanent link">&para;</a></h4>
+<h4 id="3-connection-failures">3. Connection Failures<a class="headerlink" href="#3-connection-failures" title="Permanent link">&para;</a></h4>
 <p>Error message: <code>DuckDB Error: Invalid Input Error: Failed to open file</code></p>
 <p>Solutions:
 - Check file paths in attachments section
 - Ensure credentials for cloud storage are correct
 - Verify network connectivity and firewall rules
 - For local files, check file permissions</p>
-<h4 id="4-sql-errors-in-views">4. SQL errors in views<a class="headerlink" href="#4-sql-errors-in-views" title="Permanent link">&para;</a></h4>
+<h4 id="4-sql-errors-in-views">4. SQL Errors in Views<a class="headerlink" href="#4-sql-errors-in-views" title="Permanent link">&para;</a></h4>
 <p>Error message: <code>Parser Error: syntax error at or near "JOIN"</code></p>
 <p>Solutions:
 - Validate SQL syntax with <code>duckalog generate-sql config.yaml</code> before building
 - Check that all referenced views and tables exist
 - Verify column names match across join conditions
 - Use proper DuckDB SQL syntax (similar to PostgreSQL)</p>
-<h4 id="5-iceberg-catalog-issues">5. Iceberg catalog issues<a class="headerlink" href="#5-iceberg-catalog-issues" title="Permanent link">&para;</a></h4>
+<h4 id="5-iceberg-catalog-issues">5. Iceberg Catalog Issues<a class="headerlink" href="#5-iceberg-catalog-issues" title="Permanent link">&para;</a></h4>
 <p>Error message: <code>Invalid Input Error: Can't load extension iceberg</code></p>
 <p>Solutions:
 - Ensure DuckDB version supports Iceberg extensions
 - Install required extensions: <code>duckdb.install_extension("iceberg")</code>
 - Check catalog configuration and credentials
 - Verify Iceberg catalog server is accessible</p>
-<h3 id="debugging-tips">Debugging tips<a class="headerlink" href="#debugging-tips" title="Permanent link">&para;</a></h3>
+<h3 id="debugging-tips">Debugging Tips<a class="headerlink" href="#debugging-tips" title="Permanent link">&para;</a></h3>
 <ol>
 <li><strong>Validate before building</strong>: Always run <code>duckalog validate config.yaml</code> first</li>
 <li><strong>Generate SQL first</strong>: Use <code>duckalog generate-sql config.yaml</code> to inspect generated SQL</li>
@@ -951,7 +1293,7 @@ either:</p>
 <li><strong>Naming conventions</strong>: Use consistent naming for views and attachments</li>
 <li><strong>Security</strong>: Never commit secrets to version control - use environment variables</li>
 </ol>
-<h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Use <code>duckalog generate-sql</code> to inspect the SQL that will be executed.</li>
 <li>Use the API reference for details on each public function and model.</li>
@@ -1006,10 +1348,10 @@ either:</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
       
     
   </body>
