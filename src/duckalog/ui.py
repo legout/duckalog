@@ -9,16 +9,93 @@ import tempfile
 import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import uuid
 
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.routing import Route
 from starlette.middleware.cors import CORSMiddleware
+from starlette.background import BackgroundTasks
 
 from .config import Config, ConfigError, load_config
 from .engine import EngineError, build_catalog
 from .logging_utils import log_error, log_info
+
+# Background task functions
+def _execute_query_task(config: Config, query: str, result_store: Dict[str, Any]) -> None:
+    """Background task for executing DuckDB queries."""
+    try:
+        import duckdb
+        db_path = config.duckdb.database
+        conn = duckdb.connect(db_path)
+
+        try:
+            query_result = conn.execute(query)
+            rows = query_result.fetchall()
+
+            if rows:
+                columns = [desc[0] for desc in query_result.description]
+                data = [dict(zip(columns, row)) for row in rows]
+            else:
+                data = []
+
+            result_store["status"] = "completed"
+            result_store["status"] = "completed"
+            result_store["success"] = True
+            result_store["data"] = data
+            result_store["row_count"] = len(data)
+
+        finally:
+            conn.close()
+
+    except Exception as exc:
+        result_store["status"] = "failed"
+        result_store["success"] = False
+        result_store["error"] = str(exc)
+
+
+def _export_data_task(config: Config, query: str, format_type: str, result_store: Dict[str, Any]) -> None:
+    """Background task for exporting DuckDB data."""
+    try:
+        import duckdb
+        db_path = config.duckdb.database
+        conn = duckdb.connect(db_path)
+
+        try:
+            query_result = conn.execute(query)
+            rows = query_result.fetchall()
+
+            if rows:
+                columns = [desc[0] for desc in query_result.description]
+                data = [dict(zip(columns, row)) for row in rows]
+            else:
+                data = []
+
+            result_store["status"] = "completed"
+            result_store["success"] = True
+            result_store["data"] = data
+
+        finally:
+            conn.close()
+
+    except Exception as exc:
+        result_store["status"] = "failed"
+        result_store["success"] = False
+        result_store["error"] = str(exc)
+
+
+def _rebuild_catalog_task(config: Config, result_store: Dict[str, Any]) -> None:
+    """Background task for rebuilding the catalog."""
+    try:
+        build_catalog(config)
+        result_store["status"] = "completed"
+        result_store["success"] = True
+        result_store["message"] = "Catalog rebuilt successfully"
+    except Exception as exc:
+        result_store["status"] = "failed"
+        result_store["success"] = False
+        result_store["error"] = str(exc)
 
 try:
     from datastar_py import ServerSentEventGenerator as SSE
@@ -29,7 +106,7 @@ except ImportError as exc:
 
 
 def _validate_read_only_query(query: str) -> str:
-    """Validate that query is read-only and single-statement.
+    """Validate that query is read-only and single-statement with safe identifier handling.
 
     Args:
         query: SQL query to validate
@@ -44,7 +121,7 @@ def _validate_read_only_query(query: str) -> str:
         raise ValueError("Query cannot be empty")
 
     # Remove leading/trailing whitespace and normalize case
-    normalized_query = query.strip().lower()
+    normalized_query = query.strip()
 
     # Check for DDL keywords
     ddl_keywords = [
@@ -77,12 +154,15 @@ def _validate_read_only_query(query: str) -> str:
     ]
 
     # Check if query starts with SELECT (case-insensitive)
-    if not normalized_query.startswith("select"):
+    if not normalized_query.lower().startswith("select"):
         raise ValueError("Only SELECT queries are allowed for security")
 
     # Check for forbidden keywords
     for keyword in ddl_keywords + dml_keywords:
-        if f" {keyword} " in normalized_query or f"\n{keyword}" in normalized_query:
+        if (
+            f" {keyword} " in normalized_query.lower()
+            or f"\n{keyword}" in normalized_query.lower()
+        ):
             raise ValueError(f"Query contains forbidden keyword: {keyword.upper()}")
 
     # Check for multiple statements (semicolon separation)
@@ -93,6 +173,39 @@ def _validate_read_only_query(query: str) -> str:
             raise ValueError("Multiple statements are not allowed")
 
     return query
+
+
+def _safe_identifier(identifier: str) -> str:
+    """Create a safe SQL identifier with proper quoting.
+
+    Args:
+        identifier: Table or column name to make safe
+
+    Returns:
+        Safely quoted identifier
+    """
+    if not identifier or not identifier.strip():
+        raise ValueError("Identifier cannot be empty")
+
+    # Check for valid identifier pattern (letters, numbers, underscores)
+    import re
+
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", identifier.strip()):
+        raise ValueError(f"Invalid identifier: {identifier}")
+
+    # DuckDB identifiers are case-insensitive but we'll preserve original case
+    # Use double quotes for identifiers that need quoting
+    if " " in identifier or identifier.lower() in [
+        "select",
+        "from",
+        "where",
+        "order",
+        "group",
+        "having",
+    ]:
+        return f'"{identifier}"'
+
+    return identifier
 
 
 def _get_admin_token() -> Optional[str]:
@@ -172,6 +285,12 @@ class UIServer:
         self.port = port
         self.config: Optional[Config] = None
 
+        # Background task result storage
+        self._task_results: Dict[str, Dict[str, Any]] = {}
+
+        # Track original config format
+        self._config_format: str = "json"  # Default to JSON
+
         # Load configuration
         self._load_config()
 
@@ -189,6 +308,7 @@ class UIServer:
                 Route("/api/rebuild", self._rebuild_catalog, methods=["POST"]),
                 Route("/api/query", self._execute_query, methods=["POST"]),
                 Route("/api/export", self._export_data, methods=["POST"]),
+                Route("/api/tasks/{task_id}", self._get_task_result),
             ],
             middleware=[
                 CORSMiddleware(
@@ -203,6 +323,20 @@ class UIServer:
     def _load_config(self) -> None:
         """Load the Duckalog configuration."""
         try:
+            # Detect file format by file extension and content
+            if self.config_path.exists():
+                if self.config_path.suffix.lower() in ['.yaml', '.yml']:
+                    self._config_format = 'yaml'
+                elif self.config_path.suffix.lower() == '.json':
+                    self._config_format = 'json'
+                else:
+                    # Try to detect by content
+                    content = self.config_path.read_text().strip()
+                    if content.startswith('{') or content.startswith('['):
+                        self._config_format = 'json'
+                    else:
+                        self._config_format = 'yaml'
+
             self.config = load_config(str(self.config_path))
         except ConfigError as exc:
             log_error(
@@ -258,10 +392,8 @@ class UIServer:
             # Validate updated config
             updated_config = Config.model_validate(current_config_dict)
 
-            # Write back to file (atomic operation)
-            self._write_config_atomic(
-                json.dumps(updated_config.model_dump(mode="json"), indent=2)
-            )
+            # Write back to file preserving format
+            self._write_config_preserving_format(updated_config)
 
             return JSONResponse(
                 {"success": True, "config": updated_config.model_dump(mode="json")}
@@ -272,6 +404,52 @@ class UIServer:
             return JSONResponse(
                 {"error": f"Failed to update config: {exc}"}, status_code=500
             )
+
+    def _write_config_preserving_format(self, config: Config) -> None:
+        """Write configuration to file, preserving original format."""
+        try:
+            if self._config_format == 'yaml':
+                # Try to preserve YAML formatting using ruamel.yaml if available
+                try:
+                    from ruamel.yaml import YAML
+                    yaml = YAML()
+                    yaml.preserve_quotes = True
+                    yaml.width = 4096  # Prevent line wrapping
+
+                    # Convert to dict for YAML serialization
+                    config_dict = config.model_dump(mode='json')
+
+                    # Write to temporary YAML file first
+                    temp_path = self.config_path.with_suffix(".tmp")
+                    try:
+                        with open(temp_path, 'w') as f:
+                            yaml.dump(config_dict, f)
+
+                        # Atomic move
+                        shutil.move(str(temp_path), str(self.config_path))
+                    except Exception as exc:
+                        # Clean up temp file if it exists
+                        if temp_path.exists():
+                            temp_path.unlink()
+                        raise exc
+
+                except ImportError:
+                    # Fallback to basic YAML if ruamel.yaml not available
+                    import yaml
+
+                    config_dict = config.model_dump(mode='json')
+                    config_yaml = yaml.dump(config_dict, default_flow_style=False, sort_keys=False)
+
+                    # Use the original atomic write method
+                    self._write_config_atomic(config_yaml)
+
+            else:
+                # JSON format - use existing method
+                config_json = config.model_dump_json(indent=2)
+                self._write_config_atomic(config_json)
+
+        except Exception as exc:
+            raise UIError(f"Failed to write config in {self._config_format} format: {exc}")
 
     def _write_config_atomic(self, config_data: str) -> None:
         """Atomically write configuration to file."""
@@ -347,9 +525,7 @@ class UIServer:
 
             # Validate and save
             updated_config = Config.model_validate(current_config_dict)
-            self._write_config_atomic(
-                json.dumps(updated_config.model_dump(mode="json"), indent=2)
-            )
+            self._write_config_preserving_format(updated_config)
             self._load_config()  # Reload config
 
             return JSONResponse({"success": True, "view": new_view_data})
@@ -406,9 +582,7 @@ class UIServer:
 
             # Save and reload
             updated_config = Config.model_validate(current_config_dict)
-            self._write_config_atomic(
-                json.dumps(updated_config.model_dump(mode="json"), indent=2)
-            )
+            self._write_config_preserving_format(updated_config)
             self._load_config()
 
             return JSONResponse(
@@ -452,9 +626,7 @@ class UIServer:
 
             # Save and reload
             updated_config = Config.model_validate(current_config_dict)
-            self._write_config_atomic(
-                json.dumps(updated_config.model_dump(mode="json"), indent=2)
-            )
+            self._write_config_preserving_format(updated_config)
             self._load_config()
 
             return JSONResponse({"success": True})
@@ -516,7 +688,7 @@ class UIServer:
                 {"error": f"Failed to get schema: {exc}"}, status_code=500
             )
 
-    async def _rebuild_catalog(self, request: Request) -> Response:
+    async def _rebuild_catalog(self, request: Request, background_tasks: BackgroundTasks) -> Response:
         """Rebuild the DuckDB catalog from current configuration."""
         if not self.config:
             return JSONResponse({"error": "No configuration loaded"}, status_code=500)
@@ -527,28 +699,22 @@ class UIServer:
             return auth_result
 
         try:
-            # Rebuild catalog
-            build_catalog(
-                str(self.config_path),
-                db_path=self.config.duckdb.database,
-                verbose=False,  # Don't spam logs in UI
-            )
+            # Generate task ID and create result store
+            task_id = str(uuid.uuid4())
+            result_store = {"task_id": task_id, "status": "pending"}
+            self._task_results[task_id] = result_store
 
-            return JSONResponse(
-                {"success": True, "message": "Catalog rebuilt successfully"}
-            )
+            # Add background task
+            background_tasks.add_task(_rebuild_catalog_task, self.config, result_store)
 
-        except ConfigError as exc:
-            log_error("Failed to rebuild catalog", error=str(exc))
-            return JSONResponse({"error": f"Config error: {exc}"}, status_code=500)
-        except EngineError as exc:
-            log_error("Failed to rebuild catalog", error=str(exc))
-            return JSONResponse({"error": f"Engine error: {exc}"}, status_code=500)
+            # Return task ID for client to poll results
+            return JSONResponse({"task_id": task_id, "status": "pending"})
+
         except Exception as exc:
             log_error("Failed to rebuild catalog", error=str(exc))
-            return JSONResponse({"error": f"Unexpected error: {exc}"}, status_code=500)
+            return JSONResponse({"error": f"Failed to rebuild catalog: {exc}"}, status_code=500)
 
-    async def _execute_query(self, request: Request) -> Response:
+    async def _execute_query(self, request: Request, background_tasks: BackgroundTasks) -> Response:
         """Execute a SQL query and return results."""
         if not self.config:
             return JSONResponse({"error": "No configuration loaded"}, status_code=500)
@@ -567,40 +733,22 @@ class UIServer:
             except ValueError as exc:
                 return JSONResponse({"error": f"Invalid query: {exc}"}, status_code=400)
 
-            # Execute query
-            import duckdb
+            # Add LIMIT clause if specified
+            if limit:
+                limited_query = f"{validated_query} LIMIT {limit}"
+            else:
+                limited_query = validated_query
 
-            db_path = self.config.duckdb.database
-            conn = duckdb.connect(db_path)
+            # Generate task ID and create result store
+            task_id = str(uuid.uuid4())
+            result_store = {"task_id": task_id, "status": "pending"}
+            self._task_results[task_id] = result_store
 
-            try:
-                # Add LIMIT clause if specified
-                if limit:
-                    limited_query = f"{validated_query} LIMIT {limit}"
-                else:
-                    limited_query = validated_query
+            # Add background task
+            background_tasks.add_task(_execute_query_task, self.config, limited_query, result_store)
 
-                result = conn.execute(limited_query)
-                rows = result.fetchall()
-
-                # Get column names
-                if rows:
-                    columns = [desc[0] for desc in result.description]
-                    data = [dict(zip(columns, row)) for row in rows]
-                else:
-                    columns = []
-                    data = []
-
-                return JSONResponse(
-                    {
-                        "columns": columns,
-                        "rows": data,
-                        "count": len(data),
-                    }
-                )
-
-            finally:
-                conn.close()
+            # Return task ID for client to poll results
+            return JSONResponse({"task_id": task_id, "status": "pending"})
 
         except Exception as exc:
             log_error("Failed to execute query", error=str(exc))
@@ -608,7 +756,29 @@ class UIServer:
                 {"error": f"Failed to execute query: {exc}"}, status_code=500
             )
 
-    async def _export_data(self, request: Request) -> Response:
+    async def _get_task_result(self, request: Request) -> Response:
+        """Get the result of a background task."""
+        try:
+            task_id = request.path_params.get("task_id")
+            if not task_id or task_id not in self._task_results:
+                return JSONResponse({"error": "Task not found"}, status_code=404)
+
+            result = self._task_results[task_id]
+
+            # If task is completed and successful, include the data
+            if result.get("status") == "completed" and result.get("success"):
+                return JSONResponse(result)
+            elif result.get("status") == "failed":
+                return JSONResponse(result)
+            else:
+                # Task still pending or in progress
+                return JSONResponse({"task_id": task_id, "status": result.get("status", "pending")})
+
+        except Exception as exc:
+            log_error("Failed to get task result", error=str(exc))
+            return JSONResponse({"error": f"Failed to get task result: {exc}"}, status_code=500)
+
+    async def _export_data(self, request: Request, background_tasks: BackgroundTasks) -> Response:
         """Export query results in various formats."""
         if not self.config:
             return JSONResponse({"error": "No configuration loaded"}, status_code=500)
@@ -628,52 +798,35 @@ class UIServer:
                 try:
                     export_query = _validate_read_only_query(query)
                 except ValueError as exc:
-                    return JSONResponse(
-                        {"error": f"Invalid query: {exc}"}, status_code=400
-                    )
+                    return JSONResponse({"error": f"Invalid query: {exc}"}, status_code=400)
             elif view_name:
-                # Validate view name exists
+                # Validate view name exists and create safe identifier
                 view_names = {view.name for view in self.config.views}
                 if view_name not in view_names:
-                    return JSONResponse(
-                        {"error": f"View '{view_name}' not found"}, status_code=404
-                    )
-                export_query = f"SELECT * FROM {view_name}"
+                    return JSONResponse({"error": f"View '{view_name}' not found"}, status_code=404)
+                safe_view_name = _safe_identifier(view_name)
+                export_query = f"SELECT * FROM {safe_view_name}"
             else:
                 return JSONResponse(
                     {"error": "Must provide either 'query' or 'view'"}, status_code=400
                 )
 
-            # Execute query
-            import duckdb
+            # Validate format type
+            if format_type not in ["csv", "parquet", "excel"]:
+                return JSONResponse(
+                    {"error": f"Unsupported format: {format_type}"}, status_code=400
+                )
 
-            db_path = self.config.duckdb.database
-            conn = duckdb.connect(db_path)
+            # Generate task ID and create result store
+            task_id = str(uuid.uuid4())
+            result_store = {"task_id": task_id, "status": "pending", "format": format_type}
+            self._task_results[task_id] = result_store
 
-            try:
-                result = conn.execute(export_query)
-                rows = result.fetchall()
+            # Add background task
+            background_tasks.add_task(_export_data_task, self.config, export_query, format_type, result_store)
 
-                # Get column names for proper formatting
-                if rows:
-                    columns = [desc[0] for desc in result.description]
-                    data = [dict(zip(columns, row)) for row in rows]
-                else:
-                    data = []
-
-                if format_type == "csv":
-                    return self._export_csv(data)
-                elif format_type == "parquet":
-                    return self._export_parquet(data)
-                elif format_type == "excel":
-                    return self._export_excel(data)
-                else:
-                    return JSONResponse(
-                        {"error": f"Unsupported format: {format_type}"}, status_code=400
-                    )
-
-            finally:
-                conn.close()
+            # Return task ID for client to poll results
+            return JSONResponse({"task_id": task_id, "status": "pending", "format": format_type})
 
         except Exception as exc:
             log_error("Failed to export data", error=str(exc))
@@ -752,7 +905,7 @@ class UIServer:
         )
 
     def _dashboard(self, request: Request) -> Response:
-        """Render the main dashboard HTML page."""
+        """Render the main dashboard HTML page using Datastar."""
         if not self.config:
             return HTMLResponse(
                 "<html><body><h1>Error: No configuration loaded</h1></body></html>"
@@ -761,16 +914,6 @@ class UIServer:
         try:
             # Generate dashboard HTML with Datastar integration
             dashboard_html = self._generate_datastar_dashboard()
-
-            return HTMLResponse(dashboard_html)
-
-        except Exception as exc:
-            log_error("Failed to render dashboard", error=str(exc))
-            return HTMLResponse(f"<html><body><h1>Error: {exc}</h1></body></html>")
-
-        try:
-            # Generate dashboard HTML
-            dashboard_html = self._generate_simple_dashboard()
 
             return HTMLResponse(dashboard_html)
 
@@ -897,7 +1040,12 @@ class UIServer:
         """
 
     def _generate_simple_dashboard(self) -> str:
-        """Generate a simple dashboard HTML (fallback)."""
+        """Generate a simple dashboard HTML (fallback - DEPRECATED).
+
+        This method is no longer used. All dashboard functionality now uses
+        the Datastar-powered implementation in _generate_datastar_dashboard().
+        This method is kept for reference only and should be removed in a future release.
+        """
         if not self.config:
             return "<html><body><h1>Error: No configuration loaded</h1></body></html>"
 

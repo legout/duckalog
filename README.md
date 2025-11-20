@@ -25,12 +25,13 @@ apply in local workflows and automated pipelines.
 - **Multiple sources** – Views over S3 Parquet, Delta Lake, Iceberg tables, and
   attached DuckDB/SQLite/Postgres databases.
 - **Attachments & catalogs** – Configure attachments and Iceberg catalogs in
-  the same config and reuse them across views.
+  same config and reuse them across views.
 - **Semantic layer** – Define business-friendly dimensions and measures on top of existing views for BI and analytics.
 - **Safe credentials** – Use environment variables (e.g. `${env:AWS_ACCESS_KEY_ID}`)
   instead of embedding secrets.
-- **CLI + Python API** – Build catalogs from the command line or from Python
+- **CLI + Python API** – Build catalogs from command line or from Python
   code with the same semantics.
+- **Web UI** – Interactive dashboard for catalog management, query execution, and data export (requires `duckalog[ui]`).
 
 For a full product and technical description, see `docs/PRD_Spec.md`.
 
@@ -49,6 +50,48 @@ pip install duckalog
 ```
 
 This installs the Python package and provides the `duckalog` CLI command.
+
+### Install with UI support
+
+For the web UI dashboard, install with optional UI dependencies:
+
+```bash
+pip install duckalog[ui]
+```
+
+#### **UI Dependencies**
+
+The `duckalog[ui]` extra includes these core dependencies:
+
+- **Starlette** (`starlette>=0.27.0`): ASGI web framework
+- **Datastar Python SDK** (`datastar-python>=0.1.0`): Reactive web framework
+- **Uvicorn** (`uvicorn[standard]>=0.20.0`): ASGI server
+- **Background task support**: Built-in Starlette background tasks
+- **CORS middleware**: Security-focused web access control
+
+#### **Datastar Runtime Requirements**
+
+The web UI uses **Datastar** for reactive, real-time updates:
+
+- **No legacy fallback**: The UI exclusively uses Datastar patterns
+- **Reactive data binding**: Automatic UI updates when data changes
+- **Server-Sent Events**: Real-time communication for background tasks
+- **Modern web patterns**: Built-in security and performance optimizations
+
+#### **Optional Enhanced YAML Support**
+
+For better YAML formatting preservation, install optional dependency:
+
+```bash
+pip install duckalog[ui,yaml]
+# or
+pip install ruamel.yaml>=0.17.0
+```
+
+This provides:
+- **Comment preservation** in YAML configs
+- **Formatting maintenance** during updates
+- **Advanced YAML features** like anchors and aliases
 
 ### Verify Installation
 
@@ -121,8 +164,47 @@ views defined in the config.
 duckalog validate catalog.yaml
 ```
 
-This parses and validates the config (including env interpolation), without
+This parses and validates config (including env interpolation), without
 connecting to DuckDB.
+
+### 5. Start the web UI
+
+```bash
+duckalog ui catalog.yaml
+```
+
+This starts a secure, reactive web-based dashboard at http://127.0.0.1:8000 with:
+
+#### **Core Features**
+- **View Management**: Create, edit, and delete catalog views
+- **Query Execution**: Run SQL queries with real-time results
+- **Data Export**: Export data as CSV, Excel, or Parquet
+- **Schema Inspection**: View table and view schemas
+- **Catalog Rebuild**: Rebuild catalog with updated configuration
+
+#### **Security Features**
+- **Read-Only SQL Enforcement**: Only allows SELECT queries, blocks DDL/DML
+- **Authentication**: Admin token protection for mutating operations (production mode)
+- **CORS Protection**: Restricted to localhost origins by default
+- **Background Task Processing**: Non-blocking database operations
+- **Configuration Security**: Atomic, format-preserving config updates
+
+#### **Technical Implementation**
+- **Reactive UI**: Built with Datastar for real-time updates
+- **Background Processing**: All database operations run in background threads
+- **Format Preservation**: Maintains YAML/JSON formatting when updating configs
+- **Error Handling**: Comprehensive security-focused error messages
+
+#### **Production Deployment**
+```bash
+# Set admin token for production security
+export DUCKALOG_ADMIN_TOKEN="your-secure-random-token"
+duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
+```
+
+**Dependencies**: Requires `duckalog[ui]` installation for Datastar and Starlette dependencies.
+
+**Security**: See [docs/SECURITY.md](docs/SECURITY.md) for comprehensive security documentation.
 
 ---
 
@@ -271,6 +353,66 @@ Semantic models provide business-friendly metadata on top of existing views. **v
 - Document dimensions and measures for BI tools
 - Provide structured metadata for future UI features
 
+### Semantic Models (v2)
+
+Semantic layer v2 extends v1 with **joins, time dimensions, and defaults** while maintaining full backward compatibility.
+
+**New v2 features:**
+- **Joins**: Optional joins to other views (typically dimension tables)
+- **Time dimensions**: Enhanced time dimensions with supported time grains
+- **Defaults**: Default time dimension, primary measure, and default filters
+
+```yaml
+semantic_models:
+  - name: sales_analytics
+    base_view: sales_data
+    label: "Sales Analytics"
+
+    # v2: Joins to dimension views
+    joins:
+      - to_view: customers
+        type: left
+        on_condition: "sales.customer_id = customers.id"
+      - to_view: products
+        type: left
+        on_condition: "sales.product_id = products.id"
+
+    dimensions:
+      # v2: Time dimension with time grains
+      - name: order_date
+        expression: "created_at"
+        type: "time"
+        time_grains: ["year", "quarter", "month", "day"]
+        label: "Order Date"
+
+      - name: customer_region
+        expression: "customers.region"
+        type: "string"
+        label: "Customer Region"
+
+    measures:
+      - name: total_revenue
+        expression: "SUM(sales.amount)"
+        label: "Total Revenue"
+        type: "number"
+
+    # v2: Default configuration
+    defaults:
+      time_dimension: order_date
+      primary_measure: total_revenue
+      default_filters:
+        - dimension: customer_region
+          operator: "="
+          value: "NORTH AMERICA"
+```
+
+**Backward Compatibility:**
+- All existing v1 semantic models continue to work unchanged
+- New v2 fields are optional and additive
+- No breaking changes to existing validation rules
+
+See the [`examples/semantic_layer_v2`](examples/semantic_layer_v2/) directory for a complete example demonstrating all v2 features.
+
 ### Environment variable interpolation
 
 Any string value may contain `${env:VAR_NAME}` placeholders. During
@@ -285,6 +427,40 @@ duckdb:
     - "SET s3_access_key_id='${env:AWS_ACCESS_KEY_ID}'"
     - "SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"
 ```
+
+### Configuration Format Preservation
+
+Duckalog automatically preserves your configuration file format when making updates through the web UI:
+
+#### **YAML Format Preservation**
+- Maintains comments and formatting
+- Preserves indentation and structure
+- Uses `ruamel.yaml` when available for best results
+- Falls back to standard `pyyaml` if needed
+
+#### **JSON Format Preservation**
+- Maintains pretty-printed structure
+- Preserves field ordering
+- Uses 2-space indentation for readability
+
+#### **Automatic Format Detection**
+- **File Extension**: `.yaml`, `.yml`, `.json`
+- **Content Analysis**: Analyzes file structure if extension is ambiguous
+- **Smart Detection**: JSON detected by `{`/`[` starts, YAML otherwise
+
+#### **Atomic Operations**
+All configuration updates use atomic file operations:
+1. Write to temporary file with new format
+2. Validate the temporary file
+3. Atomically replace original file
+4. Clean up temporary files on failure
+5. Reload configuration into memory
+
+#### **In-Memory Configuration**
+- Configuration changes take effect immediately
+- No server restart required for updates
+- Background tasks use latest configuration
+- Failed updates don't affect running operations
 
 ---
 
