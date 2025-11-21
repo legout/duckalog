@@ -338,6 +338,8 @@ class UIServer:
             Route("/api/query", self._execute_query, methods=["POST"]),
             Route("/api/export", self._export_data, methods=["POST"]),
             Route("/api/tasks/{task_id}", self._get_task_result),
+            Route("/api/semantic-models", self._get_semantic_models),
+            Route("/api/semantic-models/{model_name}", self._get_semantic_model),
         ]
 
         # Get secure CORS origins (localhost-only by default, custom via env var)
@@ -839,6 +841,58 @@ class UIServer:
             log_error("Failed to get task result", error=str(exc))
             return JSONResponse({"error": f"Failed to get task result: {exc}"}, status_code=500)
 
+    def _get_semantic_models(self, request: Request) -> Response:
+        """Get all semantic models from configuration."""
+        if not self.config:
+            return JSONResponse({"error": "No configuration loaded"}, status_code=500)
+
+        try:
+            semantic_models = []
+            for model in self.config.semantic_models:
+                model_data = model.model_dump(mode="json")
+                # Include summary info for list view
+                model_summary = {
+                    "name": model_data["name"],
+                    "label": model_data.get("label", model_data["name"]),
+                    "description": model_data.get("description", ""),
+                    "base_view": model_data["base_view"],
+                    "dimensions_count": len(model_data.get("dimensions", [])),
+                    "measures_count": len(model_data.get("measures", [])),
+                }
+                semantic_models.append(model_summary)
+
+            return JSONResponse({"semantic_models": semantic_models})
+        except Exception as exc:
+            log_error("Failed to get semantic models", error=str(exc))
+            return JSONResponse({"error": f"Failed to get semantic models: {exc}"}, status_code=500)
+
+    def _get_semantic_model(self, request: Request) -> Response:
+        """Get details of a specific semantic model."""
+        if not self.config:
+            return JSONResponse({"error": "No configuration loaded"}, status_code=500)
+
+        try:
+            model_name = request.path_params.get("model_name")
+            if not model_name:
+                return JSONResponse({"error": "Model name is required"}, status_code=400)
+
+            # Find the semantic model by name
+            target_model = None
+            for model in self.config.semantic_models:
+                if model.name == model_name:
+                    target_model = model
+                    break
+
+            if not target_model:
+                return JSONResponse({"error": f"Semantic model '{model_name}' not found"}, status_code=404)
+
+            # Return full model details
+            model_data = target_model.model_dump(mode="json")
+            return JSONResponse({"semantic_model": model_data})
+        except Exception as exc:
+            log_error(f"Failed to get semantic model {model_name}", error=str(exc))
+            return JSONResponse({"error": f"Failed to get semantic model: {exc}"}, status_code=500)
+
     async def _export_data(self, request: Request, background_tasks: BackgroundTasks) -> Response:
         """Export query results in various formats."""
         if not self.config:
@@ -1023,6 +1077,19 @@ class UIServer:
             for view in self.config.views
         ]
 
+        # Prepare semantic models data for the dashboard
+        semantic_models_data = [
+            {
+                "name": model.name,
+                "label": model.label or model.name,
+                "description": model.description or "",
+                "base_view": model.base_view,
+                "dimensions_count": len(model.dimensions) if model.dimensions else 0,
+                "measures_count": len(model.measures) if model.measures else 0,
+            }
+            for model in self.config.semantic_models
+        ]
+
         return f"""
         <!DOCTYPE html>
         <html>
@@ -1045,7 +1112,7 @@ class UIServer:
                     input[type="text"] {{ padding: 8px; margin: 5px 0; width: 300px; }}
                 </style>
             </head>
-            <body data-signals="{{{{views: {json.dumps(views_data)}, selectedView: '', query: '', queryResults: null, message: '', messageType: 'info'}}}}">
+            <body data-signals="{{{{views: {json.dumps(views_data)}, semanticModels: {json.dumps(semantic_models_data)}, selectedView: '', selectedSemanticModel: null, semanticModelDetails: null, query: '', queryResults: null, message: '', messageType: 'info'}}}}">
                 <h1>Duckalog Catalog Dashboard</h1>
                 
                 <div data-signals="message">
@@ -1077,7 +1144,77 @@ class UIServer:
                         {"</tr>"}
                     </table>
                 </div>
-                
+
+                <div data-show="$semanticModels.length > 0">
+                    <h2>Semantic Models ($semanticModels.length)</h2>
+                    <table>
+                        <tr>
+                            <th>Name</th>
+                            <th>Base View</th>
+                            <th>Description</th>
+                            <th>Dimensions</th>
+                            <th>Measures</th>
+                            <th>Actions</th>
+                        </tr>
+                        {"<tr data-each='model in semanticModels'>"}
+                            <td>$model.label</td>
+                            <td>$model.base_view</td>
+                            <td>$model.description</td>
+                            <td>$model.dimensions_count</td>
+                            <td>$model.measures_count</td>
+                            <td>
+                                <button data-on-click="selectedSemanticModel = model.name; semanticModelDetails = null; message = 'Loading semantic model details...'; messageType = 'info'; /api/semantic-models/$model.name" data-success="semanticModelDetails = $response.semantic_model; message = 'Semantic model loaded successfully'; messageType = 'success'">Details</button>
+                                <button data-on-click="selectedView = model.base_view; query = 'SELECT * FROM ' + model.base_view + ' LIMIT 100'; message = 'Selected base view: ' + model.base_view; messageType = 'success'">Query Base</button>
+                            </td>
+                        {"</tr>"}
+                    </table>
+
+                    <!-- Semantic Model Details Panel -->
+                    <div data-show="$semanticModelDetails">
+                        <h3>Details: $semanticModelDetails.label</h3>
+                        <p><strong>Description:</strong> $semanticModelDetails.description</p>
+                        <p><strong>Base View:</strong> $semanticModelDetails.base_view</p>
+
+                        <div data-show="$semanticModelDetails.dimensions.length > 0">
+                            <h4>Dimensions ($semanticModelDetails.dimensions.length)</h4>
+                            <table>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Expression</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                </tr>
+                                {"<tr data-each='dim in semanticModelDetails.dimensions'>"}
+                                    <td>$dim.label</td>
+                                    <td><code>$dim.expression</code></td>
+                                    <td>$dim.type</td>
+                                    <td>$dim.description</td>
+                                {"</tr>"}
+                            </table>
+                        </div>
+
+                        <div data-show="$semanticModelDetails.measures.length > 0">
+                            <h4>Measures ($semanticModelDetails.measures.length)</h4>
+                            <table>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Expression</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                </tr>
+                                {"<tr data-each='measure in semanticModelDetails.measures'>"}
+                                    <td>$measure.label</td>
+                                    <td><code>$measure.expression</code></td>
+                                    <td>$measure.type</td>
+                                    <td>$measure.description</td>
+                                {"</tr>"}
+                            </table>
+                        </div>
+
+                        <button data-on-click="semanticModelDetails = null; message = 'Semantic model details closed'; messageType = 'info'">Close Details</button>
+                    </div>
+                </div>
+
                 <div class="query-section">
                     <h2>Query Runner</h2>
                     <textarea data-bind="query" placeholder="Enter SQL query..."></textarea>

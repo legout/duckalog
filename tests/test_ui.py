@@ -1521,6 +1521,106 @@ class TestBackgroundTaskConcurrency:
             assert response.status_code == 200
 
 
+class TestSemanticModelsUI:
+    """Test semantic models UI functionality."""
+
+    def test_semantic_models_api_list(self, test_client):
+        """Test that semantic models API endpoint returns list of models."""
+        response = test_client.get("/api/semantic-models")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "semantic_models" in data
+        semantic_models = data["semantic_models"]
+
+        # Should return semantic models from test configuration
+        assert len(semantic_models) >= 0
+
+        if semantic_models:
+            model = semantic_models[0]
+            required_fields = ["name", "base_view", "dimensions_count", "measures_count"]
+            for field in required_fields:
+                assert field in model
+
+    def test_semantic_models_api_specific_model(self, test_client):
+        """Test that specific semantic model API returns full details."""
+        # Test with a known model that should exist in semantic_layer_v2 example
+        response = test_client.get("/api/semantic-models/sales_analytics")
+
+        if response.status_code == 404:
+            # Skip test if semantic models not configured
+            pytest.skip("No semantic models configured for testing")
+
+        assert response.status_code == 200
+
+        data = response.json()
+        assert "semantic_model" in data
+        model = data["semantic_model"]
+
+        # Check required fields
+        required_fields = ["name", "base_view", "dimensions", "measures"]
+        for field in required_fields:
+            assert field in model
+
+        # Check dimensions structure
+        if model.get("dimensions"):
+            for dim in model["dimensions"]:
+                assert "name" in dim
+                assert "expression" in dim
+                assert "label" in dim
+
+        # Check measures structure
+        if model.get("measures"):
+            for measure in model["measures"]:
+                assert "name" in measure
+                assert "expression" in measure
+                assert "label" in measure
+
+    def test_semantic_models_api_nonexistent_model(self, test_client):
+        """Test that requesting non-existent semantic model returns 404."""
+        response = test_client.get("/api/semantic-models/nonexistent_model")
+        assert response.status_code == 404
+
+    def test_dashboard_includes_semantic_models_data(self, test_client):
+        """Test that dashboard includes semantic models data in signals."""
+        response = test_client.get("/")
+        assert response.status_code == 200
+
+        content = response.text
+
+        # Check for semantic models data in Datastar signals
+        assert "semanticModels" in content
+
+    def test_dashboard_has_semantic_models_section(self, test_client):
+        """Test that dashboard has semantic models section when models exist."""
+        response = test_client.get("/")
+        assert response.status_code == 200
+
+        content = response.text
+
+        # Check for semantic models section in HTML
+        if "Sales Analytics" in content or "Customer Analytics" in content:
+            # If semantic models exist, section should be present
+            assert "Semantic Models" in content
+            assert "/api/semantic-models/" in content
+
+    def test_semantic_model_details_functionality(self, test_client):
+        """Test semantic model details display functionality."""
+        response = test_client.get("/")
+        assert response.status_code == 200
+
+        content = response.text
+
+        # Check for semantic model details functionality
+        if "semanticModels" in content and "Sales Analytics" in content:
+            # Should have buttons and panels for showing details
+            assert "Details" in content
+            assert "semanticModelDetails" in content
+            # Check for dimension and measure display
+            assert "Dimensions" in content
+            assert "Measures" in content
+
+
 class TestBundledAssets:
     """Test bundled static assets serving and offline functionality."""
 

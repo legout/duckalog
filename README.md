@@ -40,6 +40,7 @@ For a full product and technical description, see `docs/PRD_Spec.md`.
 - 📊 **Multi-Source Analytics**: Combine Parquet, DuckDB, and PostgreSQL data
 - 🔒 **Environment Variables Security**: Secure credential management patterns
 - ⚡ **DuckDB Performance Settings**: Optimize memory, threads, and storage
+- 🏷️ **Semantic Layer v2**: Business-friendly semantic models with dimensions and measures
 
 ---
 
@@ -210,6 +211,8 @@ This starts a secure, reactive web-based dashboard at http://127.0.0.1:8000 with
 - **Data Export**: Export data as CSV, Excel, or Parquet
 - **Schema Inspection**: View table and view schemas
 - **Catalog Rebuild**: Rebuild catalog with updated configuration
+- **Semantic Layer Explorer**: Browse semantic models with business-friendly labels
+- **Model Details**: View dimensions and measures with expressions and descriptions
 
 #### **Security Features**
 - **Read-Only SQL Enforcement**: Only allows SELECT queries, blocks DDL/DML

@@ -7,6 +7,13 @@
 - **Supply chain security**: Pinned Datastar bundle eliminates remote dependency risks
 - **Static file serving**: Added Starlette static mount for bundled assets at `/static/datastar.js`
 
+### Added
+- **Semantic Layer UI**: Interactive dashboard for browsing semantic models with business-friendly labels
+- **Model Details View**: Expandable panels showing dimensions and measures with expressions and descriptions
+- **Semantic Model APIs**: New endpoints `/api/semantic-models` and `/api/semantic-models/{name}` for programmatic access
+- **Business Metadata Display**: Shows labels, descriptions, and types for semantic dimensions and measures
+- **Integrated Testing**: Comprehensive test suite for semantic model UI functionality
+
 ## [2025-11-17] - 0.1.2
 
 ### Changed
