@@ -66,15 +66,19 @@ def _export_data_task(config: Config, query: str, format_type: str, result_store
             query_result = conn.execute(query)
             rows = query_result.fetchall()
 
+            # Always get column information, even for empty results
+            columns = [desc[0] for desc in query_result.description]
+
             if rows:
-                columns = [desc[0] for desc in query_result.description]
                 data = [dict(zip(columns, row)) for row in rows]
             else:
+                # For empty results, create empty data but preserve column info
                 data = []
 
             result_store["status"] = "completed"
             result_store["success"] = True
             result_store["data"] = data
+            result_store["columns"] = columns  # Preserve column information
 
         finally:
             conn.close()
@@ -213,6 +217,31 @@ def _get_admin_token() -> Optional[str]:
     return os.getenv("DUCKALOG_ADMIN_TOKEN")
 
 
+def _get_cors_origins() -> List[str]:
+    """Get CORS origins from environment variable or use secure defaults."""
+    # Check for custom CORS origins
+    custom_origins = os.getenv("DUCKALOG_CORS_ORIGINS")
+    if custom_origins:
+        # Split comma-separated origins and strip whitespace
+        return [origin.strip() for origin in custom_origins.split(",") if origin.strip()]
+
+    # Default to secure localhost-only origins
+    return [
+        "http://localhost",
+        "http://127.0.0.1",
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://localhost:8080",
+        "http://localhost:9000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:9000",
+        "http://127.0.0.1:5173",
+    ]
+
+
 def _is_mutating_method(method: str) -> bool:
     """Check if HTTP method is mutating (requires auth)."""
     return method.upper() in {"POST", "PUT", "DELETE"}
@@ -294,31 +323,41 @@ class UIServer:
         # Load configuration
         self._load_config()
 
-        # Create Starlette app
-        self.app = Starlette(
-            routes=[
-                Route("/", self._dashboard),
-                Route("/api/config", self._get_config),
-                Route("/api/config", self._update_config, methods=["POST"]),
-                Route("/api/views", self._get_views),
-                Route("/api/views", self._create_view, methods=["POST"]),
-                Route("/api/views/{view_name}", self._update_view, methods=["PUT"]),
-                Route("/api/views/{view_name}", self._delete_view, methods=["DELETE"]),
-                Route("/api/schema/{view_name}", self._get_schema),
-                Route("/api/rebuild", self._rebuild_catalog, methods=["POST"]),
-                Route("/api/query", self._execute_query, methods=["POST"]),
-                Route("/api/export", self._export_data, methods=["POST"]),
-                Route("/api/tasks/{task_id}", self._get_task_result),
-            ],
-            middleware=[
-                CORSMiddleware(
-                    allow_origins=["http://localhost", "http://127.0.0.1"],
-                    allow_credentials=False,
-                    allow_methods=["GET", "POST", "PUT", "DELETE"],
-                    allow_headers=["Content-Type", "Authorization"],
-                ),
-            ],
+        # Create Starlette app with secure CORS middleware
+        routes = [
+            Route("/", self._dashboard),
+            Route("/api/config", self._get_config),
+            Route("/api/config", self._update_config, methods=["POST"]),
+            Route("/api/views", self._get_views),
+            Route("/api/views", self._create_view, methods=["POST"]),
+            Route("/api/views/{view_name}", self._update_view, methods=["PUT"]),
+            Route("/api/views/{view_name}", self._delete_view, methods=["DELETE"]),
+            Route("/api/schema/{view_name}", self._get_schema),
+            Route("/api/rebuild", self._rebuild_catalog, methods=["POST"]),
+            Route("/api/query", self._execute_query, methods=["POST"]),
+            Route("/api/export", self._export_data, methods=["POST"]),
+            Route("/api/tasks/{task_id}", self._get_task_result),
+        ]
+
+        # Get secure CORS origins (localhost-only by default, custom via env var)
+        cors_origins = _get_cors_origins()
+
+        # Create app first, then apply middleware
+        self.app = Starlette(routes=routes)
+
+        # Apply CORS middleware
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=False,  # Disabled by default for security
+            allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            allow_headers=["Content-Type", "Authorization"],
         )
+
+    @property
+    def task_results(self) -> Dict[str, Dict[str, Any]]:
+        """Access task results for testing."""
+        return self._task_results
 
     def _load_config(self) -> None:
         """Load the Duckalog configuration."""
@@ -765,8 +804,24 @@ class UIServer:
 
             result = self._task_results[task_id]
 
-            # If task is completed and successful, include the data
+            # If task is completed and successful
             if result.get("status") == "completed" and result.get("success"):
+                # Handle export tasks by generating the actual file
+                if "format" in result:
+                    format_type = result.get("format", "").lower()
+                    data = result.get("data", [])
+                    columns = result.get("columns", [])
+
+                    if format_type == "csv":
+                        return self._export_csv(data, columns)
+                    elif format_type == "parquet":
+                        return self._export_parquet(data, columns)
+                    elif format_type == "excel":
+                        return self._export_excel(data, columns)
+                    else:
+                        return JSONResponse({"error": f"Unsupported format: {format_type}"}, status_code=400)
+
+                # Regular query task, return JSON response with data
                 return JSONResponse(result)
             elif result.get("status") == "failed":
                 return JSONResponse(result)
@@ -834,18 +889,26 @@ class UIServer:
                 {"error": f"Failed to export data: {exc}"}, status_code=500
             )
 
-    def _export_csv(self, data: List[Dict[str, Any]]) -> Response:
+    def _export_csv(self, data: List[Dict[str, Any]], columns: List[str] = None) -> Response:
         """Export data as CSV."""
         import csv
 
-        if not data:
-            return Response("", media_type="text/csv")
-
         output = io.StringIO()
-        fieldnames = data[0].keys()
-        writer = csv.DictWriter(output, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(data)
+
+        if not data:
+            # For empty data, use provided columns or create empty CSV
+            if columns:
+                writer = csv.DictWriter(output, fieldnames=columns)
+                writer.writeheader()
+            else:
+                # No columns available, create empty CSV
+                writer = csv.writer(output)
+        else:
+            # Use actual data columns for consistency
+            fieldnames = data[0].keys()
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(data)
 
         return Response(
             output.getvalue(),
@@ -853,7 +916,7 @@ class UIServer:
             headers={"Content-Disposition": "attachment; filename=export.csv"},
         )
 
-    def _export_parquet(self, data: List[Dict[str, Any]]) -> Response:
+    def _export_parquet(self, data: List[Dict[str, Any]], columns: List[str] = None) -> Response:
         """Export data as Parquet."""
         try:
             import pyarrow as pa
@@ -864,11 +927,25 @@ class UIServer:
             )
 
         if not data:
-            # Return empty Parquet file
-            table = pa.table([])
+            # For empty data, create schema from columns if available
+            if columns:
+                # Create empty table with proper schema
+                schema = pa.schema([(col, pa.string()) for col in columns])
+                table = pa.Table.from_pydict({col: [] for col in columns}, schema=schema)
+            else:
+                # No column information, create truly empty table
+                table = pa.table([])
         else:
-            # Convert to PyArrow table
-            table = pa.Table.from_pydict(data)
+            # Convert list of dictionaries to dictionary format for PyArrow
+            if isinstance(data, list) and data and isinstance(data[0], dict):
+                # Convert list of dicts to dict of lists
+                pydict_data = {}
+                for key in data[0].keys():
+                    pydict_data[key] = [row.get(key) for row in data]
+                table = pa.Table.from_pydict(pydict_data)
+            else:
+                # Data is already in correct format
+                table = pa.Table.from_pydict(data)
 
         # Write to buffer
         buffer = io.BytesIO()
@@ -880,7 +957,7 @@ class UIServer:
             headers={"Content-Disposition": "attachment; filename=export.parquet"},
         )
 
-    def _export_excel(self, data: List[Dict[str, Any]]) -> Response:
+    def _export_excel(self, data: List[Dict[str, Any]], columns: List[str] = None) -> Response:
         """Export data as Excel."""
         try:
             import pandas as pd
@@ -890,7 +967,11 @@ class UIServer:
             )
 
         if not data:
-            df = pd.DataFrame()
+            # For empty data, create DataFrame with columns if available
+            if columns:
+                df = pd.DataFrame(columns=columns)
+            else:
+                df = pd.DataFrame()
         else:
             df = pd.DataFrame(data)
 

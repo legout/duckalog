@@ -17,6 +17,7 @@ from duckalog.ui import UIServer, UIError
 def sample_config():
     """Create a sample configuration for testing."""
     return Config(
+        version=1,
         duckdb={"database": ":memory:"},
         views=[
             ViewConfig(
@@ -38,8 +39,9 @@ def sample_config():
 @pytest.fixture
 def config_file(sample_config):
     """Create a temporary config file."""
+    import yaml
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-        f.write(sample_config.model_dump_yaml())
+        yaml.dump(sample_config.model_dump(), f, default_flow_style=False)
         return Path(f.name)
 
 
@@ -318,47 +320,232 @@ class TestExportEndpoint:
 
     @patch("duckalog.ui.duckdb.connect")
     def test_export_csv_success(self, mock_connect, test_client):
-        """Test successful CSV export."""
+        """Test successful CSV export with data."""
         # Mock DuckDB connection and query result
         mock_conn = Mock()
         mock_connect.return_value = mock_conn
 
         mock_result = Mock()
-        mock_result.fetchall.return_value = [(1, "test")]
+        mock_result.fetchall.return_value = [(1, "test"), (2, "test2")]
         mock_result.description = [("id",), ("name",)]
         mock_conn.execute.return_value = mock_result
 
         export_data = {"query": "SELECT * FROM test_view", "format": "csv"}
         response = test_client.post("/api/export", json=export_data)
         assert response.status_code == 200
-        assert response.headers["content-type"] == "text/csv"
-        assert (
-            "attachment; filename=export.csv" in response.headers["content-disposition"]
-        )
+
+        result = response.json()
+        assert result["status"] == "pending"
+        task_id = result["task_id"]
+
+        # Mock the background task completion
+        ui_server = test_client.app._ui_server if hasattr(test_client.app, '_ui_server') else test_client.app.state
+        if hasattr(ui_server, 'task_results'):
+            ui_server.task_results[task_id] = {
+                "status": "completed",
+                "success": True,
+                "data": [{"id": 1, "name": "test"}, {"id": 2, "name": "test2"}],
+                "columns": ["id", "name"],
+                "format": "csv"
+            }
+
+        # Get the export result
+        export_response = test_client.get(f"/api/tasks/{task_id}")
+        assert export_response.status_code == 200
+        assert export_response.headers["content-type"] == "text/csv"
+        assert "attachment; filename=export.csv" in export_response.headers["content-disposition"]
+        # Check that CSV contains headers and data
+        csv_content = export_response.text
+        assert "id,name" in csv_content
+        assert "1,test" in csv_content
+        assert "2,test2" in csv_content
 
     @patch("duckalog.ui.duckdb.connect")
-    def test_export_excel_success(self, mock_connect, test_client):
-        """Test successful Excel export."""
+    def test_export_csv_empty(self, mock_connect, test_client):
+        """Test CSV export with empty results."""
+        # Mock DuckDB connection and empty query result
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+
+        mock_result = Mock()
+        mock_result.fetchall.return_value = []
+        mock_result.description = [("id",), ("name",)]
+        mock_conn.execute.return_value = mock_result
+
+        export_data = {"query": "SELECT * FROM empty_view", "format": "csv"}
+        response = test_client.post("/api/export", json=export_data)
+        assert response.status_code == 200
+
+        result = response.json()
+        task_id = result["task_id"]
+
+        # Mock the background task completion with empty data
+        test_client.app._task_results[task_id] = {
+            "status": "completed",
+            "success": True,
+            "data": [],
+            "columns": ["id", "name"],
+            "format": "csv"
+        }
+
+        # Get the export result
+        export_response = test_client.get(f"/api/tasks/{task_id}")
+        assert export_response.status_code == 200
+        assert export_response.headers["content-type"] == "text/csv"
+        assert "attachment; filename=export.csv" in export_response.headers["content-disposition"]
+        # Check that CSV contains headers even for empty data
+        csv_content = export_response.text
+        assert "id,name" in csv_content
+
+    @patch("duckalog.ui.duckdb.connect")
+    def test_export_parquet_success(self, mock_connect, test_client):
+        """Test successful Parquet export with data."""
         # Mock DuckDB connection and query result
         mock_conn = Mock()
         mock_connect.return_value = mock_conn
 
         mock_result = Mock()
-        mock_result.fetchall.return_value = [(1, "test")]
+        mock_result.fetchall.return_value = [(1, "test"), (2, "test2")]
+        mock_result.description = [("id",), ("name",)]
+        mock_conn.execute.return_value = mock_result
+
+        export_data = {"query": "SELECT * FROM test_view", "format": "parquet"}
+        response = test_client.post("/api/export", json=export_data)
+        assert response.status_code == 200
+
+        result = response.json()
+        task_id = result["task_id"]
+
+        # Mock the background task completion
+        test_client.app._task_results[task_id] = {
+            "status": "completed",
+            "success": True,
+            "data": [{"id": 1, "name": "test"}, {"id": 2, "name": "test2"}],
+            "columns": ["id", "name"],
+            "format": "parquet"
+        }
+
+        # Get the export result
+        export_response = test_client.get(f"/api/tasks/{task_id}")
+        assert export_response.status_code == 200
+        assert export_response.headers["content-type"] == "application/octet-stream"
+        assert "attachment; filename=export.parquet" in export_response.headers["content-disposition"]
+        # Check that we got binary data (Parquet file)
+        assert len(export_response.content) > 0
+
+    @patch("duckalog.ui.duckdb.connect")
+    def test_export_parquet_empty(self, mock_connect, test_client):
+        """Test Parquet export with empty results."""
+        # Mock DuckDB connection and empty query result
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+
+        mock_result = Mock()
+        mock_result.fetchall.return_value = []
+        mock_result.description = [("id",), ("name",)]
+        mock_conn.execute.return_value = mock_result
+
+        export_data = {"query": "SELECT * FROM empty_view", "format": "parquet"}
+        response = test_client.post("/api/export", json=export_data)
+        assert response.status_code == 200
+
+        result = response.json()
+        task_id = result["task_id"]
+
+        # Mock the background task completion with empty data
+        test_client.app._task_results[task_id] = {
+            "status": "completed",
+            "success": True,
+            "data": [],
+            "columns": ["id", "name"],
+            "format": "parquet"
+        }
+
+        # Get the export result
+        export_response = test_client.get(f"/api/tasks/{task_id}")
+        assert export_response.status_code == 200
+        assert export_response.headers["content-type"] == "application/octet-stream"
+        assert "attachment; filename=export.parquet" in export_response.headers["content-disposition"]
+        # Should still get a valid Parquet file even for empty data
+        assert len(export_response.content) > 0
+
+    @patch("duckalog.ui.duckdb.connect")
+    def test_export_excel_success(self, mock_connect, test_client):
+        """Test successful Excel export with data."""
+        # Mock DuckDB connection and query result
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+
+        mock_result = Mock()
+        mock_result.fetchall.return_value = [(1, "test"), (2, "test2")]
         mock_result.description = [("id",), ("name",)]
         mock_conn.execute.return_value = mock_result
 
         export_data = {"query": "SELECT * FROM test_view", "format": "excel"}
         response = test_client.post("/api/export", json=export_data)
         assert response.status_code == 200
+
+        result = response.json()
+        task_id = result["task_id"]
+
+        # Mock the background task completion
+        test_client.app._task_results[task_id] = {
+            "status": "completed",
+            "success": True,
+            "data": [{"id": 1, "name": "test"}, {"id": 2, "name": "test2"}],
+            "columns": ["id", "name"],
+            "format": "excel"
+        }
+
+        # Get the export result
+        export_response = test_client.get(f"/api/tasks/{task_id}")
+        assert export_response.status_code == 200
         assert (
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            in response.headers["content-type"]
+            in export_response.headers["content-type"]
         )
+        assert "attachment; filename=export.xlsx" in export_response.headers["content-disposition"]
+        # Check that we got binary data (Excel file)
+        assert len(export_response.content) > 0
+
+    @patch("duckalog.ui.duckdb.connect")
+    def test_export_excel_empty(self, mock_connect, test_client):
+        """Test Excel export with empty results."""
+        # Mock DuckDB connection and empty query result
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+
+        mock_result = Mock()
+        mock_result.fetchall.return_value = []
+        mock_result.description = [("id",), ("name",)]
+        mock_conn.execute.return_value = mock_result
+
+        export_data = {"query": "SELECT * FROM empty_view", "format": "excel"}
+        response = test_client.post("/api/export", json=export_data)
+        assert response.status_code == 200
+
+        result = response.json()
+        task_id = result["task_id"]
+
+        # Mock the background task completion with empty data
+        test_client.app._task_results[task_id] = {
+            "status": "completed",
+            "success": True,
+            "data": [],
+            "columns": ["id", "name"],
+            "format": "excel"
+        }
+
+        # Get the export result
+        export_response = test_client.get(f"/api/tasks/{task_id}")
+        assert export_response.status_code == 200
         assert (
-            "attachment; filename=export.xlsx"
-            in response.headers["content-disposition"]
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            in export_response.headers["content-type"]
         )
+        assert "attachment; filename=export.xlsx" in export_response.headers["content-disposition"]
+        # Should still get a valid Excel file even for empty data
+        assert len(export_response.content) > 0
 
     def test_export_invalid_format(self, test_client):
         """Test export with invalid format."""
@@ -373,6 +560,93 @@ class TestExportEndpoint:
         response = test_client.post("/api/export", json=export_data)
         assert response.status_code == 400
         assert "Must provide either 'query' or 'view'" in response.json()["error"]
+
+    @patch("duckalog.ui.duckdb.connect")
+    def test_export_consistent_headers_empty_and_full(self, mock_connect, test_client):
+        """Test that export headers are consistent for both empty and full datasets."""
+        # Mock DuckDB connection and query result
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+
+        mock_result = Mock()
+        mock_result.description = [("id",), ("name",)]
+
+        # Test with data
+        mock_result.fetchall.return_value = [(1, "test")]
+        mock_conn.execute.return_value = mock_result
+
+        export_data = {"query": "SELECT * FROM test_view", "format": "csv"}
+        response = test_client.post("/api/export", json=export_data)
+        task_id_full = response.json()["task_id"]
+
+        test_client.app._task_results[task_id_full] = {
+            "status": "completed",
+            "success": True,
+            "data": [{"id": 1, "name": "test"}],
+            "columns": ["id", "name"],
+            "format": "csv"
+        }
+
+        full_response = test_client.get(f"/api/tasks/{task_id_full}")
+
+        # Test with empty data
+        mock_result.fetchall.return_value = []
+        mock_conn.execute.return_value = mock_result
+
+        export_data = {"query": "SELECT * FROM empty_view", "format": "csv"}
+        response = test_client.post("/api/export", json=export_data)
+        task_id_empty = response.json()["task_id"]
+
+        test_client.app._task_results[task_id_empty] = {
+            "status": "completed",
+            "success": True,
+            "data": [],
+            "columns": ["id", "name"],
+            "format": "csv"
+        }
+
+        empty_response = test_client.get(f"/api/tasks/{task_id_empty}")
+
+        # Both should have the same headers
+        assert full_response.headers["content-type"] == empty_response.headers["content-type"]
+        assert ("attachment; filename=export.csv" in full_response.headers["content-disposition"] and
+                "attachment; filename=export.csv" in empty_response.headers["content-disposition"])
+
+    @patch("duckalog.ui.duckdb.connect")
+    def test_export_parquet_type_error_fix(self, mock_connect, test_client):
+        """Test that Parquet export doesn't raise TypeError for list-of-dicts."""
+        # Mock DuckDB connection and query result
+        mock_conn = Mock()
+        mock_connect.return_value = mock_conn
+
+        mock_result = Mock()
+        mock_result.fetchall.return_value = [(1, "test"), (2, None)]
+        mock_result.description = [("id",), ("name",)]
+        mock_conn.execute.return_value = mock_result
+
+        export_data = {"query": "SELECT * FROM test_view", "format": "parquet"}
+        response = test_client.post("/api/export", json=export_data)
+        assert response.status_code == 200
+
+        result = response.json()
+        task_id = result["task_id"]
+
+        # Mock the background task completion with mixed data types
+        test_client.app._task_results[task_id] = {
+            "status": "completed",
+            "success": True,
+            "data": [{"id": 1, "name": "test"}, {"id": 2, "name": None}],
+            "columns": ["id", "name"],
+            "format": "parquet"
+        }
+
+        # Get the export result - should not raise TypeError
+        export_response = test_client.get(f"/api/tasks/{task_id}")
+        assert export_response.status_code == 200
+        assert export_response.headers["content-type"] == "application/octet-stream"
+        assert "attachment; filename=export.parquet" in export_response.headers["content-disposition"]
+        # Should successfully create Parquet file
+        assert len(export_response.content) > 0
 
 
 class TestDashboardEndpoint:

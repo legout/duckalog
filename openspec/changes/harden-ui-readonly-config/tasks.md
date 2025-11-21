@@ -7,13 +7,13 @@
 - [x] Tighten CORS defaults to localhost/same-origin and disable credentials by default (with opt-in escape hatch)
 
 ## 2. Testing
-- [ ] Add tests for read-only enforcement and rejection of multi-statement/DDL SQL
-- [ ] Add tests that config writes keep YAML formatting and refresh in-memory config
-- [ ] Add concurrency/timeout-focused tests for background execution pathways
-- [ ] Update dashboard tests to assert Datastar path is served (no fallback)
-- [ ] Add tests for default CORS policy and opt-in overrides
+- [x] Add tests for read-only enforcement and rejection of multi-statement/DDL SQL
+- [x] Add tests that config writes keep YAML formatting and refresh in-memory config
+- [x] Add concurrency/timeout-focused tests for background execution pathways
+- [x] Update dashboard tests to assert Datastar path is served (no fallback)
+- [x] Add tests for default CORS policy and opt-in overrides
 
 ## 3. Documentation
-- [ ] Document read-only query/export constraints and error messaging
-- [ ] Document config write semantics (format preservation, reload) and CORS defaults
-- [ ] Note Datastar runtime requirements and removal of legacy fallback
+- [x] Document read-only query/export constraints and error messaging
+- [x] Document config write semantics (format preservation, reload) and CORS defaults
+- [x] Note Datastar runtime requirements and removal of legacy fallback
