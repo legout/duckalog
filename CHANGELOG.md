@@ -1,4 +1,12 @@
 # Changelog
+## [2025-11-21] - Unreleased
+
+### Changed
+- **Security**: Bundle Datastar JavaScript locally (v1.0.0-RC.6) instead of loading from external CDN
+- **Offline support**: Dashboard now works without external network dependencies
+- **Supply chain security**: Pinned Datastar bundle eliminates remote dependency risks
+- **Static file serving**: Added Starlette static mount for bundled assets at `/static/datastar.js`
+
 ## [2025-11-17] - 0.1.2
 
 ### Changed

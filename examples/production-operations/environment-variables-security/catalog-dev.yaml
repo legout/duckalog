@@ -1,0 +1,124 @@
+version: 1
+
+duckdb:
+  database: "${env:CATALOG_NAME:dev_security_catalog}.duckdb"
+  install_extensions:
+    - httpfs
+    - json
+    - postgres
+  pragmas:
+    # Development settings - lower resource usage
+    - "SET memory_limit='${env:MEMORY_LIMIT:1GB}'"
+    - "SET threads='${env:THREAD_COUNT:2}'"
+    - "SET timezone='${env:TIMEZONE:UTC}'"
+
+    # AWS S3 settings for development
+    - "SET s3_region='${env:AWS_REGION:us-east-1}'"
+    - "SET s3_access_key_id='${env:AWS_ACCESS_KEY_ID}'"
+    - "SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"
+    - "SET s3_session_token='${env:AWS_SESSION_TOKEN:}'"  # Optional for temp credentials
+
+# Development database attachments
+attachments:
+  postgres:
+    - alias: dev_analytics
+      host: "${env:DB_HOST:localhost}"
+      port: "${env:DB_PORT:5432}"
+      database: "${env:DB_NAME:dev_analytics}"
+      user: "${env:DB_USER:dev_user}"
+      password: "${env:DB_PASSWORD:dev_password}"
+      sslmode: "${env:DB_SSL_MODE:prefer}"
+
+  duckdb:
+    - alias: reference
+      path: "${env:REFERENCE_DB_PATH:./reference_data.duckdb}"
+      read_only: true
+
+# Development views with default data sources
+views:
+  # S3 data source with environment-specific bucket
+  - name: dev_raw_data
+    source: parquet
+    uri: "s3://${env:DATA_BUCKET_PREFIX:company-data}-dev/raw/*.parquet"
+    description: "Development raw data from S3"
+
+  # PostgreSQL data access
+  - name: dev_users
+    source: postgres
+    database: dev_analytics
+    table: users
+    description: "Development users from PostgreSQL"
+
+  # Reference data from attached DuckDB
+  - name: dev_reference_data
+    source: duckdb
+    database: reference
+    table: reference_tables
+    description: "Development reference data"
+
+  # Combined development view
+  - name: dev_analytics_summary
+    sql: |
+      SELECT
+        DATE(e.created_at) as analysis_date,
+        COUNT(*) as total_records,
+        COUNT(DISTINCT e.user_id) as unique_users,
+        u.region as user_region,
+        r.category as data_category
+      FROM dev_raw_data e
+      LEFT JOIN dev_users u ON e.user_id = u.id
+      LEFT JOIN dev_reference_data r ON e.category_id = r.id
+      WHERE e.created_at >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY DATE(e.created_at), u.region, r.category
+      ORDER BY analysis_date DESC, total_records DESC
+    description: "Development analytics summary with joins across all sources"
+
+  # Development metrics view
+  - name: dev_daily_metrics
+    sql: |
+      WITH daily_data AS (
+        SELECT
+          DATE(created_at) as metric_date,
+          COUNT(*) as record_count,
+          COUNT(DISTINCT user_id) as active_users,
+          COUNT(DISTINCT session_id) as active_sessions
+        FROM dev_raw_data
+        GROUP BY DATE(created_at)
+      )
+      SELECT
+        metric_date,
+        record_count,
+        active_users,
+        active_sessions,
+        ROUND(record_count * 1.0 / NULLIF(active_sessions, 0), 2) as records_per_session,
+        LAG(active_users) OVER (ORDER BY metric_date) as prev_day_users,
+        ROUND((active_users - LAG(active_users) OVER (ORDER BY metric_date)) * 100.0 /
+              NULLIF(LAG(active_users) OVER (ORDER BY metric_date), 0), 2) as user_growth_pct
+      FROM daily_data
+      ORDER BY metric_date DESC
+      LIMIT 90
+    description: "Development daily metrics for monitoring"
+
+  # Data quality validation view
+  - name: dev_data_quality
+    sql: |
+      SELECT
+        'user_data' as data_source,
+        COUNT(*) as total_records,
+        COUNT(*) - COUNT(user_id) as missing_user_ids,
+        COUNT(*) - COUNT(created_at) as missing_timestamps,
+        MIN(created_at) as earliest_record,
+        MAX(created_at) as latest_record
+      FROM dev_raw_data
+
+      UNION ALL
+
+      SELECT
+        'reference_data' as data_source,
+        COUNT(*) as total_records,
+        COUNT(*) - COUNT(id) as missing_ids,
+        0 as missing_timestamps,
+        'N/A' as earliest_record,
+        'N/A' as latest_record
+      FROM dev_reference_data
+    description: "Development data quality checks"

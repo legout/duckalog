@@ -435,7 +435,8 @@ class SemanticDimensionConfig(BaseModel):
         expression: SQL expression referencing columns from the base view.
         label: Human-readable display name.
         description: Optional detailed description.
-        type: Optional data type hint.
+        type: Optional data type hint (time, number, string, boolean, date).
+        time_grains: Optional list of time grains for time dimensions.
     """
 
     name: str
@@ -443,6 +444,7 @@ class SemanticDimensionConfig(BaseModel):
     label: Optional[str] = None
     description: Optional[str] = None
     type: Optional[str] = None
+    time_grains: List[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -460,6 +462,38 @@ class SemanticDimensionConfig(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("Dimension expression cannot be empty")
+        return value
+
+    @field_validator("type")
+    @classmethod
+    def _validate_type(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None:
+            value = value.strip().lower()
+            valid_types = {"time", "number", "string", "boolean", "date"}
+            if value not in valid_types:
+                raise ValueError(
+                    f"Invalid dimension type '{value}'. Valid types are: {', '.join(sorted(valid_types))}"
+                )
+        return value
+
+    @field_validator("time_grains")
+    @classmethod
+    def _validate_time_grains(cls, value: List[str], info: ValidationInfo) -> List[str]:
+        if value:
+            # Only allow time_grains for time dimensions
+            if info.data.get("type") != "time":
+                raise ValueError("time_grains can only be specified for time dimensions")
+
+            valid_grains = {"year", "quarter", "month", "week", "day", "hour", "minute", "second"}
+            for grain in value:
+                grain_clean = grain.strip().lower()
+                if grain_clean not in valid_grains:
+                    raise ValueError(
+                        f"Invalid time grain '{grain}'. Valid grains are: {', '.join(sorted(valid_grains))}"
+                    )
+
+            # Return cleaned time grains
+            return [grain.strip().lower() for grain in value]
         return value
 
 
@@ -502,6 +536,89 @@ class SemanticMeasureConfig(BaseModel):
         return value
 
 
+class SemanticJoinConfig(BaseModel):
+    """Definition of a semantic join.
+
+    A join defines a relationship to another view for enriching the semantic model
+    with additional data, typically dimension tables.
+
+    Attributes:
+        to_view: Name of an existing view in the views section to join to.
+        type: Join type (inner, left, right, full).
+        on_condition: SQL join condition expression.
+    """
+
+    to_view: str
+    type: str
+    on_condition: str
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("to_view")
+    @classmethod
+    def _validate_to_view(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Join 'to_view' cannot be empty")
+        return value
+
+    @field_validator("type")
+    @classmethod
+    def _validate_type(cls, value: str) -> str:
+        value = value.strip().lower()
+        valid_types = {"inner", "left", "right", "full"}
+        if value not in valid_types:
+            raise ValueError(
+                f"Invalid join type '{value}'. Valid types are: {', '.join(sorted(valid_types))}"
+            )
+        return value
+
+    @field_validator("on_condition")
+    @classmethod
+    def _validate_on_condition(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Join 'on_condition' cannot be empty")
+        return value
+
+
+class SemanticDefaultsConfig(BaseModel):
+    """Default configuration for a semantic model.
+
+    Provides default settings for query builders and dashboards,
+    such as the primary time dimension and default measures.
+
+    Attributes:
+        time_dimension: Default time dimension name.
+        primary_measure: Default primary measure name.
+        default_filters: Optional list of default filters.
+    """
+
+    time_dimension: Optional[str] = None
+    primary_measure: Optional[str] = None
+    default_filters: List[Dict[str, Any]] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("time_dimension")
+    @classmethod
+    def _validate_time_dimension(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("Default time dimension cannot be empty string")
+        return value
+
+    @field_validator("primary_measure")
+    @classmethod
+    def _validate_primary_measure(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("Default primary measure cannot be empty string")
+        return value
+
+
 class SemanticModelConfig(BaseModel):
     """Definition of a semantic model.
 
@@ -513,6 +630,8 @@ class SemanticModelConfig(BaseModel):
         base_view: Name of an existing view in the views section.
         dimensions: Optional list of dimension definitions.
         measures: Optional list of measure definitions.
+        joins: Optional list of join definitions to other views.
+        defaults: Optional default configuration for query builders.
         label: Human-readable display name.
         description: Optional detailed description.
         tags: Optional list of classification tags.
@@ -522,6 +641,8 @@ class SemanticModelConfig(BaseModel):
     base_view: str
     dimensions: List[SemanticDimensionConfig] = Field(default_factory=list)
     measures: List[SemanticMeasureConfig] = Field(default_factory=list)
+    joins: List[SemanticJoinConfig] = Field(default_factory=list)
+    defaults: Optional[SemanticDefaultsConfig] = None
     label: Optional[str] = None
     description: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
@@ -578,6 +699,37 @@ class SemanticModelConfig(BaseModel):
             raise ValueError(
                 f"Dimension and measure name(s) conflict: {', '.join(sorted(conflicts))}"
             )
+
+        # Validate defaults reference existing dimensions and measures
+        if self.defaults:
+            if self.defaults.time_dimension:
+                if self.defaults.time_dimension not in dimension_names:
+                    raise ValueError(
+                        f"Default time dimension '{self.defaults.time_dimension}' does not exist in dimensions"
+                    )
+                # Verify the time dimension is actually typed as 'time'
+                time_dim = next(
+                    (dim for dim in self.dimensions if dim.name == self.defaults.time_dimension),
+                    None
+                )
+                if time_dim and time_dim.type != "time":
+                    raise ValueError(
+                        f"Default time dimension '{self.defaults.time_dimension}' must have type 'time'"
+                    )
+
+            if self.defaults.primary_measure:
+                if self.defaults.primary_measure not in measure_names:
+                    raise ValueError(
+                        f"Default primary measure '{self.defaults.primary_measure}' does not exist in measures"
+                    )
+
+            # Validate default filters reference existing dimensions
+            for filter_def in self.defaults.default_filters:
+                filter_dimension = filter_def.get("dimension")
+                if filter_dimension and filter_dimension not in dimension_names:
+                    raise ValueError(
+                        f"Default filter dimension '{filter_dimension}' does not exist in dimensions"
+                    )
 
         return self
 
@@ -674,6 +826,21 @@ class Config(BaseModel):
             details = ", ".join(missing_base_views)
             raise ValueError(
                 "Semantic model(s) reference undefined base view(s): "
+                f"{details}. Define each view under `views`."
+            )
+
+        # Validate that semantic model joins reference existing views
+        missing_join_views: List[str] = []
+        for semantic_model in self.semantic_models:
+            for join in semantic_model.joins:
+                if join.to_view not in view_names:
+                    missing_join_views.append(
+                        f"{semantic_model.name}.{join.to_view}"
+                    )
+        if missing_join_views:
+            details = ", ".join(missing_join_views)
+            raise ValueError(
+                "Semantic model join(s) reference undefined view(s): "
                 f"{details}. Define each view under `views`."
             )
 

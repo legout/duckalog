@@ -1,0 +1,220 @@
+version: 1
+
+duckdb:
+  database: "${env:CATALOG_NAME:prod_security_catalog}.duckdb"
+  install_extensions:
+    - httpfs
+    - json
+    - postgres
+  pragmas:
+    # Production settings - optimized for performance and security
+    - "SET memory_limit='${env:MEMORY_LIMIT:8GB}'"
+    - "SET threads='${env:THREAD_COUNT:8}'"
+    - "SET timezone='${env:TIMEZONE:UTC}'"
+    - "SET temp_directory='/tmp/duckdb_temp'"
+
+    # Production AWS settings (no defaults for security)
+    - "SET s3_region='${env:AWS_REGION}'"
+    - "SET s3_access_key_id='${env:AWS_ACCESS_KEY_ID}'"
+    - "SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"
+    - "SET s3_session_token='${env:AWS_SESSION_TOKEN}'"
+
+    # Security settings
+    - "SET enable_progress_bar=false"
+    - "SET preserve_insertion_order=false"
+
+# Production database attachments with security requirements
+attachments:
+  postgres:
+    - alias: prod_analytics
+      host: "${env:DB_HOST}"
+      port: "${env:DB_PORT:5432}"
+      database: "${env:DB_NAME}"
+      user: "${env:DB_USER}"
+      password: "${env:DB_PASSWORD}"
+      sslmode: "${env:DB_SSL_MODE:require}"  # Enforce SSL in production
+
+  duckdb:
+    - alias: reference
+      path: "${env:REFERENCE_DB_PATH:./reference_data.duckdb}"
+      read_only: true
+
+# Production Iceberg catalog for data lake integration
+iceberg_catalogs:
+  - name: production_catalog
+    catalog_type: rest
+    uri: "${env:ICEBERG_URI}"
+    warehouse: "s3://${env:WAREHOUSE_BUCKET}/production/"
+    options:
+      token: "${env:ICEBERG_TOKEN}"
+      region: "${env:AWS_REGION}"
+      s3.access-key-id: "${env:AWS_ACCESS_KEY_ID}"
+      s3.secret-access-key: "${env:AWS_SECRET_ACCESS_KEY}"
+
+# Production views for analytics and reporting
+views:
+  # Production data from S3
+  - name: prod_raw_events
+    source: parquet
+    uri: "s3://${env:DATA_BUCKET_PREFIX}-prod/events/*.parquet"
+    description: "Production events data from S3"
+
+  - name: prod_user_profiles
+    source: parquet
+    uri: "s3://${env:DATA_BUCKET_PREFIX}-prod/users/*.parquet"
+    description: "Production user profiles from S3"
+
+  # Production PostgreSQL data
+  - name: prod_transactions
+    source: postgres
+    database: prod_analytics
+    table: transactions
+    description: "Production transactions from PostgreSQL"
+
+  # Production Iceberg tables
+  - name: prod_analytics_cube
+    source: iceberg
+    catalog: production_catalog
+    table: analytics.events_cube
+    description: "Production analytics cube from Iceberg"
+
+  # Comprehensive production analytics
+  - name: prod_complete_analytics
+    sql: |
+      SELECT
+        e.event_id,
+        e.timestamp,
+        e.event_type,
+        e.properties,
+        u.user_id,
+        u.segment as user_segment,
+        u.region as user_region,
+        t.transaction_id,
+        t.amount as transaction_amount,
+        t.status as transaction_status,
+        a.metrics as cube_metrics
+      FROM prod_raw_events e
+      LEFT JOIN prod_user_profiles u ON e.user_id = u.user_id
+      LEFT JOIN prod_transactions t ON e.properties->>'transaction_id' = t.transaction_id
+      LEFT JOIN prod_analytics_cube a ON DATE(e.timestamp) = a.date_partition
+      WHERE e.timestamp >= CURRENT_DATE - INTERVAL '90 days'
+    description: "Complete production analytics with all data sources"
+
+  # Production KPI dashboard data
+  - name: prod_kpi_dashboard
+    sql: |
+      WITH daily_metrics AS (
+        SELECT
+          DATE(timestamp) as metric_date,
+          event_type,
+          COUNT(*) as event_count,
+          COUNT(DISTINCT user_id) as unique_users,
+          COUNT(DISTINCT properties->>'session_id') as unique_sessions
+        FROM prod_raw_events
+        WHERE timestamp >= CURRENT_DATE - INTERVAL '365 days'
+        GROUP BY DATE(timestamp), event_type
+      ),
+      transaction_metrics AS (
+        SELECT
+          DATE(created_at) as transaction_date,
+          COUNT(*) as transaction_count,
+          SUM(amount) as total_amount,
+          AVG(amount) as avg_amount,
+          COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_transactions
+        FROM prod_transactions
+        WHERE created_at >= CURRENT_DATE - INTERVAL '365 days'
+        GROUP BY DATE(created_at)
+      )
+      SELECT
+        COALESCE(d.metric_date, t.transaction_date) as report_date,
+        SUM(COALESCE(d.event_count, 0)) as total_events,
+        SUM(COALESCE(d.unique_users, 0)) as total_unique_users,
+        SUM(COALESCE(d.unique_sessions, 0)) as total_sessions,
+        COALESCE(t.transaction_count, 0) as transaction_count,
+        COALESCE(t.total_amount, 0) as total_transaction_amount,
+        COALESCE(t.avg_amount, 0) as avg_transaction_amount,
+        COALESCE(t.completed_transactions, 0) as completed_transactions
+      FROM daily_metrics d
+      FULL OUTER JOIN transaction_metrics t ON d.metric_date = t.transaction_date
+      ORDER BY report_date DESC
+    description: "Production KPI dashboard with comprehensive metrics"
+
+  # Production data quality monitoring
+  - name: prod_data_quality_monitor
+    sql: |
+      SELECT
+        'events' as data_source,
+        COUNT(*) as total_records,
+        COUNT(*) - COUNT(event_id) as missing_event_ids,
+        COUNT(*) - COUNT(timestamp) as missing_timestamps,
+        COUNT(*) - COUNT(user_id) as missing_user_ids,
+        MIN(timestamp) as earliest_record,
+        MAX(timestamp) as latest_record,
+        CURRENT_TIMESTAMP as validation_time
+      FROM prod_raw_events
+
+      UNION ALL
+
+      SELECT
+        'users' as data_source,
+        COUNT(*) as total_records,
+        COUNT(*) - COUNT(user_id) as missing_user_ids,
+        0 as missing_timestamps,
+        COUNT(*) - COUNT(email) as missing_emails,
+        MIN(created_at) as earliest_record,
+        MAX(updated_at) as latest_record,
+        CURRENT_TIMESTAMP as validation_time
+      FROM prod_user_profiles
+
+      UNION ALL
+
+      SELECT
+        'transactions' as data_source,
+        COUNT(*) as total_records,
+        COUNT(*) - COUNT(transaction_id) as missing_transaction_ids,
+        COUNT(*) - COUNT(created_at) as missing_timestamps,
+        COUNT(*) - COUNT(user_id) as missing_user_ids,
+        MIN(created_at) as earliest_record,
+        MAX(updated_at) as latest_record,
+        CURRENT_TIMESTAMP as validation_time
+      FROM prod_transactions
+    description: "Production data quality monitoring and validation"
+
+  # Security and compliance view
+  - name: prod_security_audit
+    sql: |
+      SELECT
+        'data_access' as audit_type,
+        COUNT(*) as access_count,
+        COUNT(DISTINCT user_id) as unique_users_accessed,
+        DATE(timestamp) as access_date
+      FROM prod_raw_events
+      WHERE event_type IN ('data_access', 'query_execution', 'report_generation')
+        AND timestamp >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY DATE(timestamp)
+
+      UNION ALL
+
+      SELECT
+        'failed_access' as audit_type,
+        COUNT(*) as access_count,
+        COUNT(DISTINCT user_id) as unique_users_accessed,
+        DATE(timestamp) as access_date
+      FROM prod_raw_events
+      WHERE event_type IN ('access_denied', 'authentication_failure')
+        AND timestamp >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY DATE(timestamp)
+
+      UNION ALL
+
+      SELECT
+        'data_modification' as audit_type,
+        COUNT(*) as access_count,
+        COUNT(DISTINCT user_id) as unique_users_accessed,
+        DATE(timestamp) as access_date
+      FROM prod_raw_events
+      WHERE event_type IN ('data_insert', 'data_update', 'data_delete')
+        AND timestamp >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY DATE(timestamp)
+      ORDER BY access_date DESC, audit_type
+    description: "Production security and compliance audit trail"

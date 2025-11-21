@@ -1521,6 +1521,77 @@ class TestBackgroundTaskConcurrency:
             assert response.status_code == 200
 
 
+class TestBundledAssets:
+    """Test bundled static assets serving and offline functionality."""
+
+    def test_datastar_script_serves_locally(self, test_client):
+        """Test that Datastar script is served from local static directory."""
+        response = test_client.get("/static/datastar.js")
+        assert response.status_code == 200
+        assert "text/javascript" in response.headers.get("content-type", "")
+        assert response.headers.get("content-length") == "29360"  # Expected file size
+
+    def test_datastar_content_is_complete(self, test_client):
+        """Test that the bundled Datastar content is complete and valid."""
+        response = test_client.get("/static/datastar.js")
+        assert response.status_code == 200
+
+        # Check for Datastar-specific content
+        content = response.text
+        assert "datastar" in content.lower()
+        assert "datastar-fetch" in content
+        assert "datastar-signal-patch" in content
+
+        # Check for version information
+        assert "Datastar v1.0.0-RC.6" in content
+
+    def test_dashboard_uses_local_datastar(self, test_client):
+        """Test that dashboard HTML references local Datastar script."""
+        response = test_client.get("/")
+        assert response.status_code == 200
+
+        # Should reference local path, not external CDN
+        assert 'src="/static/datastar.js"' in response.text
+        assert "https://cdn.jsdelivr.net" not in response.text
+
+    def test_static_file_content_type(self, test_client):
+        """Test that static files are served with correct Content-Type."""
+        response = test_client.get("/static/datastar.js")
+        assert response.status_code == 200
+
+        content_type = response.headers.get("content-type", "")
+        assert "application/javascript" in content_type or "text/javascript" in content_type
+
+    def test_nonexistent_static_file_404(self, test_client):
+        """Test that nonexistent static files return 404."""
+        response = test_client.get("/static/nonexistent.js")
+        assert response.status_code == 404
+
+    def test_offline_functionality(self, test_client):
+        """Test that dashboard works without external network dependencies."""
+        # Dashboard should load successfully
+        dashboard_response = test_client.get("/")
+        assert dashboard_response.status_code == 200
+
+        # Datastar script should be available locally
+        datastar_response = test_client.get("/static/datastar.js")
+        assert datastar_response.status_code == 200
+
+        # Dashboard HTML should contain only local resources
+        dashboard_content = dashboard_response.text
+        assert 'src="/static/datastar.js"' in dashboard_content
+
+        # Should not contain external CDN references
+        external_urls = [
+            "https://cdn.jsdelivr.net",
+            "https://unpkg.com",
+            "https://cdnjs.cloudflare.com"
+        ]
+
+        for url in external_urls:
+            assert url not in dashboard_content, f"Found external URL {url} in dashboard"
+
+
 @pytest.mark.skipif(
     True,  # Skip integration tests by default
     reason="Integration tests require actual UI dependencies",

@@ -1,0 +1,175 @@
+version: 1
+duckdb:
+  database: sales_analytics.duckdb
+
+views:
+  - name: sales_orders
+    description: "Raw sales order data"
+    sql: |
+      SELECT
+        id,
+        customer_id,
+        product_id,
+        order_date,
+        amount,
+        quantity
+      FROM sales_orders
+      WHERE order_date >= '2024-01-01'
+
+  - name: customers
+    description: "Customer dimension table"
+    sql: |
+      SELECT
+        id,
+        name,
+        region,
+        country,
+        segment,
+        created_at
+      FROM customers
+
+  - name: products
+    description: "Product dimension table"
+    sql: |
+      SELECT
+        id,
+        name,
+        category,
+        subcategory,
+        price
+      FROM products
+
+semantic_models:
+  - name: sales_analytics
+    label: "Sales Analytics"
+    description: "Business metrics for sales analysis with joined dimensions"
+    tags: ["sales", "revenue", "analytics"]
+    base_view: sales_orders
+
+    # v2: Joins to enrich sales data with customer and product information
+    joins:
+      - to_view: customers
+        type: left
+        on_condition: "sales_orders.customer_id = customers.id"
+      - to_view: products
+        type: left
+        on_condition: "sales_orders.product_id = products.id"
+
+    dimensions:
+      # v2: Time dimension with time grains for drill-down support
+      - name: order_date
+        expression: "sales_orders.order_date"
+        type: "time"
+        time_grains: ["year", "quarter", "month", "week", "day"]
+        label: "Order Date"
+        description: "Date when the order was placed"
+
+      - name: customer_region
+        expression: "customers.region"
+        type: "string"
+        label: "Customer Region"
+        description: "Geographic region of the customer"
+
+      - name: customer_segment
+        expression: "customers.segment"
+        type: "string"
+        label: "Customer Segment"
+        description: "Customer segment classification"
+
+      - name: product_category
+        expression: "products.category"
+        type: "string"
+        label: "Product Category"
+        description: "High-level product category"
+
+      - name: product_subcategory
+        expression: "products.subcategory"
+        type: "string"
+        label: "Product Subcategory"
+        description: "Detailed product subcategory"
+
+    measures:
+      - name: total_revenue
+        expression: "SUM(sales_orders.amount)"
+        type: "number"
+        label: "Total Revenue"
+        description: "Total revenue from sales orders"
+
+      - name: order_count
+        expression: "COUNT(DISTINCT sales_orders.id)"
+        type: "number"
+        label: "Order Count"
+        description: "Number of unique orders"
+
+      - name: average_order_value
+        expression: "AVG(sales_orders.amount)"
+        type: "number"
+        label: "Average Order Value"
+        description: "Average revenue per order"
+
+      - name: total_quantity
+        expression: "SUM(sales_orders.quantity)"
+        type: "number"
+        label: "Total Quantity"
+        description: "Total quantity of items sold"
+
+    # v2: Default configuration for query builders and dashboards
+    defaults:
+      time_dimension: order_date
+      primary_measure: total_revenue
+      default_filters:
+        - dimension: order_date
+          operator: ">="
+          value: "2024-01-01"
+          description: "Show data from 2024 onwards"
+        - dimension: customer_region
+          operator: "!="
+          value: "NULL"
+          description: "Exclude orders with unknown regions"
+
+  - name: customer_analytics
+    label: "Customer Analytics"
+    description: "Customer-focused analytics with demographic information"
+    tags: ["customers", "demographics", "analytics"]
+    base_view: customers
+
+    dimensions:
+      - name: customer_region
+        expression: "region"
+        type: "string"
+        label: "Customer Region"
+        description: "Geographic region of the customer"
+
+      - name: customer_country
+        expression: "country"
+        type: "string"
+        label: "Customer Country"
+        description: "Country of the customer"
+
+      - name: customer_segment
+        expression: "segment"
+        type: "string"
+        label: "Customer Segment"
+        description: "Customer segment classification"
+
+      - name: customer_since
+        expression: "created_at::date"
+        type: "date"
+        label: "Customer Since"
+        description: "Date when customer was created"
+
+    measures:
+      - name: customer_count
+        expression: "COUNT(id)"
+        type: "number"
+        label: "Customer Count"
+        description: "Total number of customers"
+
+      - name: active_customers
+        expression: "COUNT(CASE WHEN segment != 'Inactive' THEN 1 END)"
+        type: "number"
+        label: "Active Customers"
+        description: "Number of active customers"
+
+    defaults:
+      primary_measure: customer_count

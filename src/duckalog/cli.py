@@ -168,6 +168,58 @@ def validate(
     typer.echo("Config is valid.")
 
 
+@app.command(help="Start the web UI for catalog management.")
+def ui(
+    config_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False
+    ),
+    host: str = typer.Option(
+        "127.0.0.1", "--host", help="Host address to bind the server to."
+    ),
+    port: int = typer.Option(8000, "--port", help="Port number to listen on."),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
+) -> None:
+    """CLI entry point for the ``ui`` command.
+
+    This command starts a web-based UI for managing DuckDB catalogs.
+
+    Args:
+        config_path: Path to the configuration file.
+        host: Host address to bind the server to.
+        port: Port number to listen on.
+        verbose: If ``True``, enable more verbose logging.
+    """
+    _configure_logging(verbose)
+    log_info(
+        "CLI ui invoked",
+        config_path=str(config_path),
+        host=host,
+        port=port,
+    )
+
+    try:
+        # Import UI module with error handling
+        try:
+            from .ui import UIServer
+        except ImportError as exc:
+            _fail(
+                f"UI dependencies not found. Install with: pip install duckalog[ui] - {exc}",
+                4,
+            )
+
+        # Create and run UI server
+        ui_server = UIServer(str(config_path), host=host, port=port)
+        ui_server.run()
+
+    except Exception as exc:  # pragma: no cover - unexpected failures
+        if verbose:
+            raise
+        log_error("UI failed unexpectedly", error=str(exc))
+        _fail(f"Unexpected error: {exc}", 1)
+
+
 def _fail(message: str, code: int) -> None:
     """Print an error message and exit with the given code.
 

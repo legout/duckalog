@@ -35,6 +35,12 @@ apply in local workflows and automated pipelines.
 
 For a full product and technical description, see `docs/PRD_Spec.md`.
 
+**Ready to try examples?** See the [`examples/`](examples/) directory for hands-on learning:
+
+- 📊 **Multi-Source Analytics**: Combine Parquet, DuckDB, and PostgreSQL data
+- 🔒 **Environment Variables Security**: Secure credential management patterns
+- ⚡ **DuckDB Performance Settings**: Optimize memory, threads, and storage
+
 ---
 
 ## Installation
@@ -77,6 +83,10 @@ The web UI uses **Datastar** for reactive, real-time updates:
 - **Reactive data binding**: Automatic UI updates when data changes
 - **Server-Sent Events**: Real-time communication for background tasks
 - **Modern web patterns**: Built-in security and performance optimizations
+- **Bundled assets**: Datastar v1.0.0-RC.6 is served locally for offline operation
+- **Supply chain security**: No external CDN dependencies for the UI
+
+The bundled Datastar JavaScript is served from `/static/datastar.js` and works offline without external network access.
 
 #### **Optional Enhanced YAML Support**
 
@@ -167,7 +177,26 @@ duckalog validate catalog.yaml
 This parses and validates config (including env interpolation), without
 connecting to DuckDB.
 
-### 5. Start the web UI
+### 5. Explore Examples
+
+```bash
+# Try multi-source analytics
+cd examples/data-integration/multi-source-analytics
+python data/generate.py
+duckalog build catalog.yaml
+
+# Try environment variables security
+cd examples/production-operations/environment-variables-security
+python generate-test-data.py
+python validate-configs.py dev
+
+# Try DuckDB performance tuning
+cd examples/production-operations/duckdb-performance-settings
+python generate-datasets.py --size small
+duckalog build catalog-limited.yaml
+```
+
+### 6. Start the web UI
 
 ```bash
 duckalog ui catalog.yaml

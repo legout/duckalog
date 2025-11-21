@@ -1,0 +1,144 @@
+version: 1
+
+duckdb:
+  database: "performance_server.duckdb"
+  install_extensions:
+    - httpfs
+    - parquet
+    - json
+    - fts
+  pragmas:
+    # Large Memory Allocation - For servers with 64GB+ RAM
+    - "SET memory_limit='32GB'"
+    - "SET max_memory='32GB'"
+
+    # High Parallelism - For multi-core servers
+    - "SET threads=16"
+    - "SET enable_progress_bar=false"  # Reduce overhead in production
+
+    # Production Storage Settings
+    - "SET temp_directory='/var/tmp/duckdb_prod'"
+    - "SET preserve_insertion_order=false"
+
+# Server-grade views for high-performance analytics
+views:
+  - name: events_small
+    source: parquet
+    uri: "datasets/events_small.parquet"
+    description: "Small dataset (100K rows) for quick testing"
+
+  - name: events_medium
+    source: parquet
+    uri: "datasets/events_medium.parquet"
+    description: "Medium dataset (1M rows) for standard testing"
+
+  - name: events_large
+    source: parquet
+    uri: "datasets/events_large.parquet"
+    description: "Large dataset (10M rows) for stress testing"
+
+  # High-performance aggregation views
+  - name: daily_analytics_optimized
+    sql: |
+      SELECT
+        DATE(timestamp) as event_date,
+        event_type,
+        COUNT(*) as event_count,
+        COUNT(DISTINCT user_id) as unique_users,
+        COUNT(DISTINCT properties->>'session_id') as unique_sessions,
+        AVG(CASE WHEN properties->>'duration' != '' THEN CAST(properties->>'duration' AS INTEGER) END) as avg_duration,
+        SUM(CASE WHEN properties->>'revenue' != '' THEN CAST(properties->>'revenue' AS DECIMAL(10,2)) END) as total_revenue
+      FROM events_large
+      GROUP BY DATE(timestamp), event_type
+    description: "Optimized daily analytics aggregation"
+
+  - name: user_behavior_analytics
+    sql: |
+      WITH user_activity AS (
+        SELECT
+          user_id,
+          DATE(timestamp) as activity_date,
+          event_type,
+          properties,
+          ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY timestamp DESC) as recent_rank
+        FROM events_large
+        WHERE user_id IS NOT NULL
+      ),
+      user_metrics AS (
+        SELECT
+          user_id,
+          COUNT(DISTINCT activity_date) as active_days,
+          COUNT(*) as total_events,
+          COUNT(DISTINCT event_type) as unique_event_types,
+          MIN(timestamp) as first_seen,
+          MAX(timestamp) as last_seen,
+          DATE_DIFF('day', MIN(timestamp), MAX(timestamp)) as engagement_days
+        FROM user_activity
+        GROUP BY user_id
+      )
+      SELECT
+        CASE
+          WHEN active_days >= 30 THEN 'Power User'
+          WHEN active_days >= 7 THEN 'Regular User'
+          WHEN active_days >= 1 THEN 'Casual User'
+          ELSE 'New User'
+        END as user_segment,
+        COUNT(*) as user_count,
+        AVG(total_events) as avg_events_per_user,
+        AVG(unique_event_types) as avg_event_types_per_user,
+        AVG(engagement_days) as avg_engagement_days
+      FROM user_metrics
+      GROUP BY user_segment
+      ORDER BY user_count DESC
+    description: "Advanced user behavior analytics"
+
+  - name: performance_metrics_dashboard
+    sql: |
+      WITH hourly_stats AS (
+        SELECT
+          DATE_TRUNC('hour', timestamp) as hour_bucket,
+          COUNT(*) as events_per_hour,
+          COUNT(DISTINCT user_id) as unique_users_hour,
+          COUNT(DISTINCT properties->>'session_id') as sessions_hour,
+          SUM(CASE WHEN properties->>'duration' != '' THEN CAST(properties->>'duration' AS INTEGER) END) as total_duration
+        FROM events_large
+        WHERE timestamp >= CURRENT_DATE - INTERVAL '7 days'
+        GROUP BY DATE_TRUNC('hour', timestamp)
+      ),
+      system_metrics AS (
+        SELECT
+          hour_bucket,
+          events_per_hour,
+          unique_users_hour,
+          sessions_hour,
+          total_duration,
+          LAG(events_per_hour) OVER (ORDER BY hour_bucket) as prev_hour_events,
+          LAG(unique_users_hour) OVER (ORDER BY hour_bucket) as prev_hour_users
+        FROM hourly_stats
+      )
+      SELECT
+        hour_bucket,
+        events_per_hour,
+        unique_users_hour,
+        sessions_hour,
+        total_duration,
+        ROUND((events_per_hour - prev_hour_events) * 100.0 / NULLIF(prev_hour_events, 0), 2) as event_growth_pct,
+        ROUND((unique_users_hour - prev_hour_users) * 100.0 / NULLIF(prev_hour_users, 0), 2) as user_growth_pct,
+        ROUND(total_duration * 1.0 / events_per_hour, 2) as avg_event_duration
+      FROM system_metrics
+      ORDER BY hour_bucket DESC
+    description: "Real-time performance metrics dashboard"
+
+  - name: server_performance_validation
+    sql: |
+      SELECT
+        'performance_server' as configuration,
+        CURRENT_TIMESTAMP as validation_timestamp,
+        (SELECT COUNT(*) FROM events_small) as small_dataset_rows,
+        (SELECT COUNT(*) FROM events_medium) as medium_dataset_rows,
+        (SELECT COUNT(*) FROM events_large) as large_dataset_rows,
+        (SELECT COUNT(DISTINCT event_type) FROM events_large) as unique_event_types,
+        (SELECT COUNT(DISTINCT user_id) FROM events_large) as unique_users,
+        (SELECT DATE_PART('day', MAX(timestamp) - MIN(timestamp)) FROM events_large) as data_span_days,
+        (SELECT AVG(CAST(properties->>'duration' AS INTEGER)) FROM events_large WHERE properties->>'duration' != '') as avg_event_duration
+    description: "Server configuration performance validation"

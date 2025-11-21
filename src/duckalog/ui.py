@@ -16,6 +16,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.routing import Route
 from starlette.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
 from starlette.background import BackgroundTasks
 
 from .config import Config, ConfigError, load_config
@@ -344,6 +345,11 @@ class UIServer:
 
         # Create app first, then apply middleware
         self.app = Starlette(routes=routes)
+
+        # Mount static files for bundled assets
+        static_dir = Path(__file__).parent / "static"
+        if static_dir.exists():
+            self.app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
         # Apply CORS middleware
         self.app.add_middleware(
@@ -1024,7 +1030,7 @@ class UIServer:
                 <title>Duckalog Catalog Dashboard</title>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-RC.6/bundles/datastar.js"></script>
+                <script type="module" src="/static/datastar.js"></script>
                 <style>
                     body {{ font-family: Arial, sans-serif; margin: 20px; }}
                     table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}
@@ -1147,7 +1153,7 @@ class UIServer:
                 <title>Duckalog Catalog Dashboard</title>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-RC.6/bundles/datastar.js"></script>
+                <script type="module" src="/static/datastar.js"></script>
                 <style>
                     body {{ font-family: Arial, sans-serif; margin: 20px; }}
                     table {{ border-collapse: collapse; width: 100%; margin: 20px 0; }}

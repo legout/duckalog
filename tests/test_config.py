@@ -1240,3 +1240,391 @@ def test_semantic_models_python_api_access(tmp_path):
     assert user_model.base_view == "user_data"
     assert len(user_model.dimensions) == 1
     assert len(user_model.measures) == 0
+
+
+# Semantic Layer v2 Tests
+
+def test_semantic_models_v2_with_joins_and_time_dimensions(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+          - name: customers
+            sql: "SELECT * FROM customer_dim"
+          - name: products
+            sql: "SELECT * FROM product_dim"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            label: "Sales Analytics"
+            description: "Business metrics for sales analysis"
+            joins:
+              - to_view: customers
+                type: left
+                on_condition: "sales.customer_id = customers.id"
+              - to_view: products
+                type: left
+                on_condition: "sales.product_id = products.id"
+            dimensions:
+              - name: order_date
+                expression: "created_at"
+                type: "time"
+                time_grains: ["year", "quarter", "month", "day"]
+                label: "Order Date"
+              - name: customer_region
+                expression: "customers.region"
+                type: "string"
+                label: "Customer Region"
+              - name: product_category
+                expression: "products.category"
+                type: "string"
+                label: "Product Category"
+            measures:
+              - name: total_revenue
+                expression: "SUM(sales.amount)"
+                label: "Total Revenue"
+                type: "number"
+              - name: order_count
+                expression: "COUNT(DISTINCT sales.id)"
+                label: "Order Count"
+                type: "number"
+            defaults:
+              time_dimension: order_date
+              primary_measure: total_revenue
+              default_filters:
+                - dimension: customer_region
+                  operator: "="
+                  value: "NORTH AMERICA"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert len(config.semantic_models) == 1
+    semantic_model = config.semantic_models[0]
+    assert semantic_model.name == "sales_analytics"
+    assert semantic_model.base_view == "sales_data"
+
+    # Test joins
+    assert len(semantic_model.joins) == 2
+    join1 = semantic_model.joins[0]
+    assert join1.to_view == "customers"
+    assert join1.type == "left"
+    assert join1.on_condition == "sales.customer_id = customers.id"
+
+    join2 = semantic_model.joins[1]
+    assert join2.to_view == "products"
+    assert join2.type == "left"
+    assert join2.on_condition == "sales.product_id = products.id"
+
+    # Test dimensions with time grains
+    assert len(semantic_model.dimensions) == 3
+    time_dim = next(dim for dim in semantic_model.dimensions if dim.name == "order_date")
+    assert time_dim.type == "time"
+    assert time_dim.time_grains == ["year", "quarter", "month", "day"]
+
+    # Test defaults
+    assert semantic_model.defaults is not None
+    assert semantic_model.defaults.time_dimension == "order_date"
+    assert semantic_model.defaults.primary_measure == "total_revenue"
+    assert len(semantic_model.defaults.default_filters) == 1
+    assert semantic_model.defaults.default_filters[0]["dimension"] == "customer_region"
+
+
+def test_semantic_models_v2_invalid_join_type_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+          - name: customers
+            sql: "SELECT * FROM customers"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            joins:
+              - to_view: customers
+                type: invalid_join_type
+                on_condition: "sales.customer_id = customers.id"
+        """,
+    )
+
+    with pytest.raises(ConfigError, match="Invalid join type 'invalid_join_type'"):
+        load_config(str(config_path))
+
+
+def test_semantic_models_v2_time_grains_only_for_time_dimensions(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            dimensions:
+              - name: customer_region
+                expression: "customer_region"
+                type: "string"
+                time_grains: ["year", "month"]
+        """,
+    )
+
+    with pytest.raises(ConfigError, match="time_grains can only be specified for time dimensions"):
+        load_config(str(config_path))
+
+
+def test_semantic_models_v2_invalid_time_grain_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            dimensions:
+              - name: order_date
+                expression: "created_at"
+                type: "time"
+                time_grains: ["invalid_grain"]
+        """,
+    )
+
+    with pytest.raises(ConfigError, match="Invalid time grain 'invalid_grain'"):
+        load_config(str(config_path))
+
+
+def test_semantic_models_v2_invalid_dimension_type_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            dimensions:
+              - name: order_date
+                expression: "created_at"
+                type: "invalid_type"
+        """,
+    )
+
+    with pytest.raises(ConfigError, match="Invalid dimension type 'invalid_type'"):
+        load_config(str(config_path))
+
+
+def test_semantic_models_v2_join_to_nonexistent_view_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            joins:
+              - to_view: nonexistent_view
+                type: left
+                on_condition: "sales.id = nonexistent_view.id"
+        """,
+    )
+
+    with pytest.raises(ConfigError, match="Semantic model join\\(s\\) reference undefined view\\(s\\): sales_analytics.nonexistent_view"):
+        load_config(str(config_path))
+
+
+def test_semantic_models_v2_default_time_dimension_must_exist(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            defaults:
+              time_dimension: nonexistent_dimension
+        """,
+    )
+
+    with pytest.raises(ConfigError, match="Default time dimension 'nonexistent_dimension' does not exist in dimensions"):
+        load_config(str(config_path))
+
+
+def test_semantic_models_v2_default_time_dimension_must_be_time_type(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            dimensions:
+              - name: customer_region
+                expression: "customer_region"
+                type: "string"
+            defaults:
+              time_dimension: customer_region
+        """,
+    )
+
+    with pytest.raises(ConfigError, match="Default time dimension 'customer_region' must have type 'time'"):
+        load_config(str(config_path))
+
+
+def test_semantic_models_v2_default_primary_measure_must_exist(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            defaults:
+              primary_measure: nonexistent_measure
+        """,
+    )
+
+    with pytest.raises(ConfigError, match="Default primary measure 'nonexistent_measure' does not exist in measures"):
+        load_config(str(config_path))
+
+
+def test_semantic_models_v2_default_filter_dimension_must_exist(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            defaults:
+              default_filters:
+                - dimension: nonexistent_dimension
+                  operator: "="
+                  value: "test"
+        """,
+    )
+
+    with pytest.raises(ConfigError, match="Default filter dimension 'nonexistent_dimension' does not exist in dimensions"):
+        load_config(str(config_path))
+
+
+def test_semantic_models_v2_empty_join_fields_rejected(tmp_path):
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+          - name: customers
+            sql: "SELECT * FROM customers"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            joins:
+              - to_view: ""
+                type: "left"
+                on_condition: "sales.id = customers.id"
+        """,
+    )
+
+    with pytest.raises(ConfigError, match="Join 'to_view' cannot be empty"):
+        load_config(str(config_path))
+
+
+def test_semantic_models_v2_backward_compatibility(tmp_path):
+    # Test that v1 semantic models still work with v2 schema
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: sales_data
+            sql: "SELECT * FROM sales"
+        semantic_models:
+          - name: sales_analytics
+            base_view: sales_data
+            label: "Sales Analytics"
+            description: "Business metrics for sales analysis"
+            dimensions:
+              - name: order_date
+                expression: "created_at::date"
+                label: "Order Date"
+              - name: customer_region
+                expression: "UPPER(customer_region)"
+                label: "Customer Region"
+            measures:
+              - name: total_revenue
+                expression: "SUM(amount)"
+                label: "Total Revenue"
+              - name: order_count
+                expression: "COUNT(*)"
+                label: "Order Count"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert len(config.semantic_models) == 1
+    semantic_model = config.semantic_models[0]
+    assert semantic_model.name == "sales_analytics"
+    assert semantic_model.base_view == "sales_data"
+
+    # V1 models should have empty joins and None defaults
+    assert len(semantic_model.joins) == 0
+    assert semantic_model.defaults is None
+
+    # Original dimensions and measures should work
+    assert len(semantic_model.dimensions) == 2
+    assert len(semantic_model.measures) == 2

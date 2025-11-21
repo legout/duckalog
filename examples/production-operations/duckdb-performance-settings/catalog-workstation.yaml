@@ -1,0 +1,154 @@
+version: 1
+
+duckdb:
+  database: "performance_workstation.duckdb"
+  install_extensions:
+    - httpfs
+    - parquet
+    - json
+  pragmas:
+    # Memory Management - Optimized for workstations with 16GB+ RAM
+    - "SET memory_limit='8GB'"
+    - "SET max_memory='8GB'"
+
+    # Parallelism - Use available CPU cores efficiently
+    - "SET threads=8"
+    - "SET enable_progress_bar=true"
+
+    # Storage Optimizations
+    - "SET temp_directory='/tmp/duckdb_temp'"
+    - "SET preserve_insertion_order=false"
+
+# Views for performance testing
+views:
+  - name: events_small
+    source: parquet
+    uri: "datasets/events_small.parquet"
+    description: "Small dataset (100K rows) for quick testing"
+
+  - name: events_medium
+    source: parquet
+    uri: "datasets/events_medium.parquet"
+    description: "Medium dataset (1M rows) for standard testing"
+
+  - name: events_large
+    source: parquet
+    uri: "datasets/events_large.parquet"
+    description: "Large dataset (10M rows) for stress testing"
+
+  # Performance test queries
+  - name: test_aggregation
+    sql: |
+      SELECT
+        event_type,
+        COUNT(*) as event_count,
+        COUNT(DISTINCT user_id) as unique_users,
+        AVG(CAST(properties->>'duration' AS INTEGER)) as avg_duration,
+        MIN(timestamp) as first_event,
+        MAX(timestamp) as last_event
+      FROM events_medium
+      WHERE timestamp >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY event_type
+      ORDER BY event_count DESC
+    description: "Aggregation performance test query"
+
+  - name: test_join
+    sql: |
+      WITH daily_metrics AS (
+        SELECT
+          DATE(timestamp) as event_date,
+          event_type,
+          COUNT(*) as daily_count,
+          COUNT(DISTINCT user_id) as daily_users
+        FROM events_medium
+        GROUP BY DATE(timestamp), event_type
+      ),
+      user_metrics AS (
+        SELECT
+          user_id,
+          COUNT(*) as total_events,
+          COUNT(DISTINCT DATE(timestamp)) as active_days,
+          MIN(timestamp) as first_seen,
+          MAX(timestamp) as last_seen
+        FROM events_medium
+        GROUP BY user_id
+      )
+      SELECT
+        d.event_date,
+        d.event_type,
+        d.daily_count,
+        d.daily_users,
+        um.total_events,
+        um.active_days
+      FROM daily_metrics d
+      LEFT JOIN user_metrics um ON d.daily_users > 10
+      WHERE d.daily_count > 100
+      ORDER BY d.event_date DESC, d.daily_count DESC
+      LIMIT 1000
+    description: "Complex JOIN performance test query"
+
+  - name: test_window_functions
+    sql: |
+      WITH user_events AS (
+        SELECT
+          user_id,
+          timestamp,
+          event_type,
+          properties,
+          ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY timestamp DESC) as event_rank
+        FROM events_medium
+        WHERE user_id IS NOT NULL
+      ),
+      user_session_metrics AS (
+        SELECT
+          user_id,
+          event_type,
+          timestamp,
+          LAG(timestamp, 1) OVER (PARTITION BY user_id ORDER BY timestamp) as prev_event_time,
+          TIMESTAMPDIFF(MINUTE, LAG(timestamp, 1) OVER (PARTITION BY user_id ORDER BY timestamp), timestamp) as minutes_since_prev
+        FROM user_events
+        WHERE event_rank <= 1000  -- Limit to recent events per user
+      )
+      SELECT
+        event_type,
+        COUNT(*) as event_count,
+        AVG(minutes_since_prev) as avg_minutes_between_events,
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY minutes_since_prev) as median_minutes_between,
+        MAX(minutes_since_prev) as max_minutes_between
+      FROM user_session_metrics
+      WHERE minutes_since_prev IS NOT NULL
+        AND minutes_since_prev < 1440  -- Within 24 hours
+      GROUP BY event_type
+      ORDER BY event_count DESC
+    description: "Window function performance test query"
+
+  - name: test_string_operations
+    sql: |
+      SELECT
+        event_type,
+        COUNT(*) as total_events,
+        COUNT(CASE WHEN properties->>'session_id' LIKE 'abc%' THEN 1 END) as abc_sessions,
+        COUNT(CASE WHEN properties->>'user_agent' LIKE '%Chrome%' THEN 1 END) as chrome_users,
+        COUNT(CASE WHEN LENGTH(properties->>'page_url') > 100 THEN 1 END) as long_urls,
+        AVG(LENGTH(properties->>'page_title')) as avg_title_length
+      FROM events_medium
+      WHERE properties IS NOT NULL
+        AND json_valid(properties)
+        AND timestamp >= CURRENT_DATE - INTERVAL '7 days'
+      GROUP BY event_type
+      ORDER BY total_events DESC
+    description: "String operation performance test query"
+
+  - name: performance_summary
+    sql: |
+      SELECT
+        'performance_workstation' as configuration,
+        CURRENT_TIMESTAMP as test_timestamp,
+        (SELECT COUNT(*) FROM events_small) as small_dataset_rows,
+        (SELECT COUNT(*) FROM events_medium) as medium_dataset_rows,
+        (SELECT COUNT(*) FROM events_large) as large_dataset_rows,
+        (SELECT COUNT(DISTINCT event_type) FROM events_medium) as unique_event_types,
+        (SELECT COUNT(DISTINCT user_id) FROM events_medium) as unique_users,
+        (SELECT MIN(timestamp) FROM events_medium) as earliest_event,
+        (SELECT MAX(timestamp) FROM events_medium) as latest_event
+    description: "Dataset summary for performance validation"

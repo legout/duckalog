@@ -1,0 +1,195 @@
+version: 1
+
+duckdb:
+  database: "performance_analytics.duckdb"
+  install_extensions:
+    - httpfs
+    - parquet
+    - json
+    - fts
+  pragmas:
+    # Analytics-Friendly Memory Management
+    - "SET memory_limit='16GB'"
+    - "SET max_memory='16GB'"
+
+    # High Parallelism for Complex Analytics
+    - "SET threads=12"
+    - "SET enable_progress_bar=true"
+
+    # Storage for Large Analytics Workloads
+    - "SET temp_directory='/tmp/analytics_temp'"
+    - "SET preserve_insertion_order=false"
+
+# Analytics-optimized views for complex analytical queries
+views:
+  - name: events_small
+    source: parquet
+    uri: "datasets/events_small.parquet"
+    description: "Small dataset for quick analytical testing"
+
+  - name: events_medium
+    source: parquet
+    uri: "datasets/events_medium.parquet"
+    description: "Medium dataset for standard analytical workloads"
+
+  - name: events_large
+    source: parquet
+    uri: "datasets/events_large.parquet"
+    description: "Large dataset for comprehensive analytics"
+
+  # Complex analytical views
+  - name: funnel_analysis
+    sql: |
+      WITH user_journey AS (
+        SELECT
+          user_id,
+          event_type,
+          timestamp,
+          properties->>'page_url' as page_url,
+          properties->>'referral_source' as referral_source,
+          ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY timestamp) as step_number
+        FROM events_large
+        WHERE user_id IS NOT NULL
+          AND event_type IN ('page_view', 'signup', 'purchase', 'checkout')
+      ),
+      conversion_events AS (
+        SELECT
+          user_id,
+          MAX(CASE WHEN event_type = 'signup' THEN timestamp END) as signup_time,
+          MAX(CASE WHEN event_type = 'checkout' THEN timestamp END) as checkout_time,
+          MAX(CASE WHEN event_type = 'purchase' THEN timestamp END) as purchase_time
+        FROM user_journey
+        GROUP BY user_id
+      )
+      SELECT
+        'page_view' as funnel_step,
+        COUNT(DISTINCT uj.user_id) as unique_users,
+        COUNT(DISTINCT ce.user_id) as users_with_signup,
+        COUNT(DISTINCT CASE WHEN ce.checkout_time IS NOT NULL THEN ce.user_id END) as users_with_checkout,
+        COUNT(DISTINCT CASE WHEN ce.purchase_time IS NOT NULL THEN ce.user_id END) as users_with_purchase,
+        ROUND(COUNT(DISTINCT ce.user_id) * 100.0 / COUNT(DISTINCT uj.user_id), 2) as signup_rate,
+        ROUND(COUNT(DISTINCT CASE WHEN ce.purchase_time IS NOT NULL THEN ce.user_id END) * 100.0 / COUNT(DISTINCT ce.user_id), 2) as purchase_conversion_rate
+      FROM user_journey uj
+      LEFT JOIN conversion_events ce ON uj.user_id = ce.user_id
+      WHERE uj.event_type = 'page_view'
+    description: "Analytics funnel conversion analysis"
+
+  - name: cohort_retention_analysis
+    sql: |
+      WITH user_cohorts AS (
+        SELECT
+          user_id,
+          DATE_TRUNC('month', MIN(timestamp)) as cohort_month,
+          DATE_TRUNC('month', timestamp) as activity_month,
+          DATEDIFF('month', DATE_TRUNC('month', MIN(timestamp)), DATE_TRUNC('month', timestamp)) as month_number
+        FROM events_large
+        WHERE user_id IS NOT NULL
+        GROUP BY user_id, DATE_TRUNC('month', timestamp)
+      ),
+      cohort_sizes AS (
+        SELECT
+          cohort_month,
+          COUNT(DISTINCT user_id) as cohort_size
+        FROM user_cohorts
+        WHERE month_number = 0
+        GROUP BY cohort_month
+      )
+      SELECT
+        uc.cohort_month,
+        cs.cohort_size,
+        uc.month_number,
+        COUNT(DISTINCT uc.user_id) as active_users,
+        ROUND(COUNT(DISTINCT uc.user_id) * 100.0 / cs.cohort_size, 2) as retention_rate
+      FROM user_cohorts uc
+      JOIN cohort_sizes cs ON uc.cohort_month = cs.cohort_month
+      WHERE uc.month_number <= 12  -- First year retention
+      GROUP BY uc.cohort_month, uc.month_number, cs.cohort_size
+      ORDER BY uc.cohort_month, uc.month_number
+    description: "User cohort retention analysis"
+
+  - name: time_series_analytics
+    sql: |
+      WITH daily_metrics AS (
+        SELECT
+          DATE(timestamp) as event_date,
+          event_type,
+          COUNT(*) as event_count,
+          COUNT(DISTINCT user_id) as unique_users,
+          SUM(CASE WHEN properties->>'revenue' != '' THEN CAST(properties->>'revenue' AS DECIMAL(10,2)) END) as daily_revenue
+        FROM events_large
+        GROUP BY DATE(timestamp), event_type
+      ),
+      moving_averages AS (
+        SELECT
+          event_date,
+          event_type,
+          event_count,
+          unique_users,
+          daily_revenue,
+          AVG(event_count) OVER (PARTITION BY event_type ORDER BY event_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as ma_7day_events,
+          AVG(unique_users) OVER (PARTITION BY event_type ORDER BY event_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as ma_7day_users,
+          LAG(event_date, 1) OVER (PARTITION BY event_type ORDER BY event_date) as prev_date
+        FROM daily_metrics
+      )
+      SELECT
+        event_date,
+        event_type,
+        event_count,
+        unique_users,
+        daily_revenue,
+        ma_7day_events,
+        ma_7day_users,
+        ROUND((event_count - LAG(event_count, 1) OVER (PARTITION BY event_type ORDER BY event_date)) * 100.0 / NULLIF(LAG(event_count, 1) OVER (PARTITION BY event_type ORDER BY event_date), 0), 2) as daily_growth_pct
+      FROM moving_averages
+      WHERE event_date >= CURRENT_DATE - INTERVAL '90 days'
+      ORDER BY event_type, event_date DESC
+    description: "Time series analytics with moving averages and growth rates"
+
+  - name: user_segmentation_analytics
+    sql: (
+      SELECT
+        user_id,
+        COUNT(*) as total_events,
+        COUNT(DISTINCT DATE(timestamp)) as active_days,
+        COUNT(DISTINCT event_type) as unique_event_types,
+        DATEDIFF('day', MIN(timestamp), MAX(timestamp)) as engagement_span_days,
+        CASE
+          WHEN COUNT(DISTINCT DATE(timestamp)) >= 25 AND COUNT(DISTINCT event_type) >= 5 THEN 'Power User'
+          WHEN COUNT(DISTINCT DATE(timestamp)) >= 10 AND COUNT(DISTINCT event_type) >= 3 THEN 'Engaged User'
+          WHEN COUNT(DISTINCT DATE(timestamp)) >= 3 THEN 'Casual User'
+          ELSE 'New User'
+        END as user_segment,
+        ROUND(COUNT(*) * 1.0 / COUNT(DISTINCT DATE(timestamp)), 2) as events_per_active_day
+      FROM events_large
+      WHERE user_id IS NOT NULL
+      GROUP BY user_id
+      HAVING total_events > 1
+    )
+    description: "Advanced user segmentation based on behavior patterns"
+
+  - name: analytics_performance_validation
+    sql: |
+      WITH dataset_info AS (
+        SELECT
+          'performance_analytics' as configuration,
+          CURRENT_TIMESTAMP as validation_timestamp,
+          (SELECT COUNT(*) FROM events_small) as small_dataset_rows,
+          (SELECT COUNT(*) FROM events_medium) as medium_dataset_rows,
+          (SELECT COUNT(*) FROM events_large) as large_dataset_rows,
+          (SELECT COUNT(DISTINCT event_type) FROM events_large) as unique_event_types,
+          (SELECT COUNT(DISTINCT user_id) FROM events_large) as unique_users
+      ),
+      analytics_capabilities AS (
+        SELECT
+          COUNT(DISTINCT user_segment) as identified_segments,
+          COUNT(DISTINCT cohort_month) as monthly_cohorts,
+          COUNT(DISTINCT event_type) as tracked_events
+        FROM user_segmentation_analytics
+        CROSS JOIN (SELECT DATE_TRUNC('month', timestamp) as cohort_month FROM events_large WHERE user_id IS NOT NULL)
+      )
+      SELECT
+        di.*,
+        ac.*
+      FROM dataset_info di
+      CROSS JOIN analytics_capabilities ac
+    description: "Analytics configuration performance validation"
