@@ -1,0 +1,14 @@
+# Ignore generated data files (too large for GitHub)
+data/
+
+# Ignore generated database files
+*.duckdb
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore environment files
+.env
+.venv/

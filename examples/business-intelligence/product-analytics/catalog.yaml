@@ -1,0 +1,229 @@
+version: 1
+
+duckdb:
+  database: product_analytics.duckdb
+  install_extensions:
+    - httpfs
+    - parquet
+  pragmas:
+    - "SET memory_limit='2GB'"
+    - "SET threads=4"
+    - "SET timezone='UTC'"
+
+views:
+  # Raw data sources
+  - name: user_sessions
+    source: parquet
+    uri: "examples/business-intelligence/product-analytics/data/user_sessions.parquet"
+    description: "User session data with engagement metrics"
+
+  - name: user_events
+    source: parquet
+    uri: "examples/business-intelligence/product-analytics/data/user_events.parquet"
+    description: "Detailed user interaction events"
+
+  # Note: funnel_events, ab_tests, and feature_usage will be available after data generation completes
+
+  # User Behavior Analytics
+  - name: user_behavior_patterns
+    sql: |
+      WITH session_metrics AS (
+        SELECT
+          s.user_id,
+          s.session_id,
+          s.start_time,
+          s.end_time,
+          s.device_type,
+          s.acquisition_source,
+          -- Session duration in minutes
+          EXTRACT(EPOCH FROM (s.end_time::TIMESTAMP - s.start_time::TIMESTAMP)) / 60 as session_duration_minutes,
+          -- Count events in session
+          COUNT(e.event_id) as event_count,
+          -- Count unique features used
+          COUNT(DISTINCT e.feature_name) as unique_features_used,
+          -- Check if session converted (using 'purchase' events)
+          MAX(CASE WHEN e.event_type = 'purchase' THEN 1 ELSE 0 END) as converted,
+          -- First and last event times
+          MIN(e.event_timestamp::TIMESTAMP) as first_event_time,
+          MAX(e.event_timestamp::TIMESTAMP) as last_event_time
+        FROM user_sessions s
+        LEFT JOIN user_events e ON s.session_id = e.session_id
+        GROUP BY s.user_id, s.session_id, s.start_time, s.end_time, s.device_type, s.acquisition_source
+      ),
+      user_patterns AS (
+        SELECT
+          user_id,
+          device_type,
+          acquisition_source,
+          -- Session-level metrics
+          COUNT(session_id) as total_sessions,
+          AVG(session_duration_minutes) as avg_session_duration,
+          AVG(event_count) as avg_events_per_session,
+          AVG(unique_features_used) as avg_features_per_session,
+          -- Conversion metrics
+          SUM(converted) as converted_sessions,
+          COUNT(session_id) - SUM(converted) as non_converted_sessions,
+          ROUND(SUM(converted) * 100.0 / COUNT(session_id), 2) as conversion_rate,
+          -- Engagement frequency
+          MIN(start_time) as first_session_time,
+          MAX(start_time) as last_session_time,
+          -- Calculate days active
+          COUNT(DISTINCT DATE(start_time)) as active_days
+        FROM session_metrics
+        GROUP BY user_id, device_type, acquisition_source
+      )
+      SELECT
+        user_id,
+        device_type,
+        acquisition_source,
+        total_sessions,
+        avg_session_duration,
+        avg_events_per_session,
+        avg_features_per_session,
+        conversion_rate,
+        active_days,
+        -- User behavior segments
+        CASE
+          WHEN conversion_rate >= 10 AND total_sessions >= 5 THEN 'Power User'
+          WHEN conversion_rate >= 5 AND total_sessions >= 3 THEN 'Regular User'
+          WHEN conversion_rate >= 1 AND total_sessions >= 2 THEN 'Casual User'
+          WHEN total_sessions >= 3 THEN 'Browser'
+          ELSE 'New Visitor'
+        END as user_segment,
+        -- Engagement score (normalized 0-100)
+        LEAST(100, (
+          (avg_session_duration / 10 * 25) +  -- Duration component (0-25)
+          (avg_events_per_session / 20 * 25) +  -- Event count component (0-25)
+          (conversion_rate * 2.5) +  -- Conversion component (0-25)
+          (active_days / 30 * 25)  -- Frequency component (0-25)
+        )) as engagement_score
+      FROM user_patterns
+      ORDER BY engagement_score DESC
+    description: "User behavior analysis with segmentation and engagement scoring"
+
+  - name: user_path_flows
+    sql: |
+      WITH user_paths AS (
+        SELECT
+          ue.user_id,
+          ue.session_id,
+          ue.feature_name,
+          ue.event_type,
+          ue.event_timestamp::TIMESTAMP as event_timestamp,
+          -- Get sequence order within session
+          ROW_NUMBER() OVER (PARTITION BY ue.user_id, ue.session_id ORDER BY ue.event_timestamp::TIMESTAMP) as sequence_order,
+          -- Total events in this session
+          COUNT(*) OVER (PARTITION BY ue.user_id, ue.session_id) as total_session_events
+        FROM user_events ue
+        WHERE ue.feature_name IS NOT NULL
+          AND ue.event_timestamp::TIMESTAMP >= CURRENT_DATE - INTERVAL '30 days'
+      ),
+      path_sequences AS (
+        SELECT
+          user_id,
+          session_id,
+          STRING_AGG(feature_name, ' -> ' ORDER BY sequence_order) as path_sequence,
+          total_session_events,
+          -- Check if path led to conversion
+          MAX(CASE WHEN event_type = 'purchase' THEN 1 ELSE 0 END) as converted
+        FROM user_paths
+        GROUP BY user_id, session_id, total_session_events
+      ),
+      path_analysis AS (
+        SELECT
+          path_sequence,
+          COUNT(DISTINCT user_id) as unique_users,
+          COUNT(*) as total_occurrences,
+          SUM(converted) as converted_paths,
+          ROUND(AVG(total_session_events), 1) as avg_path_length,
+          -- Calculate conversion rate for this path
+          ROUND(SUM(converted) * 100.0 / COUNT(*), 2) as conversion_rate
+        FROM path_sequences
+        GROUP BY path_sequence
+        HAVING COUNT(*) >= 10  -- Only include paths with at least 10 occurrences
+      )
+      SELECT
+        path_sequence,
+        unique_users,
+        total_occurrences,
+        converted_paths,
+        avg_path_length,
+        conversion_rate,
+        -- Path efficiency score
+        (conversion_rate * 0.6 + (20 - avg_path_length) * 2) as efficiency_score,
+        -- Path classification
+        CASE
+          WHEN conversion_rate >= 15 AND avg_path_length <= 10 THEN 'Optimal Path'
+          WHEN conversion_rate >= 10 AND avg_path_length <= 15 THEN 'Good Path'
+          WHEN conversion_rate >= 5 THEN 'Acceptable Path'
+          WHEN conversion_rate < 5 AND avg_path_length > 20 THEN 'Inefficient Path'
+          ELSE 'Needs Optimization'
+        END as path_quality
+      FROM path_analysis
+      ORDER BY total_occurrences DESC, conversion_rate DESC
+    description: "User journey path analysis with efficiency scoring"
+
+  - name: real_time_metrics
+    sql: |
+      WITH current_sessions AS (
+        SELECT
+          COUNT(DISTINCT session_id) as active_sessions,
+          COUNT(DISTINCT user_id) as active_users,
+          device_type
+        FROM user_sessions
+        WHERE end_time::TIMESTAMP >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
+        GROUP BY device_type
+      ),
+      recent_events AS (
+        SELECT
+          COUNT(*) as events_last_hour,
+          COUNT(DISTINCT user_id) as unique_users_last_hour,
+          COUNT(DISTINCT session_id) as sessions_last_hour,
+          MAX(event_timestamp::TIMESTAMP) as latest_event_time
+        FROM user_events
+        WHERE event_timestamp::TIMESTAMP >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
+      ),
+      conversion_metrics AS (
+        SELECT
+          COUNT(CASE WHEN event_type = 'purchase' THEN 1 END) as purchases_last_hour,
+          COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN user_id END) as converting_users,
+          SUM(CASE WHEN event_type = 'purchase' THEN 1 ELSE 0 END) as revenue_last_hour
+        FROM user_events
+        WHERE event_timestamp::TIMESTAMP >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
+      ),
+      system_health AS (
+        SELECT
+          COUNT(*) as error_events_last_hour,
+          COUNT(DISTINCT user_id) as affected_users
+        FROM user_events
+        WHERE event_timestamp::TIMESTAMP >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
+          AND (event_type = 'error' OR feature_name LIKE '%error%')
+      )
+      SELECT
+        -- Current activity
+        (SELECT SUM(active_sessions) FROM current_sessions) as total_active_sessions,
+        (SELECT SUM(active_users) FROM current_sessions) as total_active_users,
+        -- Recent engagement (using subqueries to avoid grouping issues)
+        (SELECT events_last_hour FROM recent_events) as events_last_hour,
+        (SELECT unique_users_last_hour FROM recent_events) as unique_users_last_hour,
+        (SELECT sessions_last_hour FROM recent_events) as sessions_last_hour,
+        -- Conversion metrics
+        (SELECT purchases_last_hour FROM conversion_metrics) as purchases_last_hour,
+        (SELECT converting_users FROM conversion_metrics) as converting_users_last_hour,
+        (SELECT revenue_last_hour FROM conversion_metrics) as revenue_last_hour,
+        -- Health metrics
+        (SELECT error_events_last_hour FROM system_health) as errors_last_hour,
+        (SELECT affected_users FROM system_health) as users_affected_by_errors,
+        -- Device breakdown
+        cs.device_type,
+        cs.active_sessions as sessions_by_device,
+        cs.active_users as users_by_device,
+        -- Performance indicators
+        CURRENT_TIMESTAMP as metrics_timestamp,
+        ROUND(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - (SELECT latest_event_time FROM recent_events))), 0) as seconds_since_last_event
+      FROM current_sessions cs
+    description: "Real-time product metrics and system health dashboard"
+
+  # Note: Additional views (conversion funnels, A/B testing, feature adoption) will be available
+# when the complete data generation finishes with funnel_events.parquet, ab_tests.parquet,
+# and feature_usage.parquet files

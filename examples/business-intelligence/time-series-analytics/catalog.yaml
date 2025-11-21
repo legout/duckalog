@@ -1,0 +1,381 @@
+version: 1
+
+duckdb:
+  database: time_series_analytics.duckdb
+  install_extensions:
+    - httpfs
+    - parquet
+  pragmas:
+    - "SET memory_limit='2GB'"
+    - "SET threads=4"
+    - "SET timezone='UTC'"
+
+views:
+  # Raw data sources
+  - name: daily_sales
+    source: parquet
+    uri: "examples/business-intelligence/time-series-analytics/data/daily_sales.parquet"
+    description: "Daily sales data with multiple dimensions"
+
+  - name: web_analytics
+    source: parquet
+    uri: "examples/business-intelligence/time-series-analytics/data/web_analytics.parquet"
+    description: "Website traffic and engagement metrics"
+
+  - name: product_metrics
+    source: parquet
+    uri: "examples/business-intelligence/time-series-analytics/data/product_metrics.parquet"
+    description: "Product performance over time"
+
+  - name: operational_metrics
+    source: parquet
+    uri: "examples/business-intelligence/time-series-analytics/data/operational_metrics.parquet"
+    description: "Operational KPIs and performance indicators"
+
+  # Moving Averages Analysis
+  - name: sales_moving_averages
+    sql: |
+      SELECT
+        date,
+        product_id,
+        category,
+        region,
+        sales_amount,
+        units_sold,
+        -- 7-day moving average (simple)
+        AVG(sales_amount) OVER (
+          PARTITION BY product_id, region
+          ORDER BY date
+          ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+        ) as moving_avg_7d,
+        -- 30-day moving average (simple)
+        AVG(sales_amount) OVER (
+          PARTITION BY product_id, region
+          ORDER BY date
+          ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
+        ) as moving_avg_30d,
+        -- 90-day moving average (simple)
+        AVG(sales_amount) OVER (
+          PARTITION BY product_id, region
+          ORDER BY date
+          ROWS BETWEEN 89 PRECEDING AND CURRENT ROW
+        ) as moving_avg_90d,
+        -- Exponential moving average (7-day, alpha=0.3)
+        CASE
+          WHEN LAG(date) OVER (PARTITION BY product_id, region ORDER BY date) = date - INTERVAL '1 day'
+          THEN 0.3 * sales_amount + 0.7 * LAG(moving_avg_7d_exp) OVER (PARTITION BY product_id, region ORDER BY date)
+          ELSE sales_amount
+        END as moving_avg_7d_exp
+      FROM daily_sales
+      ORDER BY product_id, region, date
+    description: "Moving averages analysis with different window sizes"
+
+  # Growth Rate Analysis
+  - name: sales_growth_rates
+    sql: |
+      WITH monthly_sales AS (
+        SELECT
+          DATE_TRUNC('month', date) as month,
+          category,
+          region,
+          SUM(sales_amount) as monthly_sales,
+          COUNT(DISTINCT date) as days_in_month
+        FROM daily_sales
+        GROUP BY DATE_TRUNC('month', date), category, region
+      )
+      SELECT
+        month,
+        category,
+        region,
+        monthly_sales,
+        days_in_month,
+        -- Month-over-Month growth
+        LAG(monthly_sales, 1) OVER (PARTITION BY category, region ORDER BY month) as prev_month_sales,
+        CASE
+          WHEN LAG(monthly_sales, 1) OVER (PARTITION BY category, region ORDER BY month) > 0
+          THEN ROUND((monthly_sales - LAG(monthly_sales, 1) OVER (PARTITION BY category, region ORDER BY month)) /
+               LAG(monthly_sales, 1) OVER (PARTITION BY category, region ORDER BY month) * 100, 2)
+          ELSE NULL
+        END as mom_growth_pct,
+        -- Quarter-over-Quarter growth
+        LAG(monthly_sales, 3) OVER (PARTITION BY category, region ORDER BY month) as prev_quarter_sales,
+        CASE
+          WHEN LAG(monthly_sales, 3) OVER (PARTITION BY category, region ORDER BY month) > 0
+          THEN ROUND((monthly_sales - LAG(monthly_sales, 3) OVER (PARTITION BY category, region ORDER BY month)) /
+               LAG(monthly_sales, 3) OVER (PARTITION BY category, region ORDER BY month) * 100, 2)
+          ELSE NULL
+        END as qoq_growth_pct,
+        -- Year-over-Year growth
+        LAG(monthly_sales, 12) OVER (PARTITION BY category, region ORDER BY month) as prev_year_sales,
+        CASE
+          WHEN LAG(monthly_sales, 12) OVER (PARTITION BY category, region ORDER BY month) > 0
+          THEN ROUND((monthly_sales - LAG(monthly_sales, 12) OVER (PARTITION BY category, region ORDER BY month)) /
+               LAG(monthly_sales, 12) OVER (PARTITION BY category, region ORDER BY month) * 100, 2)
+          ELSE NULL
+        END as yoy_growth_pct
+      FROM monthly_sales
+      ORDER BY category, region, month
+    description: "Comprehensive growth rate analysis (MoM, QoQ, YoY)"
+
+  # Seasonality Analysis
+  - name: sales_seasonal_patterns
+    sql: |
+      WITH monthly_aggregates AS (
+        SELECT
+          EXTRACT(MONTH FROM date) as month,
+          EXTRACT(YEAR FROM date) as year,
+          category,
+          region,
+          SUM(sales_amount) as monthly_sales,
+          AVG(sales_amount) as avg_daily_sales
+        FROM daily_sales
+        GROUP BY EXTRACT(MONTH FROM date), EXTRACT(YEAR FROM date), category, region
+      ),
+      month_averages AS (
+        SELECT
+          month,
+          category,
+          region,
+          AVG(monthly_sales) as avg_monthly_sales,
+          STDDEV(monthly_sales) as stddev_monthly_sales
+        FROM monthly_aggregates
+        GROUP BY month, category, region
+      ),
+      overall_average AS (
+        SELECT
+          category,
+          region,
+          AVG(monthly_sales) as overall_avg_sales
+        FROM monthly_aggregates
+        GROUP BY category, region
+      )
+      SELECT
+        ma.month,
+        ma.category,
+        ma.region,
+        ma.avg_monthly_sales,
+        oa.overall_avg_sales,
+        ma.avg_monthly_sales / oa.overall_avg_sales as seasonal_index,
+        ma.stddev_monthly_sales / oa.overall_avg_sales as seasonal_volatility,
+        CASE
+          WHEN ma.avg_monthly_sales / oa.overall_avg_sales > 1.15 THEN 'Peak Season'
+          WHEN ma.avg_monthly_sales / oa.overall_avg_sales < 0.85 THEN 'Off Season'
+          ELSE 'Normal Season'
+        END as season_type
+      FROM month_averages ma
+      JOIN overall_average oa ON ma.category = oa.category AND ma.region = oa.region
+      ORDER BY ma.category, ma.region, ma.month
+    description: "Seasonal pattern analysis with indices and classification"
+
+  # Trend Analysis using Linear Regression
+  - name: sales_trend_analysis
+    sql: |
+      WITH daily_series AS (
+        SELECT
+          date,
+          category,
+          region,
+          SUM(sales_amount) as daily_sales
+        FROM daily_sales
+        GROUP BY date, category, region
+      ),
+      series_stats AS (
+        SELECT
+          category,
+          region,
+          COUNT(*) as n,
+          AVG(daily_sales) as avg_sales,
+          STDDEV(daily_sales) as stddev_sales,
+          MIN(date) as start_date,
+          MAX(date) as end_date
+        FROM daily_series
+        GROUP BY category, region
+      ),
+      regression_coeffs AS (
+        SELECT
+          ds.category,
+          ds.region,
+          -- Linear regression slope (trend)
+            (SUM((ds.daily_sales - ss.avg_sales) * (EXTRACT(EPOCH FROM ds.date) -
+             AVG(EXTRACT(EPOCH FROM ds.date)) OVER (PARTITION BY ds.category, ds.region))) /
+            SUM(POWER(EXTRACT(EPOCH FROM ds.date) -
+             AVG(EXTRACT(EPOCH FROM ds.date)) OVER (PARTITION BY ds.category, ds.region), 2))) / 86400 as daily_trend,
+          -- R-squared calculation
+            POWER(CORR(ds.daily_sales, EXTRACT(EPOCH FROM ds.date)), 2) as r_squared
+        FROM daily_series ds
+        JOIN series_stats ss ON ds.category = ss.category AND ds.region = ss.region
+        GROUP BY ds.category, ds.region
+      )
+      SELECT
+        rc.category,
+        rc.region,
+        ss.n as data_points,
+        rc.daily_trend as daily_change_amount,
+        rc.daily_trend * 30 as monthly_trend,
+        rc.daily_trend * 365 as annual_trend,
+        ss.avg_sales,
+        (rc.daily_trend / ss.avg_sales) * 100 as trend_percentage,
+        rc.r_squared as trend_strength,
+        CASE
+          WHEN rc.r_squared > 0.7 THEN 'Strong Trend'
+          WHEN rc.r_squared > 0.4 THEN 'Moderate Trend'
+          WHEN rc.r_squared > 0.2 THEN 'Weak Trend'
+          ELSE 'No Clear Trend'
+        END as trend_quality,
+        CASE
+          WHEN rc.daily_trend > 0 THEN 'Increasing'
+          WHEN rc.daily_trend < 0 THEN 'Decreasing'
+          ELSE 'Stable'
+        END as trend_direction
+      FROM regression_coeffs rc
+      JOIN series_stats ss ON rc.category = ss.category AND rc.region = ss.region
+      ORDER BY ABS(rc.daily_trend) DESC
+    description: "Trend analysis using linear regression and trend strength"
+
+  # Web Analytics Time-Series
+  - name: web_analytics_trends
+    sql: |
+      SELECT
+        date,
+        sessions,
+        pageviews,
+        unique_visitors,
+        bounce_rate,
+        avg_session_duration,
+        conversion_rate,
+        -- 7-day moving averages
+        AVG(sessions) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as sessions_7d_avg,
+        AVG(pageviews) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as pageviews_7d_avg,
+        AVG(unique_visitors) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as unique_visitors_7d_avg,
+        AVG(bounce_rate) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as bounce_rate_7d_avg,
+        -- Week-over-week growth
+        (sessions - LAG(sessions, 7) OVER (ORDER BY date)) / LAG(sessions, 7) OVER (ORDER BY date) * 100 as sessions_wow_growth,
+        (unique_visitors - LAG(unique_visitors, 7) OVER (ORDER BY date)) / LAG(unique_visitors, 7) OVER (ORDER BY date) * 100 as visitors_wow_growth,
+        -- Engagement metrics
+        pageviews / NULLIF(sessions, 0) as pages_per_session,
+        pageviews / NULLIF(unique_visitors, 0) as pages_per_visitor
+      FROM web_analytics
+      ORDER BY date
+    description: "Web analytics with moving averages and growth metrics"
+
+  # Simple Forecasting (Moving Average Based)
+  - name: sales_forecast_moving_avg
+    sql: |
+      WITH historical_data AS (
+        SELECT
+          date,
+          category,
+          region,
+          SUM(sales_amount) as daily_sales,
+          AVG(SUM(sales_amount)) OVER (
+            PARTITION BY category, region
+            ORDER BY date
+            ROWS BETWEEN 29 PRECEDING AND CURRENT ROW
+          ) as moving_avg_30d
+        FROM daily_sales
+        WHERE date >= CURRENT_DATE - INTERVAL '180 days'
+        GROUP BY date, category, region
+      ),
+      forecast_base AS (
+        SELECT
+          category,
+          region,
+          moving_avg_30d as base_forecast,
+          -- Simple seasonal adjustment based on recent pattern
+          AVG(CASE WHEN EXTRACT(DAYOFWEEK FROM date) = 1 THEN daily_sales / moving_avg_30d END) as sunday_factor,
+          AVG(CASE WHEN EXTRACT(DAYOFWEEK FROM date) = 2 THEN daily_sales / moving_avg_30d END) as monday_factor,
+          AVG(CASE WHEN EXTRACT(DAYOFWEEK FROM date) = 3 THEN daily_sales / moving_avg_30d END) as tuesday_factor,
+          AVG(CASE WHEN EXTRACT(DAYOFWEEK FROM date) = 4 THEN daily_sales / moving_avg_30d END) as wednesday_factor,
+          AVG(CASE WHEN EXTRACT(DAYOFWEEK FROM date) = 5 THEN daily_sales / moving_avg_30d END) as thursday_factor,
+          AVG(CASE WHEN EXTRACT(DAYOFWEEK FROM date) = 6 THEN daily_sales / moving_avg_30d END) as friday_factor,
+          AVG(CASE WHEN EXTRACT(DAYOFWEEK FROM date) = 7 THEN daily_sales / moving_avg_30d END) as saturday_factor
+        FROM historical_data
+        GROUP BY category, region, moving_avg_30d
+      ),
+      forecast_dates AS (
+        SELECT
+          generate_series(
+            CURRENT_DATE + INTERVAL '1 day',
+            CURRENT_DATE + INTERVAL '30 days',
+            INTERVAL '1 day'
+          )::DATE as forecast_date
+      )
+      SELECT
+        fd.forecast_date as date,
+        fb.category,
+        fb.region,
+        fb.base_forecast *
+        CASE EXTRACT(DAYOFWEEK FROM fd.forecast_date)
+          WHEN 0 THEN fb.sunday_factor
+          WHEN 1 THEN fb.monday_factor
+          WHEN 2 THEN fb.tuesday_factor
+          WHEN 3 THEN fb.wednesday_factor
+          WHEN 4 THEN fb.thursday_factor
+          WHEN 5 THEN fb.friday_factor
+          WHEN 6 THEN fb.saturday_factor
+          ELSE 1.0
+        END as forecast_sales,
+        'Moving Average + Seasonal' as forecast_method,
+        '30-day moving average with day-of-week seasonal adjustment' as forecast_description
+      FROM forecast_dates fd
+      CROSS JOIN forecast_base fb
+      ORDER BY fb.category, fb.region, fd.forecast_date
+    description: "30-day sales forecast using moving averages and seasonal adjustments"
+
+  # Period-over-Period Analysis Template
+  - name: period_comparison_analysis
+    sql: |
+      WITH daily_aggregated AS (
+        SELECT
+          date,
+          category,
+          region,
+          SUM(sales_amount) as daily_sales,
+          SUM(units_sold) as daily_units
+        FROM daily_sales
+        GROUP BY date, category, region
+      ),
+      period_metrics AS (
+        SELECT
+          date,
+          category,
+          region,
+          daily_sales,
+          daily_units,
+          -- Previous day
+          LAG(daily_sales, 1) OVER (PARTITION BY category, region ORDER BY date) as prev_day_sales,
+          -- Previous week (same weekday)
+          LAG(daily_sales, 7) OVER (PARTITION BY category, region ORDER BY date) as prev_week_sales,
+          -- Previous month (same day of month)
+          LAG(daily_sales, 30) OVER (PARTITION BY category, region ORDER BY date) as prev_month_sales,
+          -- Previous year (same date)
+          LAG(daily_sales, 365) OVER (PARTITION BY category, region ORDER BY date) as prev_year_sales
+        FROM daily_aggregated
+      )
+      SELECT
+        date,
+        category,
+        region,
+        daily_sales,
+        daily_units,
+        -- Day-over-Day comparison
+        ROUND((daily_sales - prev_day_sales) / NULLIF(prev_day_sales, 0) * 100, 2) as dod_growth_pct,
+        -- Week-over-Week comparison
+        ROUND((daily_sales - prev_week_sales) / NULLIF(prev_week_sales, 0) * 100, 2) as wow_growth_pct,
+        -- Month-over-Month comparison
+        ROUND((daily_sales - prev_month_sales) / NULLIF(prev_month_sales, 0) * 100, 2) as mom_growth_pct,
+        -- Year-over-Year comparison
+        ROUND((daily_sales - prev_year_sales) / NULLIF(prev_year_sales, 0) * 100, 2) as yoy_growth_pct,
+        -- Performance indicators
+        CASE
+          WHEN prev_day_sales > 0 AND daily_sales > prev_day_sales * 1.1 THEN 'Strong Daily Performance'
+          WHEN prev_week_sales > 0 AND daily_sales > prev_week_sales * 1.15 THEN 'Strong Weekly Performance'
+          WHEN prev_month_sales > 0 AND daily_sales > prev_month_sales * 1.2 THEN 'Strong Monthly Performance'
+          WHEN prev_year_sales > 0 AND daily_sales > prev_year_sales * 1.25 THEN 'Strong Annual Performance'
+          ELSE 'Normal Performance'
+        END as performance_indicator
+      FROM period_metrics
+      WHERE prev_day_sales IS NOT NULL OR prev_week_sales IS NOT NULL
+            OR prev_month_sales IS NOT NULL OR prev_year_sales IS NOT NULL
+      ORDER BY category, region, date DESC
+    description: "Comprehensive period-over-period analysis with performance indicators"

@@ -1,0 +1,250 @@
+version: 1
+
+duckdb:
+  database: customer_analytics.duckdb
+  install_extensions:
+    - httpfs
+    - parquet
+  pragmas:
+    - "SET memory_limit='2GB'"
+    - "SET threads=4"
+    - "SET timezone='UTC'"
+
+views:
+  # Raw data sources
+  - name: customers
+    source: parquet
+    uri: "examples/business-intelligence/customer-analytics/data/customers.parquet"
+    description: "Customer profiles and acquisition information"
+
+  - name: orders
+    source: parquet
+    uri: "examples/business-intelligence/customer-analytics/data/orders.parquet"
+    description: "Customer orders and transactions"
+
+  - name: events
+    source: parquet
+    uri: "examples/business-intelligence/customer-analytics/data/events.parquet"
+    description: "User engagement events and activities"
+
+  - name: subscriptions
+    source: parquet
+    uri: "examples/business-intelligence/customer-analytics/data/subscriptions.parquet"
+    description: "Subscription data for recurring revenue"
+
+  # Basic customer metrics
+  - name: customer_overview
+    sql: |
+      SELECT
+        COUNT(*) as total_customers,
+        COUNT(DISTINCT c.geographic_region) as regions,
+        COUNT(DISTINCT c.acquisition_channel) as acquisition_channels,
+        COUNT(DISTINCT c.initial_plan) as plan_types,
+        MIN(c.signup_date) as earliest_signup,
+        MAX(c.signup_date) as latest_signup,
+        AVG(CURRENT_DATE - c.signup_date) as avg_customer_age_days
+      FROM customers c
+    description: "Basic customer metrics and KPIs"
+
+  # Monthly active customers
+  - name: monthly_active_customers
+    sql: |
+      SELECT
+        DATE_TRUNC('month', event_date) as month,
+        COUNT(DISTINCT customer_id) as active_customers
+      FROM events
+      WHERE event_type IN ('login', 'purchase', 'feature_usage')
+      GROUP BY DATE_TRUNC('month', event_date)
+      ORDER BY month DESC
+    description: "Monthly active customer counts"
+
+  # Revenue metrics
+  - name: monthly_revenue
+    sql: |
+      SELECT
+        DATE_TRUNC('month', order_date) as month,
+        SUM(order_value) as total_revenue,
+        COUNT(DISTINCT customer_id) as paying_customers,
+        AVG(order_value) as avg_order_value,
+        COUNT(order_id) as total_orders
+      FROM orders
+      GROUP BY DATE_TRUNC('month', order_date)
+      ORDER BY month DESC
+    description: "Monthly revenue breakdown"
+
+  # Customer cohorts with retention tracking
+  - name: customer_cohorts
+    sql: |
+      WITH customer_cohorts AS (
+        SELECT
+          customer_id,
+          DATE_TRUNC('month', signup_date) as cohort_month
+        FROM customers
+      ),
+      cohort_activity AS (
+        SELECT
+          cc.customer_id,
+          cc.cohort_month,
+          DATE_TRUNC('month', e.event_date) as activity_month,
+          (EXTRACT(YEAR FROM DATE_TRUNC('month', e.event_date)) - EXTRACT(YEAR FROM cc.cohort_month)) * 12 +
+      (EXTRACT(MONTH FROM DATE_TRUNC('month', e.event_date)) - EXTRACT(MONTH FROM cc.cohort_month)) as period_number
+        FROM customer_cohorts cc
+        JOIN events e ON cc.customer_id = e.customer_id
+        WHERE e.event_type IN ('login', 'purchase')
+      )
+      SELECT
+        cohort_month,
+        COUNT(DISTINCT customer_id) as cohort_size,
+        period_number,
+        COUNT(DISTINCT customer_id) as active_customers,
+        ROUND(COUNT(DISTINCT customer_id) * 100.0 / FIRST_VALUE(COUNT(DISTINCT customer_id)) OVER (PARTITION BY cohort_month ORDER BY period_number), 2) as retention_rate
+      FROM cohort_activity
+      GROUP BY cohort_month, period_number
+      ORDER BY cohort_month, period_number
+    description: "Customer cohorts by signup month with retention tracking"
+
+  # Customer Lifetime Value (LTV) analysis
+  - name: customer_lifetime_value
+    sql: |
+      WITH customer_revenue AS (
+        SELECT
+          o.customer_id,
+          c.signup_date,
+          MIN(o.order_date) as first_purchase_date,
+          MAX(o.order_date) as last_purchase_date,
+          COUNT(o.order_id) as total_orders,
+          SUM(o.order_value) as total_revenue,
+          AVG(o.order_value) as avg_order_value,
+          COALESCE(CURRENT_DATE - MAX(o.order_date), CURRENT_DATE - c.signup_date) as customer_age_days
+        FROM customers c
+        LEFT JOIN orders o ON c.customer_id = o.customer_id
+        GROUP BY o.customer_id, c.signup_date
+      )
+      SELECT
+        customer_id,
+        signup_date,
+        first_purchase_date,
+        last_purchase_date,
+        total_orders,
+        total_revenue as lifetime_value,
+        avg_order_value,
+        customer_age_days,
+        CASE
+          WHEN customer_age_days > 0 THEN ROUND(total_revenue * 365.0 / customer_age_days, 2)
+          ELSE 0
+        END as annualized_value,
+        CASE
+          WHEN total_orders > 0 THEN ROUND(total_revenue / total_orders, 2)
+          ELSE 0
+        END as revenue_per_order
+      FROM customer_revenue
+      ORDER BY lifetime_value DESC
+    description: "Customer lifetime value calculations based on historical data"
+
+  # Customer RFM Analysis
+  - name: customer_rfm_analysis
+    sql: |
+      WITH customer_rfm AS (
+        SELECT
+          o.customer_id,
+          MAX(o.order_date) as last_order_date,
+          CURRENT_DATE - MAX(o.order_date) as recency_days,
+          COUNT(o.order_id) as frequency,
+          SUM(o.order_value) as monetary_value
+        FROM orders o
+        GROUP BY o.customer_id
+      ),
+      rfm_scores AS (
+        SELECT
+          customer_id,
+          recency_days,
+          frequency,
+          monetary_value,
+          NTILE(5) OVER (ORDER BY recency_days DESC) as recency_score,
+          NTILE(5) OVER (ORDER BY frequency) as frequency_score,
+          NTILE(5) OVER (ORDER BY monetary_value) as monetary_score
+        FROM customer_rfm
+      )
+      SELECT
+        customer_id,
+        recency_days,
+        frequency,
+        monetary_value,
+        recency_score,
+        frequency_score,
+        monetary_score,
+        (recency_score + frequency_score + monetary_score) as rfm_score_total,
+        CASE
+          WHEN (recency_score + frequency_score + monetary_score) >= 13 THEN 'Champions'
+          WHEN (recency_score + frequency_score + monetary_score) >= 10 THEN 'Loyal Customers'
+          WHEN (recency_score + frequency_score + monetary_score) >= 8 THEN 'Potential Loyalists'
+          WHEN (recency_score >= 4) AND (frequency_score <= 2) THEN 'New Customers'
+          WHEN (recency_score <= 2) AND (frequency_score >= 4) THEN 'At Risk'
+          WHEN (recency_score <= 2) AND (frequency_score <= 2) THEN 'Lost'
+          ELSE 'Others'
+        END as rfm_segment
+      FROM rfm_scores
+      ORDER BY rfm_score_total DESC
+    description: "RFM (Recency, Frequency, Monetary) customer segmentation"
+
+  # Monthly churn analysis
+  - name: monthly_churn_analysis
+    sql: |
+      WITH monthly_customers AS (
+        SELECT
+          DATE_TRUNC('month', event_date) as month,
+          COUNT(DISTINCT customer_id) as active_customers
+        FROM events
+        WHERE event_type IN ('login', 'purchase')
+        GROUP BY DATE_TRUNC('month', event_date)
+      )
+      SELECT
+        mc.month,
+        mc.active_customers,
+        LAG(mc.active_customers, 1) OVER (ORDER BY mc.month) as prev_month_customers,
+        CASE
+          WHEN LAG(mc.active_customers, 1) OVER (ORDER BY mc.month) > 0
+          THEN ROUND((1.0 - (mc.active_customers * 1.0 / LAG(mc.active_customers, 1) OVER (ORDER BY mc.month))) * 100, 2)
+          ELSE NULL
+        END as churn_rate_pct,
+        CASE
+          WHEN LAG(mc.active_customers, 1) OVER (ORDER BY mc.month) > 0
+          THEN ROUND((mc.active_customers * 1.0 / LAG(mc.active_customers, 1) OVER (ORDER BY mc.month)) * 100, 2)
+          ELSE NULL
+        END as retention_rate_pct
+      FROM monthly_customers mc
+      ORDER BY mc.month DESC
+    description: "Monthly customer churn and retention analysis"
+
+  # Customer acquisition channel performance
+  - name: acquisition_channel_performance
+    sql: |
+      SELECT
+        c.acquisition_channel,
+        COUNT(DISTINCT c.customer_id) as total_customers,
+        COUNT(DISTINCT o.customer_id) as paying_customers,
+        ROUND(COUNT(DISTINCT o.customer_id) * 100.0 / COUNT(DISTINCT c.customer_id), 2) as conversion_rate_pct,
+        SUM(o.order_value) as total_revenue,
+        AVG(o.order_value) as avg_order_value,
+        CURRENT_DATE - MIN(c.signup_date) as channel_age_days
+      FROM customers c
+      LEFT JOIN orders o ON c.customer_id = o.customer_id
+      GROUP BY c.acquisition_channel
+      ORDER BY total_revenue DESC
+    description: "Customer acquisition channel performance metrics"
+
+  # Subscription metrics
+  - name: subscription_metrics
+    sql: |
+      SELECT
+        subscription_tier,
+        COUNT(*) as active_subscriptions,
+        SUM(monthly_price) as monthly_recurring_revenue,
+        AVG(monthly_price) as avg_subscription_value,
+        COUNT(DISTINCT customer_id) as unique_customers,
+        ROUND(AVG(CURRENT_DATE - start_date), 0) as avg_subscription_age_days
+      FROM subscriptions
+      WHERE end_date IS NULL OR end_date > CURRENT_DATE
+      GROUP BY subscription_tier
+      ORDER BY monthly_recurring_revenue DESC
+    description: "Key subscription business metrics"
