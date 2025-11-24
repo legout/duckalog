@@ -1,0 +1,258 @@
+name: Build Duckalog Catalog
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "configs/**"
+      - "data/**"
+      - "scripts/**"
+      - ".github/workflows/build-catalog.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "configs/**"
+      - "data/**"
+      - "scripts/**"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      force_rebuild:
+        description: "Force full rebuild"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  validate-configs:
+    name: Validate Configurations
+    runs-on: ubuntu-latest
+    outputs:
+      config-hash: ${{ steps.hash.outputs.hash }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install duckalog pyyaml jsonschema
+
+      - name: Validate configurations
+        run: |
+          python scripts/validate-configs.py --environment ${{ github.event.inputs.environment || 'dev' }}
+
+      - name: Generate config hash
+        id: hash
+        run: |
+          echo "hash=$(find configs data -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+
+  test-data-quality:
+    name: Test Data Quality
+    runs-on: ubuntu-latest
+    needs: validate-configs
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install duckalog pandas pyarrow
+
+      - name: Test data quality
+        run: |
+          python scripts/test-data-quality.py --environment ${{ github.event.inputs.environment || 'dev' }}
+
+  build-catalog:
+    name: Build Catalog
+    runs-on: ubuntu-latest
+    needs: [validate-configs, test-data-quality]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            CONFIG_HASH=${{ needs.validate-configs.outputs.config-hash }}
+            ENVIRONMENT=${{ github.event.inputs.environment || 'staging' }}
+            FORCE_REBUILD=${{ github.event.inputs.force_rebuild || false }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-catalog
+    if: github.ref == 'refs/heads/main' && github.event.inputs.environment != 'prod'
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          python scripts/deploy.py \
+            --environment staging \
+            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --database-url ${{ secrets.STAGING_DATABASE_URL }}
+
+      - name: Run smoke tests
+        run: |
+          python scripts/smoke-tests.py --environment staging
+
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: "#data-deployments"
+          text: |
+            🚀 Staging deployment ${{ job.status }}
+            Commit: ${{ github.sha }}
+            Branch: ${{ github.ref_name }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-catalog
+    if: github.event.inputs.environment == 'prod'
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          python scripts/deploy.py \
+            --environment production \
+            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --database-url ${{ secrets.PROD_DATABASE_URL }}
+
+      - name: Run production smoke tests
+        run: |
+          python scripts/smoke-tests.py --environment production
+
+      - name: Create deployment tag
+        if: success()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a "deploy-${{ github.sha }}" -m "Production deployment ${{ github.sha }}"
+          git push origin "deploy-${{ github.sha }}"
+
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: "#data-deployments"
+          text: |
+            🚀 Production deployment ${{ job.status }}
+            Commit: ${{ github.sha }}
+            Branch: ${{ github.ref_name }}
+            Tag: deploy-${{ github.sha }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  performance-regression-test:
+    name: Performance Regression Test
+    runs-on: ubuntu-latest
+    needs: build-catalog
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install duckalog pandas pyarrow matplotlib
+
+      - name: Run performance tests
+        run: |
+          python scripts/performance-tests.py \
+            --baseline ${{ needs.build-catalog.outputs.baseline-hash }} \
+            --current ${{ github.sha }}
+
+      - name: Upload performance report
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-report
+          path: reports/performance-*.html
+
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+
+    steps:
+      - name: Cleanup temporary resources
+        run: |
+          echo "Cleaning up temporary files and resources"
+          # Add any cleanup logic here

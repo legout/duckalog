@@ -1,0 +1,27 @@
+# Duckalog CI/CD Requirements
+# Core dependencies for Duckalog catalog management
+
+# Duckalog core library
+duckalog>=0.2.0
+
+# YAML configuration support
+PyYAML>=6.0
+
+# Data processing libraries
+pandas>=2.0.0
+pyarrow>=12.0.0
+
+# Database connectivity
+duckdb>=0.9.0
+
+# Performance monitoring
+psutil>=5.9.0
+
+# JSON schema validation for configurations
+jsonschema>=4.17.0
+
+# HTTP client for notifications
+requests>=2.28.0
+
+# Progress bars for long-running operations
+tqdm>=4.64.0

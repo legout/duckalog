@@ -5,29 +5,36 @@ from __future__ import annotations
 import io
 import json
 import os
-import tempfile
 import shutil
+import tempfile
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-import uuid
 
 from starlette.applications import Starlette
+from starlette.background import BackgroundTasks
+from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.routing import Route
-from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
-from starlette.background import BackgroundTasks
 
 from .config import Config, ConfigError, load_config
 from .engine import EngineError, build_catalog
 from .logging_utils import log_error, log_info
 
+
 # Background task functions
-def _execute_query_task(config: Config, query: str, result_store: Dict[str, Any]) -> None:
+def _execute_query_task(
+    config: Config,
+    query: str,
+    result_store: Dict[str, Any],
+    semantic_model_name: Optional[str] = None,
+) -> None:
     """Background task for executing DuckDB queries."""
     try:
         import duckdb
+
         db_path = config.duckdb.database
         conn = duckdb.connect(db_path)
 
@@ -39,13 +46,61 @@ def _execute_query_task(config: Config, query: str, result_store: Dict[str, Any]
                 columns = [desc[0] for desc in query_result.description]
                 data = [dict(zip(columns, row)) for row in rows]
             else:
+                # Still get column info even for empty results
+                columns = [desc[0] for desc in query_result.description]
                 data = []
 
-            result_store["status"] = "completed"
+            # Apply semantic labels if semantic model context is provided
+            display_columns = columns[:]
+            semantic_info = {}
+
+            if semantic_model_name and config.semantic_models:
+                # Find the semantic model
+                semantic_model = None
+                for model in config.semantic_models:
+                    if model.name == semantic_model_name:
+                        semantic_model = model
+                        break
+
+                if semantic_model:
+                    # Create a mapping of expression/field to semantic label
+                    field_to_label = {}
+
+                    # Map dimensions
+                    for dimension in semantic_model.dimensions:
+                        field_to_label[dimension.expression] = (
+                            dimension.label or dimension.name
+                        )
+                        field_to_label[dimension.name] = (
+                            dimension.label or dimension.name
+                        )
+
+                    # Map measures
+                    for measure in semantic_model.measures:
+                        field_to_label[measure.expression] = (
+                            measure.label or measure.name
+                        )
+                        field_to_label[measure.name] = measure.label or measure.name
+
+                    # Apply labels to columns
+                    display_columns = [field_to_label.get(col, col) for col in columns]
+
+                    # Store semantic info for the frontend
+                    semantic_info = {
+                        "model_name": semantic_model.name,
+                        "model_label": semantic_model.label or semantic_model.name,
+                        "field_mappings": field_to_label,
+                    }
+
             result_store["status"] = "completed"
             result_store["success"] = True
             result_store["data"] = data
             result_store["row_count"] = len(data)
+            result_store["columns"] = columns  # Original column names for data access
+            result_store["display_columns"] = (
+                display_columns  # Semantic labels for display
+            )
+            result_store["semantic_info"] = semantic_info  # Context info for frontend
 
         finally:
             conn.close()
@@ -56,10 +111,13 @@ def _execute_query_task(config: Config, query: str, result_store: Dict[str, Any]
         result_store["error"] = str(exc)
 
 
-def _export_data_task(config: Config, query: str, format_type: str, result_store: Dict[str, Any]) -> None:
+def _export_data_task(
+    config: Config, query: str, format_type: str, result_store: Dict[str, Any]
+) -> None:
     """Background task for exporting DuckDB data."""
     try:
         import duckdb
+
         db_path = config.duckdb.database
         conn = duckdb.connect(db_path)
 
@@ -101,6 +159,7 @@ def _rebuild_catalog_task(config: Config, result_store: Dict[str, Any]) -> None:
         result_store["status"] = "failed"
         result_store["success"] = False
         result_store["error"] = str(exc)
+
 
 try:
     from datastar_py import ServerSentEventGenerator as SSE
@@ -224,7 +283,9 @@ def _get_cors_origins() -> List[str]:
     custom_origins = os.getenv("DUCKALOG_CORS_ORIGINS")
     if custom_origins:
         # Split comma-separated origins and strip whitespace
-        return [origin.strip() for origin in custom_origins.split(",") if origin.strip()]
+        return [
+            origin.strip() for origin in custom_origins.split(",") if origin.strip()
+        ]
 
     # Default to secure localhost-only origins
     return [
@@ -351,7 +412,9 @@ class UIServer:
         # Mount static files for bundled assets
         static_dir = Path(__file__).parent / "static"
         if static_dir.exists():
-            self.app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+            self.app.mount(
+                "/static", StaticFiles(directory=str(static_dir)), name="static"
+            )
 
         # Apply CORS middleware
         self.app.add_middleware(
@@ -372,17 +435,17 @@ class UIServer:
         try:
             # Detect file format by file extension and content
             if self.config_path.exists():
-                if self.config_path.suffix.lower() in ['.yaml', '.yml']:
-                    self._config_format = 'yaml'
-                elif self.config_path.suffix.lower() == '.json':
-                    self._config_format = 'json'
+                if self.config_path.suffix.lower() in [".yaml", ".yml"]:
+                    self._config_format = "yaml"
+                elif self.config_path.suffix.lower() == ".json":
+                    self._config_format = "json"
                 else:
                     # Try to detect by content
                     content = self.config_path.read_text().strip()
-                    if content.startswith('{') or content.startswith('['):
-                        self._config_format = 'json'
+                    if content.startswith("{") or content.startswith("["):
+                        self._config_format = "json"
                     else:
-                        self._config_format = 'yaml'
+                        self._config_format = "yaml"
 
             self.config = load_config(str(self.config_path))
         except ConfigError as exc:
@@ -455,21 +518,22 @@ class UIServer:
     def _write_config_preserving_format(self, config: Config) -> None:
         """Write configuration to file, preserving original format."""
         try:
-            if self._config_format == 'yaml':
+            if self._config_format == "yaml":
                 # Try to preserve YAML formatting using ruamel.yaml if available
                 try:
                     from ruamel.yaml import YAML
+
                     yaml = YAML()
                     yaml.preserve_quotes = True
                     yaml.width = 4096  # Prevent line wrapping
 
                     # Convert to dict for YAML serialization
-                    config_dict = config.model_dump(mode='json')
+                    config_dict = config.model_dump(mode="json")
 
                     # Write to temporary YAML file first
                     temp_path = self.config_path.with_suffix(".tmp")
                     try:
-                        with open(temp_path, 'w') as f:
+                        with open(temp_path, "w") as f:
                             yaml.dump(config_dict, f)
 
                         # Atomic move
@@ -484,8 +548,10 @@ class UIServer:
                     # Fallback to basic YAML if ruamel.yaml not available
                     import yaml
 
-                    config_dict = config.model_dump(mode='json')
-                    config_yaml = yaml.dump(config_dict, default_flow_style=False, sort_keys=False)
+                    config_dict = config.model_dump(mode="json")
+                    config_yaml = yaml.dump(
+                        config_dict, default_flow_style=False, sort_keys=False
+                    )
 
                     # Use the original atomic write method
                     self._write_config_atomic(config_yaml)
@@ -496,7 +562,9 @@ class UIServer:
                 self._write_config_atomic(config_json)
 
         except Exception as exc:
-            raise UIError(f"Failed to write config in {self._config_format} format: {exc}")
+            raise UIError(
+                f"Failed to write config in {self._config_format} format: {exc}"
+            )
 
     def _write_config_atomic(self, config_data: str) -> None:
         """Atomically write configuration to file."""
@@ -735,7 +803,9 @@ class UIServer:
                 {"error": f"Failed to get schema: {exc}"}, status_code=500
             )
 
-    async def _rebuild_catalog(self, request: Request, background_tasks: BackgroundTasks) -> Response:
+    async def _rebuild_catalog(
+        self, request: Request, background_tasks: BackgroundTasks
+    ) -> Response:
         """Rebuild the DuckDB catalog from current configuration."""
         if not self.config:
             return JSONResponse({"error": "No configuration loaded"}, status_code=500)
@@ -759,9 +829,13 @@ class UIServer:
 
         except Exception as exc:
             log_error("Failed to rebuild catalog", error=str(exc))
-            return JSONResponse({"error": f"Failed to rebuild catalog: {exc}"}, status_code=500)
+            return JSONResponse(
+                {"error": f"Failed to rebuild catalog: {exc}"}, status_code=500
+            )
 
-    async def _execute_query(self, request: Request, background_tasks: BackgroundTasks) -> Response:
+    async def _execute_query(
+        self, request: Request, background_tasks: BackgroundTasks
+    ) -> Response:
         """Execute a SQL query and return results."""
         if not self.config:
             return JSONResponse({"error": "No configuration loaded"}, status_code=500)
@@ -773,6 +847,9 @@ class UIServer:
 
             query = body["query"]
             limit = body.get("limit", 100)
+            semantic_model_name = body.get(
+                "semantic_model"
+            )  # Optional semantic model context
 
             # Validate query is read-only and single-statement
             try:
@@ -792,7 +869,13 @@ class UIServer:
             self._task_results[task_id] = result_store
 
             # Add background task
-            background_tasks.add_task(_execute_query_task, self.config, limited_query, result_store)
+            background_tasks.add_task(
+                _execute_query_task,
+                self.config,
+                limited_query,
+                result_store,
+                semantic_model_name,
+            )
 
             # Return task ID for client to poll results
             return JSONResponse({"task_id": task_id, "status": "pending"})
@@ -827,7 +910,10 @@ class UIServer:
                     elif format_type == "excel":
                         return self._export_excel(data, columns)
                     else:
-                        return JSONResponse({"error": f"Unsupported format: {format_type}"}, status_code=400)
+                        return JSONResponse(
+                            {"error": f"Unsupported format: {format_type}"},
+                            status_code=400,
+                        )
 
                 # Regular query task, return JSON response with data
                 return JSONResponse(result)
@@ -835,11 +921,15 @@ class UIServer:
                 return JSONResponse(result)
             else:
                 # Task still pending or in progress
-                return JSONResponse({"task_id": task_id, "status": result.get("status", "pending")})
+                return JSONResponse(
+                    {"task_id": task_id, "status": result.get("status", "pending")}
+                )
 
         except Exception as exc:
             log_error("Failed to get task result", error=str(exc))
-            return JSONResponse({"error": f"Failed to get task result: {exc}"}, status_code=500)
+            return JSONResponse(
+                {"error": f"Failed to get task result: {exc}"}, status_code=500
+            )
 
     def _get_semantic_models(self, request: Request) -> Response:
         """Get all semantic models from configuration."""
@@ -864,7 +954,9 @@ class UIServer:
             return JSONResponse({"semantic_models": semantic_models})
         except Exception as exc:
             log_error("Failed to get semantic models", error=str(exc))
-            return JSONResponse({"error": f"Failed to get semantic models: {exc}"}, status_code=500)
+            return JSONResponse(
+                {"error": f"Failed to get semantic models: {exc}"}, status_code=500
+            )
 
     def _get_semantic_model(self, request: Request) -> Response:
         """Get details of a specific semantic model."""
@@ -874,7 +966,9 @@ class UIServer:
         try:
             model_name = request.path_params.get("model_name")
             if not model_name:
-                return JSONResponse({"error": "Model name is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Model name is required"}, status_code=400
+                )
 
             # Find the semantic model by name
             target_model = None
@@ -884,16 +978,23 @@ class UIServer:
                     break
 
             if not target_model:
-                return JSONResponse({"error": f"Semantic model '{model_name}' not found"}, status_code=404)
+                return JSONResponse(
+                    {"error": f"Semantic model '{model_name}' not found"},
+                    status_code=404,
+                )
 
             # Return full model details
             model_data = target_model.model_dump(mode="json")
             return JSONResponse({"semantic_model": model_data})
         except Exception as exc:
             log_error(f"Failed to get semantic model {model_name}", error=str(exc))
-            return JSONResponse({"error": f"Failed to get semantic model: {exc}"}, status_code=500)
+            return JSONResponse(
+                {"error": f"Failed to get semantic model: {exc}"}, status_code=500
+            )
 
-    async def _export_data(self, request: Request, background_tasks: BackgroundTasks) -> Response:
+    async def _export_data(
+        self, request: Request, background_tasks: BackgroundTasks
+    ) -> Response:
         """Export query results in various formats."""
         if not self.config:
             return JSONResponse({"error": "No configuration loaded"}, status_code=500)
@@ -913,12 +1014,16 @@ class UIServer:
                 try:
                     export_query = _validate_read_only_query(query)
                 except ValueError as exc:
-                    return JSONResponse({"error": f"Invalid query: {exc}"}, status_code=400)
+                    return JSONResponse(
+                        {"error": f"Invalid query: {exc}"}, status_code=400
+                    )
             elif view_name:
                 # Validate view name exists and create safe identifier
                 view_names = {view.name for view in self.config.views}
                 if view_name not in view_names:
-                    return JSONResponse({"error": f"View '{view_name}' not found"}, status_code=404)
+                    return JSONResponse(
+                        {"error": f"View '{view_name}' not found"}, status_code=404
+                    )
                 safe_view_name = _safe_identifier(view_name)
                 export_query = f"SELECT * FROM {safe_view_name}"
             else:
@@ -934,14 +1039,22 @@ class UIServer:
 
             # Generate task ID and create result store
             task_id = str(uuid.uuid4())
-            result_store = {"task_id": task_id, "status": "pending", "format": format_type}
+            result_store = {
+                "task_id": task_id,
+                "status": "pending",
+                "format": format_type,
+            }
             self._task_results[task_id] = result_store
 
             # Add background task
-            background_tasks.add_task(_export_data_task, self.config, export_query, format_type, result_store)
+            background_tasks.add_task(
+                _export_data_task, self.config, export_query, format_type, result_store
+            )
 
             # Return task ID for client to poll results
-            return JSONResponse({"task_id": task_id, "status": "pending", "format": format_type})
+            return JSONResponse(
+                {"task_id": task_id, "status": "pending", "format": format_type}
+            )
 
         except Exception as exc:
             log_error("Failed to export data", error=str(exc))
@@ -949,7 +1062,9 @@ class UIServer:
                 {"error": f"Failed to export data: {exc}"}, status_code=500
             )
 
-    def _export_csv(self, data: List[Dict[str, Any]], columns: List[str] = None) -> Response:
+    def _export_csv(
+        self, data: List[Dict[str, Any]], columns: List[str] = None
+    ) -> Response:
         """Export data as CSV."""
         import csv
 
@@ -976,7 +1091,9 @@ class UIServer:
             headers={"Content-Disposition": "attachment; filename=export.csv"},
         )
 
-    def _export_parquet(self, data: List[Dict[str, Any]], columns: List[str] = None) -> Response:
+    def _export_parquet(
+        self, data: List[Dict[str, Any]], columns: List[str] = None
+    ) -> Response:
         """Export data as Parquet."""
         try:
             import pyarrow as pa
@@ -991,7 +1108,9 @@ class UIServer:
             if columns:
                 # Create empty table with proper schema
                 schema = pa.schema([(col, pa.string()) for col in columns])
-                table = pa.Table.from_pydict({col: [] for col in columns}, schema=schema)
+                table = pa.Table.from_pydict(
+                    {col: [] for col in columns}, schema=schema
+                )
             else:
                 # No column information, create truly empty table
                 table = pa.table([])
@@ -1017,7 +1136,9 @@ class UIServer:
             headers={"Content-Disposition": "attachment; filename=export.parquet"},
         )
 
-    def _export_excel(self, data: List[Dict[str, Any]], columns: List[str] = None) -> Response:
+    def _export_excel(
+        self, data: List[Dict[str, Any]], columns: List[str] = None
+    ) -> Response:
         """Export data as Excel."""
         try:
             import pandas as pd
@@ -1114,13 +1235,13 @@ class UIServer:
             </head>
             <body data-signals="{{{{views: {json.dumps(views_data)}, semanticModels: {json.dumps(semantic_models_data)}, selectedView: '', selectedSemanticModel: null, semanticModelDetails: null, query: '', queryResults: null, message: '', messageType: 'info'}}}}">
                 <h1>Duckalog Catalog Dashboard</h1>
-                
+
                 <div data-signals="message">
                     <div data-show="$message" class="$messageType" style="padding: 10px; margin: 10px 0; border-radius: 4px;">
                         $message
                     </div>
                 </div>
-                
+
                 <div>
                     <h2>Views ($views.length)</h2>
                     <table>
@@ -1175,6 +1296,10 @@ class UIServer:
                         <p><strong>Description:</strong> $semanticModelDetails.description</p>
                         <p><strong>Base View:</strong> $semanticModelDetails.base_view</p>
 
+                        <div style="margin: 10px 0;">
+                            <button data-on-click="selectedView = semanticModelDetails.base_view; query = 'SELECT * FROM ' + semanticModelDetails.base_view + ' LIMIT 100'; selectedSemanticModel = semanticModelDetails.name; message = 'Querying ' + semanticModelDetails.label + ' with semantic context'; messageType = 'success'" style="background-color: #4CAF50; color: white;">Query with Semantic Labels</button>
+                        </div>
+
                         <div data-show="$semanticModelDetails.dimensions.length > 0">
                             <h4>Dimensions ($semanticModelDetails.dimensions.length)</h4>
                             <table>
@@ -1211,7 +1336,7 @@ class UIServer:
                             </table>
                         </div>
 
-                        <button data-on-click="semanticModelDetails = null; message = 'Semantic model details closed'; messageType = 'info'">Close Details</button>
+                        <button data-on-click="semanticModelDetails = null; selectedSemanticModel = null; message = 'Semantic model details closed'; messageType = 'info'">Close Details</button>
                     </div>
                 </div>
 
@@ -1219,36 +1344,39 @@ class UIServer:
                     <h2>Query Runner</h2>
                     <textarea data-bind="query" placeholder="Enter SQL query..."></textarea>
                     <br>
-                    <button data-on-click="/api/query" data-method="POST" data-body='{{"query": "$query"}}' data-success="queryResults = $response; message = 'Query executed successfully'; messageType = 'success'">Execute Query</button>
+                    <button data-on-click="/api/query" data-method="POST" data-body='{{"query": "$query", "semantic_model": "$selectedSemanticModel"}}' data-success="queryResults = $response; message = 'Query executed successfully'; messageType = 'success'">Execute Query</button>
                     <button data-on-click="/api/export" data-method="POST" data-body='{{"query": "$query", "format": "csv"}}' data-download="export.csv">Export CSV</button>
                     <button data-on-click="/api/export" data-method="POST" data-body='{{"query": "$query", "format": "excel"}}' data-download="export.xlsx">Export Excel</button>
                     <button data-on-click="/api/export" data-method="POST" data-body='{{"query": "$query", "format": "parquet"}}' data-download="export.parquet">Export Parquet</button>
                 </div>
-                
+
                 <div class="results">
                     <h3>Results</h3>
                     <div data-show="$queryResults">
-                        <p>Returned $queryResults.count rows:</p>
-                        <table data-show="$queryResults.rows.length > 0">
+                        <div data-show="$queryResults.semantic_info.model_name" style="margin-bottom: 10px; padding: 10px; background-color: #f0f8ff; border-radius: 4px;">
+                            <strong>Semantic Context:</strong> $queryResults.semantic_info.model_label
+                        </div>
+                        <p>Returned $queryResults.row_count rows:</p>
+                        <table data-show="$queryResults.data.length > 0">
                             <tr>
-                                {"<th data-each='col in queryResults.columns'>$col</th>"}
+                                {"<th data-each='col in queryResults.display_columns || queryResults.columns'>$col</th>"}
                             </tr>
-                            {"<tr data-each='row in queryResults.rows'>"}
+                            {"<tr data-each='row in queryResults.data'>"}
                                 {"<td data-each='col in queryResults.columns'>$row[col]</td>"}
                             {"</tr>"}
                         </table>
-                        <p data-show="$queryResults.rows.length == 0">No results returned.</p>
+                        <p data-show="$queryResults.data.length == 0">No results returned.</p>
                     </div>
                     <div data-show="$queryResults == null">
                         No results to display. Run a query to see data.
                     </div>
                 </div>
-                
+
                 <div>
                     <h2>Catalog Management</h2>
                     <button data-on-click="/api/rebuild" data-method="POST" data-success="message = 'Catalog rebuilt successfully'; messageType = 'success'">Rebuild Catalog</button>
                 </div>
-                
+
                 <div>
                     <h2>Add New View</h2>
                     <div data-signals="newViewName: '', newViewSql: ''">
@@ -1306,7 +1434,7 @@ class UIServer:
             </head>
             <body>
                 <h1>Duckalog Catalog Dashboard</h1>
-                
+
                 <div>
                     <h2>Views ({len(views_data)})</h2>
                     <table>
@@ -1338,7 +1466,7 @@ class UIServer:
         }
                     </table>
                 </div>
-                
+
                 <div class="query-section">
                     <h2>Query Runner</h2>
                     <textarea id="query-input" placeholder="Enter SQL query..."></textarea>
@@ -1348,17 +1476,17 @@ class UIServer:
                     <button onclick="exportData('excel')">Export Excel</button>
                     <button onclick="exportData('parquet')">Export Parquet</button>
                 </div>
-                
+
                 <div class="results">
                     <h3>Results</h3>
                     <div id="query-results">No results to display. Run a query to see data.</div>
                 </div>
-                
+
                 <div>
                     <h2>Catalog Management</h2>
                     <button onclick="rebuildCatalog()">Rebuild Catalog</button>
                 </div>
-                
+
                 <div>
                     <h2>Add New View</h2>
                     <input type="text" id="new-view-name" placeholder="View Name">
@@ -1370,7 +1498,7 @@ class UIServer:
 
                 <script>
                     let selectedView = null;
-                    
+
                     // API call functions
                     async function apiCall(url, method = 'GET', data = null) {{
                         const response = await fetch(url, {{
@@ -1378,24 +1506,24 @@ class UIServer:
                             headers: {{ 'Content-Type': 'application/json' }},
                             body: data ? JSON.stringify(data) : undefined
                         }});
-                        
+
                         if (!response.ok) {{
                             throw new Error(`API call failed: ${{response.statusText}}`);
                         }}
-                        
+
                         return await response.json();
                     }}
-                    
+
                     function selectView(viewName) {{
                         selectedView = viewName;
                         document.getElementById('query-input').value = `SELECT * FROM ${{viewName}} LIMIT 100`;
                         showMessage(`Selected view: ${{viewName}}`, 'success');
                     }}
-                    
+
                     async function getSchema(viewName) {{
                         try {{
                             const result = await apiCall(`/api/schema/${{viewName}}`);
-                            const schemaText = result.columns.map(col => 
+                            const schemaText = result.columns.map(col =>
                                 `${{col.name}}: ${{col.type}} (${{col.nullable ? 'nullable' : 'not null'}})`
                             ).join('\\n');
                             alert(`Schema for ${{viewName}}:\\n${{schemaText}}`);
@@ -1403,10 +1531,10 @@ class UIServer:
                             showMessage('Error getting schema: ' + error.message, 'error');
                         }}
                     }}
-                    
+
                     async function deleteView(viewName) {{
                         if (!confirm(`Are you sure you want to delete view "${{viewName}}"?`)) return;
-                        
+
                         try {{
                             await apiCall(`/api/views/${{viewName}}`, 'DELETE');
                             showMessage(`View "${{viewName}}" deleted successfully`, 'success');
@@ -1415,14 +1543,14 @@ class UIServer:
                             showMessage('Error deleting view: ' + error.message, 'error');
                         }}
                     }}
-                    
+
                     async function executeQuery() {{
                         const query = document.getElementById('query-input').value;
                         if (!query.trim()) {{
                             showMessage('Please enter a query', 'error');
                             return;
                         }}
-                        
+
                         try {{
                             const result = await apiCall('/api/query', 'POST', {{ query }});
                             displayResults(result);
@@ -1430,25 +1558,25 @@ class UIServer:
                             showMessage('Error executing query: ' + error.message, 'error');
                         }}
                     }}
-                    
+
                     async function exportData(format) {{
                         const query = document.getElementById('query-input').value;
                         if (!query.trim()) {{
                             showMessage('Please enter a query to export', 'error');
                             return;
                         }}
-                        
+
                         try {{
                             const response = await fetch('/api/export', {{
                                 method: 'POST',
                                 headers: {{ 'Content-Type': 'application/json' }},
                                 body: JSON.stringify({{ query, format }})
                             }});
-                            
+
                             if (!response.ok) {{
                                 throw new Error(`Export failed: ${{response.statusText}}`);
                             }}
-                            
+
                             // Create download link
                             const blob = await response.blob();
                             const url = URL.createObjectURL(blob);
@@ -1459,16 +1587,16 @@ class UIServer:
                             a.click();
                             document.body.removeChild(a);
                             URL.revokeObjectURL(url);
-                            
+
                             showMessage(`Data exported as ${{format.toUpperCase()}}`, 'success');
                         }} catch (error) {{
                             showMessage('Error exporting data: ' + error.message, 'error');
                         }}
                     }}
-                    
+
                     async function rebuildCatalog() {{
                         if (!confirm('Rebuild the catalog? This may take a moment.')) return;
-                        
+
                         try {{
                             const result = await apiCall('/api/rebuild', 'POST');
                             showMessage('Catalog rebuilt successfully', 'success');
@@ -1476,16 +1604,16 @@ class UIServer:
                             showMessage('Error rebuilding catalog: ' + error.message, 'error');
                         }}
                     }}
-                    
+
                     async function createView() {{
                         const name = document.getElementById('new-view-name').value;
                         const sql = document.getElementById('new-view-sql').value;
-                        
+
                         if (!name.trim() || !sql.trim()) {{
                             showMessage('Please provide both name and SQL for the view', 'error');
                             return;
                         }}
-                        
+
                         try {{
                             await apiCall('/api/views', 'POST', {{ name, sql }});
                             showMessage(`View "${{name}}" created successfully`, 'success');
@@ -1496,25 +1624,25 @@ class UIServer:
                             showMessage('Error creating view: ' + error.message, 'error');
                         }}
                     }}
-                    
+
                     function displayResults(result) {{
                         const resultsDiv = document.getElementById('query-results');
-                        
+
                         if (!result.rows || result.rows.length === 0) {{
                             resultsDiv.innerHTML = '<p>No results returned.</p>';
                             return;
                         }}
-                        
+
                         let html = `<p>Returned ${{result.count}} rows:</p>`;
                         html += '<table>';
-                        
+
                         // Header row
                         html += '<tr>';
                         result.columns.forEach(col => {{
                             html += `<th>${{col}}</th>`;
                         }});
                         html += '</tr>';
-                        
+
                         // Data rows
                         result.rows.forEach(row => {{
                             html += '<tr>';
@@ -1523,11 +1651,11 @@ class UIServer:
                             }});
                             html += '</tr>';
                         }});
-                        
+
                         html += '</table>';
                         resultsDiv.innerHTML = html;
                     }}
-                    
+
                     function showMessage(message, type) {{
                         const resultsDiv = document.getElementById('query-results');
                         const className = type === 'error' ? 'error' : 'success';

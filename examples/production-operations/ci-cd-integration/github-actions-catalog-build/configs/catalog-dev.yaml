@@ -1,0 +1,124 @@
+# Development Environment Configuration
+# This configuration is optimized for development and testing
+
+duckdb:
+  database: "data/dev_catalog.duckdb"
+
+# Environment-specific settings
+environment: "development"
+debug: true
+
+# Views for development
+views:
+  # Sample user data for development
+  - name: "users"
+    description: "Sample user data for development and testing"
+    source: "parquet"
+    uri: "data/dev/users.parquet"
+    tags: ["dev", "users", "sample"]
+
+  # Sample events data for development
+  - name: "events"
+    description: "Sample event data for development and testing"
+    source: "parquet"
+    uri: "data/dev/events.parquet"
+    tags: ["dev", "events", "sample"]
+
+  # Daily active users calculation
+  - name: "daily_active_users"
+    description: "Daily active users for development testing"
+    sql: |
+      SELECT
+        DATE(event_timestamp) as activity_date,
+        COUNT(DISTINCT user_id) as active_users,
+        COUNT(*) as total_events
+      FROM events
+      WHERE event_timestamp >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY DATE(event_timestamp)
+      ORDER BY activity_date DESC
+    tags: ["dev", "analytics", "daily"]
+
+  # User activity summary
+  - name: "user_activity_summary"
+    description: "User activity summary for development"
+    sql: |
+      SELECT
+        u.user_id,
+        u.email,
+        u.created_at as user_created_date,
+        COUNT(e.event_id) as total_events,
+        MAX(e.event_timestamp) as last_activity,
+        MIN(e.event_timestamp) as first_activity
+      FROM users u
+      LEFT JOIN events e ON u.user_id = e.user_id
+      GROUP BY u.user_id, u.email, u.created_at
+      ORDER BY total_events DESC
+    tags: ["dev", "analytics", "users"]
+
+# Semantic models for development
+semantic_models:
+  - name: "user_analytics"
+    label: "User Analytics"
+    description: "User behavior and activity analytics for development"
+    base_view: "user_activity_summary"
+
+    dimensions:
+      - name: "user_identifier"
+        expression: "user_id"
+        label: "User ID"
+        description: "Unique identifier for the user"
+        type: "string"
+
+      - name: "user_email"
+        expression: "email"
+        label: "Email Address"
+        description: "User's email address"
+        type: "string"
+
+      - name: "acquisition_date"
+        expression: "user_created_date"
+        label: "Acquisition Date"
+        description: "When the user was created/acquired"
+        type: "date"
+
+      - name: "last_seen_date"
+        expression: "last_activity"
+        label: "Last Seen Date"
+        description: "When the user was last active"
+        type: "datetime"
+
+    measures:
+      - name: "total_events_count"
+        expression: "total_events"
+        label: "Total Events"
+        description: "Total number of events for the user"
+        type: "number"
+
+      - name: "user_lifespan_days"
+        expression: "DATEDIFF('day', first_activity, CURRENT_DATE)"
+        label: "User Lifespan (Days)"
+        description: "Number of days since user's first activity"
+        type: "number"
+
+    defaults:
+      primary_time_dimension: "last_seen_date"
+      default_measures: ["total_events_count"]
+
+# Development-specific settings
+settings:
+  # Performance settings for development
+  memory_limit: "2GB"
+  threads: 2
+
+  # Development features
+  enable_debug_queries: true
+  enable_query_profiling: true
+  cache_size: "256MB"
+
+  # Development notifications (can be disabled in production)
+  enable_development_notifications: true
+
+  # Data validation for development
+  validate_data_quality: true
+  max_null_percentage: 50
+  min_row_count: 10
