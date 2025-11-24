@@ -14,22 +14,22 @@ views:
   # Raw data sources
   - name: customers
     source: parquet
-    uri: "examples/business-intelligence/customer-analytics/data/customers.parquet"
+    uri: "data/customers_partitioned/**/*.parquet"
     description: "Customer profiles and acquisition information"
 
   - name: orders
     source: parquet
-    uri: "examples/business-intelligence/customer-analytics/data/orders.parquet"
+    uri: "data/orders_partitioned/**/*.parquet"
     description: "Customer orders and transactions"
 
   - name: events
     source: parquet
-    uri: "examples/business-intelligence/customer-analytics/data/events.parquet"
+    uri: "data/events_partitioned/**/*.parquet"
     description: "User engagement events and activities"
 
   - name: subscriptions
     source: parquet
-    uri: "examples/business-intelligence/customer-analytics/data/subscriptions.parquet"
+    uri: "data/subscriptions_partitioned/**/*.parquet"
     description: "Subscription data for recurring revenue"
 
   # Basic customer metrics

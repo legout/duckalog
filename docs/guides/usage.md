@@ -67,6 +67,183 @@ views:
       WHERE is_vip = TRUE
 ```
 
+## Path Resolution
+
+Duckalog automatically resolves relative file paths to absolute paths relative to the configuration file location. This ensures consistent behavior across different working directories while maintaining security.
+
+### How Path Resolution Works
+
+- **Automatic Detection**: Duckalog detects whether paths are relative or absolute
+- **Relative Path Resolution**: Resolves paths like `data/file.parquet` against the config file's directory  
+- **Security Validation**: Blocks dangerous directory traversal while allowing reasonable parent directory access
+- **Cross-Platform Support**: Works correctly on Windows, macOS, and Linux
+
+### Configuration
+
+Path resolution is enabled by default when loading configurations:
+
+```python
+from duckalog import load_config
+
+# Path resolution enabled (default)
+config = load_config("catalog.yaml")
+
+# Explicitly enable/disable resolution
+config = load_config("catalog.yaml", resolve_paths=True)
+config = load_config("catalog.yaml", resolve_paths=False)
+```
+
+### Path Resolution Examples
+
+#### Basic Relative Paths
+
+**Project Structure:**
+```
+analytics/
+├── catalog.yaml
+├── data/
+│   ├── events.parquet
+│   └── users.parquet
+└── databases/
+    └── reference.duckdb
+```
+
+**Configuration:**
+```yaml
+version: 1
+
+duckdb:
+  database: catalog.duckdb
+
+attachments:
+  duckdb:
+    - alias: refdata
+      path: ./databases/reference.duckdb  # Resolved to absolute path
+      read_only: true
+
+views:
+  - name: events
+    source: parquet
+    uri: data/events.parquet  # Resolved relative to catalog.yaml
+    
+  - name: users  
+    source: parquet
+    uri: ./data/users.parquet  # Explicit relative path
+```
+
+#### Parent Directory Access
+
+**Project Structure:**
+```
+company/
+├── shared/
+│   └── reference_data/
+│       └── customers.parquet
+└── analytics/
+    └── catalog.yaml
+    └── data/
+        └── events.parquet
+```
+
+**Configuration (`company/analytics/catalog.yaml`):**
+```yaml
+version: 1
+
+views:
+  - name: events
+    source: parquet
+    uri: ./data/events.parquet           # Resolved to /company/analytics/data/events.parquet
+    
+  - name: customers
+    source: parquet
+    uri: ../shared/reference_data/customers.parquet  # Resolved to /company/shared/reference_data/customers.parquet
+```
+
+#### Mixed Path Types
+
+```yaml
+version: 1
+
+views:
+  # Relative path - resolved automatically
+  - name: local_data
+    source: parquet
+    uri: ./data/local.parquet
+    
+  # Absolute path - unchanged
+  - name: absolute_data
+    source: parquet
+    uri: /absolute/path/data.parquet
+    
+  # Remote URI - unchanged
+  - name: remote_data
+    source: parquet
+    uri: s3://my-bucket/data/remote.parquet
+```
+
+### Security Features
+
+Path resolution includes comprehensive security validation:
+
+#### Allowed Patterns
+```yaml
+# ✅ ALLOWED - Same directory
+uri: data/file.parquet
+
+# ✅ ALLOWED - Parent directory access (reasonable levels)
+uri: ../shared/data.parquet
+uri: ../../project/common.parquet
+
+# ✅ ALLOWED - Subdirectories
+uri: ./subdir/nested/file.parquet
+```
+
+#### Blocked Patterns
+```yaml
+# ❌ BLOCKED - Excessive parent directory traversal
+uri: ../../../../etc/passwd
+
+# ❌ BLOCKED - System directory access
+uri: ../etc/config.parquet
+uri: ../../usr/local/data.parquet
+```
+
+### Troubleshooting Path Resolution
+
+#### Common Issues
+
+**Path resolution failed:**
+```
+ConfigError: Path resolution failed: Path resolution violates security rules
+```
+
+**Solutions:**
+- Reduce the number of parent directory traversals (`../`)
+- Avoid system directories (`/etc/`, `/usr/`, etc.)
+- Use relative paths within reasonable bounds
+
+**File not found after resolution:**
+```
+DuckDB Error: Failed to open file
+```
+
+**Solutions:**
+- Verify the resolved path points to an existing file
+- Check file permissions
+- Ensure the file is not a directory
+
+#### Debugging
+
+```python
+from duckalog import generate_sql
+
+# Generate SQL to see resolved paths
+sql = generate_sql("catalog.yaml")
+print(sql)  # Shows absolute paths after resolution
+```
+
+For complete details, see the [Path Resolution Guide](path-resolution.md).
+
 ## Environment variables
 
 Any string may contain `${env:VAR_NAME}` placeholders. Duckalog resolves these

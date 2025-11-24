@@ -81,8 +81,45 @@ views:
   # Simple single-table view
   - name: users
     source: parquet
-    uri: "s3://your-bucket/data/users.parquet"  # Or local: "./users.parquet"
+    uri: "s3://your-bucket/data/users.parquet"  # Or local: "./data/users.parquet"
     description: "User reference data from Parquet"
+```
+
+**With Path Resolution:**
+
+Duckalog automatically resolves relative paths to absolute paths relative to the configuration file location. This makes your configurations more portable and consistent.
+
+```yaml
+version: 1
+
+duckdb:
+  database: simple_catalog.duckdb
+  install_extensions:
+    - httpfs
+  
+  pragmas:
+    - "SET memory_limit='1GB'"
+    - "SET s3_region='us-east-1'"
+    - "SET s3_access_key_id='${env:AWS_ACCESS_KEY_ID}'"
+    - "SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"
+
+views:
+  # Local relative paths - automatically resolved
+  - name: local_users
+    source: parquet
+    uri: ./data/users.parquet  # Resolved to absolute path relative to this config
+    description: "Local user data with automatic path resolution"
+    
+  - name: local_events
+    source: parquet
+    uri: ../shared/events.parquet  # Parent directory access allowed
+    description: "Shared events data from parent directory"
+    
+  # Cloud URIs - unchanged by path resolution
+  - name: cloud_users
+    source: parquet
+    uri: "s3://your-bucket/data/users.parquet"
+    description: "Cloud user data (URI unchanged)"
 ```
 
 **Key configuration elements:**

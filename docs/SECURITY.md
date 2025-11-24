@@ -1,10 +1,229 @@
 # Security Documentation
 
-This document outlines the security features and best practices for Duckalog's web UI.
+This document outlines the security features and best practices for Duckalog, including both web UI security and path resolution security features.
 
 ## Overview
 
-Duckalog's web UI includes comprehensive security hardening to ensure safe operation in production environments. The security model focuses on read-only data access, secure configuration management, and controlled web access.
+Duckalog includes comprehensive security hardening across multiple components:
+
+- **Web UI Security**: Read-only SQL enforcement, authentication, and CORS protection
+- **Path Resolution Security**: Validation against directory traversal and system access
+- **Configuration Security**: Secure handling of credentials and file operations
+
+## 🔒 Path Resolution Security
+
+Duckalog's path resolution feature includes robust security validation to prevent malicious file access while allowing legitimate use cases.
+
+### Directory Traversal Protection
+
+#### Security Threats Mitigated
+
+**Excessive Parent Directory Traversal:**
+```yaml
+# ❌ BLOCKED - Attempts to access system files
+views:
+  - name: malicious
+    source: parquet
+    uri: ../../../../etc/passwd
+```
+
+**System Directory Access:**
+```yaml
+# ❌ BLOCKED - Attempts to access system directories
+views:
+  - name: system_config
+    source: parquet
+    uri: ../etc/config.parquet
+    # Resolves to /etc/config.parquet - BLOCKED
+```
+
+**Security Violations Blocked:**
+- `/etc/`, `/usr/`, `/bin/`, `/sbin/`, `/var/log/`, `/sys/`, `/proc/`
+- Excessive parent directory traversal (more than 3 levels)
+- Paths that resolve to system locations
+- Invalid or malformed path sequences
+
+#### Reasonable Traversal Allowed
+
+The security model allows legitimate parent directory access within reasonable bounds:
+
+```yaml
+# ✅ ALLOWED - Reasonable parent directory access
+views:
+  - name: shared_data
+    source: parquet
+    uri: ../shared/data.parquet  # 1 level up - allowed
+    
+  - name: project_common
+    source: parquet
+    uri: ../../project/common.parquet  # 2 levels up - allowed
+    
+  - name: enterprise_data
+    source: parquet
+    uri: ../../../enterprise/data.parquet  # 3 levels up - allowed
+```
+
+### Path Type Detection
+
+Duckalog automatically detects and handles different path types:
+
+| Path Type | Security Considerations |
+|-----------|------------------------|
+| **Relative Paths** | Validated against traversal limits and system directories |
+| **Absolute Paths** | Validated to ensure they don't point to dangerous locations |
+| **Remote URIs** | Considered safe (S3, HTTP, etc.) - not subject to local file validation |
+| **Windows Paths** | Cross-platform validation for Windows-specific patterns |
+
+### Security Validation Process
+
+1. **Path Detection**: Classify path as relative, absolute, or remote
+2. **Resolution**: Convert relative paths to absolute paths
+3. **Traversal Analysis**: Count and validate parent directory traversals
+4. **Pattern Matching**: Check against dangerous location patterns
+5. **File Access**: Validate file exists and is accessible
+6. **Error Reporting**: Provide detailed security violation messages
+
+### Security Error Handling
+
+**Directory Traversal Violation:**
+```json
+{
+  "error": "Path resolution violates security rules: '../../../etc/passwd' resolves to '/etc/passwd' which is outside reasonable bounds"
+}
+```
+
+**System Directory Access Violation:**
+```json
+{
+  "error": "Path resolution violates security rules: '../etc/config.parquet' resolves to dangerous location"
+}
+```
+
+**File Access Issues:**
+```json
+{
+  "error": "File does not exist: /path/to/missing.parquet"
+}
+```
+
+### Security Configuration
+
+Path resolution security is always enabled when path resolution is active:
+
+```python
+from duckalog import load_config
+
+# Path resolution with security validation (default)
+config = load_config("catalog.yaml", resolve_paths=True)
+
+# Disable path resolution (no security validation needed)
+config = load_config("catalog.yaml", resolve_paths=False)
+```
+
+### Security Best Practices for Paths
+
+#### Project Structure Recommendations
+
+```
+project/
+├── config/
+│   └── catalog.yaml
+├── data/
+│   ├── raw/
+│   ├── processed/
+│   └── external/
+├── databases/
+│   └── reference.duckdb
+└── shared/
+    └── enterprise/
+        └── common_data/
+```
+
+#### Secure Configuration Patterns
+
+```yaml
+# ✅ GOOD - Clear project structure
+views:
+  - name: local_data
+    source: parquet
+    uri: ./data/processed/events.parquet
+    
+  - name: shared_reference
+    source: parquet
+    uri: ../shared/enterprise/common_data/customers.parquet
+
+# ❌ AVOID - Deep or unclear traversal
+views:
+  - name: unclear_data
+    source: parquet
+    uri: ../../../../some/deep/structure/data.parquet
+```
+
+#### Environment-Specific Security
+
+**Development Environment:**
+- Allow broader file access for development convenience
+- Use relative paths for portable development setups
+
+**Production Environment:**
+- Restrict to well-defined data directories
+- Use absolute paths or controlled relative paths
+- Implement additional monitoring and logging
+
+### Security Testing
+
+#### Manual Security Testing
+
+```python
+from duckalog.path_resolution import validate_path_security
+from pathlib import Path
+
+# Test dangerous patterns
+config_dir = Path("/project/config")
+
+# Test cases that should fail
+assert not validate_path_security("../../../etc/passwd", config_dir)
+assert not validate_path_security("../usr/local/data.parquet", config_dir)
+
+# Test cases that should succeed
+assert validate_path_security("../shared/data.parquet", config_dir)
+assert validate_path_security("./local/data.parquet", config_dir)
+```
+
+#### Automated Security Tests
+
+The test suite includes comprehensive security validation:
+
+```bash
+# Run path resolution security tests
+pytest tests/test_path_resolution.py -k "security"
+
+# Test specific security scenarios
+pytest tests/test_path_resolution.py::TestPathValidation
+```
+
+### Security Auditing
+
+#### Logging
+
+Path resolution security violations are logged with detailed information:
+
+```python
+# Security logging includes:
+# - Original path that violated security
+# - Resolved path that was blocked
+# - Security rule that was violated
+# - Configuration file location
+```
+
+#### Monitoring
+
+Monitor for security violations in production:
+
+1. **Log Analysis**: Look for path resolution security errors
+2. **Access Patterns**: Monitor for unusual file access attempts
+3. **Configuration Changes**: Track path configuration modifications
+4. **Error Rates**: Alert on increased security violation rates
 
 ## 🛡️ Read-Only SQL Enforcement
 

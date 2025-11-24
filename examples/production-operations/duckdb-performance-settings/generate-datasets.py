@@ -9,22 +9,21 @@ optimizations and query patterns.
 import os
 import sys
 import time
-import duckdb
-import pandas as pd
-import numpy as np
+import argparse
 from pathlib import Path
 from datetime import datetime, timedelta
-import argparse
+
+import numpy as np
+import polars as pl
+import pyarrow.dataset as ds
 
 
-def create_events_dataset(num_rows, output_path):
+def create_events_dataset(num_rows):
     """Generate synthetic events data for performance testing."""
     print(f"📊 Generating {num_rows:,} events dataset...")
 
-    # Seed for reproducible results
-    np.random.seed(42)
+    np.random.seed(42)  # For reproducible results
 
-    # Define data characteristics
     event_types = [
         "page_view", "click", "form_submit", "signup", "login", "logout",
         "purchase", "add_to_cart", "search", "download", "share", "comment"
@@ -37,57 +36,42 @@ def create_events_dataset(num_rows, output_path):
 
     start_date = datetime.now() - timedelta(days=365)
 
-    # Generate data in batches to manage memory
-    batch_size = 50000
+    batch_size = 50_000
     total_batches = (num_rows + batch_size - 1) // batch_size
 
-    all_data = []
+    batches: list[pl.DataFrame] = []
 
     for batch_num in range(total_batches):
         start_idx = batch_num * batch_size
         end_idx = min(start_idx + batch_size, num_rows)
         current_batch_size = end_idx - start_idx
 
-        # Generate timestamps (more recent events are more common)
         days_ago = np.random.exponential(scale=90, size=current_batch_size)
         days_ago = np.clip(days_ago, 0, 365)
         timestamps = [start_date + timedelta(days=int(day)) for day in days_ago]
 
-        # Generate event data
-        batch_data = {
-            "event_id": [f"evt_{start_idx + i:08d}" for i in range(current_batch_size)],
-            "timestamp": timestamps,
-            "event_type": np.random.choice(event_types, current_batch_size, p=[
-                0.35, 0.20, 0.10, 0.05, 0.08, 0.07, 0.03, 0.04, 0.03, 0.02, 0.02, 0.01
-            ]),
-            "user_id": [f"user_{np.random.randint(1, 50000):05d}" for _ in range(current_batch_size)],
-            "session_id": [f"sess_{np.random.randint(1, 20000):05d}" for _ in range(current_batch_size)],
-            "properties": [generate_event_properties() for _ in range(current_batch_size)]
-        }
+        batch = pl.DataFrame(
+            {
+                "event_id": [f"evt_{start_idx + i:08d}" for i in range(current_batch_size)],
+                "timestamp": timestamps,
+                "event_type": np.random.choice(event_types, current_batch_size, p=[
+                    0.35, 0.20, 0.10, 0.05, 0.08, 0.07, 0.03, 0.04, 0.03, 0.02, 0.02, 0.01
+                ]),
+                "user_id": [f"user_{np.random.randint(1, 50000):05d}" for _ in range(current_batch_size)],
+                "session_id": [f"sess_{np.random.randint(1, 20000):05d}" for _ in range(current_batch_size)],
+                "properties": [generate_event_properties() for _ in range(current_batch_size)],
+            }
+        )
 
-        df_batch = pd.DataFrame(batch_data)
-        all_data.append(df_batch)
+        batches.append(batch)
 
         if batch_num % 10 == 0:
             print(f"  Generated {end_idx:,} / {num_rows:,} rows...")
 
-    # Combine all batches
     print("  Combining batches...")
-    df = pd.concat(all_data, ignore_index=True)
+    df = pl.concat(batches, how="vertical") if len(batches) > 1 else batches[0]
 
-    # Save to Parquet
-    print(f"  Saving to {output_path}...")
-    df.to_parquet(output_path, index=False, compression='snappy')
-
-    # Validate the generated data
-    print("  Validating dataset...")
-    validation_df = pd.read_parquet(output_path)
-    print(f"  ✅ Generated {len(validation_df):,} rows")
-    print(f"  ✅ Date range: {validation_df['timestamp'].min()} to {validation_df['timestamp'].max()}")
-    print(f"  ✅ Unique event types: {validation_df['event_type'].nunique()}")
-    print(f"  ✅ Unique users: {validation_df['user_id'].nunique()}")
-
-    return len(validation_df)
+    return df
 
 
 def generate_event_properties():
@@ -116,6 +100,34 @@ def generate_event_properties():
 
     properties.update(event_specific)
     return str(properties).replace("'", '"')  # Convert to JSON-like string
+
+
+def write_partitioned_dataset(df: pl.DataFrame, base_dir: Path, partition_cols: list[str]) -> None:
+    """Write a DataFrame as a partitioned Parquet dataset using pyarrow."""
+    base_dir.mkdir(parents=True, exist_ok=True)
+    partitioning = ds.partitioning(partition_cols, flavor="hive") if partition_cols else None
+    ds.write_dataset(
+        df.to_arrow(),
+        base_dir,
+        format="parquet",
+        partitioning=partitioning,
+        existing_data_behavior="delete_matching",
+    )
+
+
+def write_outputs(
+    df: pl.DataFrame,
+    single_path: Path,
+    partition_dir: Path,
+    partitioned: bool,
+    partitioned_only: bool,
+) -> None:
+    if not partitioned_only:
+        single_path.parent.mkdir(parents=True, exist_ok=True)
+        df.write_parquet(single_path, compression="zstd")
+
+    if partitioned:
+        write_partitioned_dataset(df, partition_dir, ["year", "month"])
 
 
 def create_directory_structure():
@@ -164,8 +176,21 @@ def main():
         action="store_true",
         help="Overwrite existing datasets"
     )
+    parser.add_argument(
+        "--partitioned",
+        action="store_true",
+        help="Also write partitioned parquet output (year/month) alongside the single file",
+    )
+    parser.add_argument(
+        "--partitioned-only",
+        action="store_true",
+        help="Write only partitioned parquet output (implies --partitioned)",
+    )
 
     args = parser.parse_args()
+
+    if args.partitioned_only:
+        args.partitioned = True
 
     print("🚀 DuckDB Performance Test Dataset Generator")
     print("=" * 50)
@@ -211,15 +236,39 @@ def main():
         print(f"   Estimated size: ~{dataset_size_mb:.0f} MB")
 
         start_time = time.time()
-        actual_rows = create_events_dataset(config["rows"], output_path)
+        df = create_events_dataset(config["rows"])
+        df_with_partitions = df.with_columns(
+            pl.col("timestamp").dt.year().alias("year"),
+            pl.col("timestamp").dt.month().alias("month"),
+        )
+
+        single_output = Path("datasets") / config["filename"]
+        partition_dir = Path("datasets") / f"{config['filename'].replace('.parquet', '')}_partitioned"
+
+        write_outputs(
+            df_with_partitions,
+            single_output,
+            partition_dir,
+            partitioned=args.partitioned,
+            partitioned_only=args.partitioned_only,
+        )
+
         end_time = time.time()
 
         duration = end_time - start_time
-        rows_per_second = actual_rows / duration
+        actual_rows = df.height
+        rows_per_second = actual_rows / duration if duration else actual_rows
 
         print(f"   ✅ Completed in {duration:.1f}s ({rows_per_second:,.0f} rows/sec)")
         print(f"   ✅ Actual rows generated: {actual_rows:,}")
-        print(f"   ✅ File size: {output_path.stat().st_size / (1024*1024):.1f} MB")
+        if not args.partitioned_only and single_output.exists():
+            print(f"   ✅ File size: {single_output.stat().st_size / (1024*1024):.1f} MB")
+        if args.partitioned:
+            print(f"   ✅ Partitioned output: {partition_dir}")
+        print(
+            f"   ✅ Date range: {df['timestamp'].min()} to {df['timestamp'].max()} | "
+            f"Event types: {df['event_type'].n_unique()} | Users: {df['user_id'].n_unique()}"
+        )
         print()
 
     total_duration = time.time() - total_start_time

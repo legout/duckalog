@@ -7,12 +7,53 @@ time-series analytics patterns including moving averages, trends,
 seasonality, and forecasting.
 """
 
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
+import argparse
 import random
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
+
+import numpy as np
+import polars as pl
+import pyarrow.dataset as ds
+
+
+def write_partitioned_dataset(df: pl.DataFrame, base_dir: Path, partition_cols: list[str]) -> None:
+    base_dir.mkdir(parents=True, exist_ok=True)
+    partitioning = ds.partitioning(partition_cols, flavor="hive") if partition_cols else None
+    ds.write_dataset(
+        df.to_arrow(),
+        base_dir,
+        format="parquet",
+        partitioning=partitioning,
+        existing_data_behavior="delete_matching",
+    )
+
+
+def write_outputs(
+    df: pl.DataFrame,
+    name: str,
+    date_col: str,
+    data_dir: Path,
+    partitioned: bool,
+    partitioned_only: bool,
+) -> None:
+    file_path = data_dir / f"{name}.parquet"
+    partition_dir = data_dir / f"{name}_partitioned"
+
+    if not partitioned_only:
+        df.write_parquet(file_path, compression="zstd")
+
+    if partitioned:
+        df_with_parts = df.with_columns(
+            pl.col(date_col).dt.year().alias("year"),
+            pl.col(date_col).dt.month().alias("month"),
+        )
+        write_partitioned_dataset(df_with_parts, partition_dir, ["year", "month"])
+
+
+def date_seq(start_dt: datetime, end_dt: datetime) -> list:
+    return pl.date_range(start_dt.date(), end_dt.date(), interval="1d", eager=True).to_list()
 
 def generate_daily_sales(start_date="2022-01-01", end_date="2024-12-31"):
     """Generate daily sales data with trends and seasonality."""
@@ -21,9 +62,10 @@ def generate_daily_sales(start_date="2022-01-01", end_date="2024-12-31"):
 
     start_dt = datetime.strptime(start_date, "%Y-%m-%d")
     end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    start_date_only = start_dt.date()
 
     # Create date range
-    dates = pd.date_range(start=start_dt, end=end_dt, freq='D')
+    dates = date_seq(start_dt, end_dt)
 
     # Product categories and regions
     categories = ['Electronics', 'Clothing', 'Home & Garden', 'Sports', 'Books', 'Toys']
@@ -73,7 +115,7 @@ def generate_daily_sales(start_date="2022-01-01", end_date="2024-12-31"):
                 pattern = category_patterns[category]
 
                 # Base sales with trend
-                days_since_start = (date - start_dt).days
+                days_since_start = (date - start_date_only).days
                 base_sales = pattern['base'] * (1 + pattern['trend']) ** (days_since_start / 365)
 
                 # Apply seasonal patterns
@@ -110,7 +152,7 @@ def generate_daily_sales(start_date="2022-01-01", end_date="2024-12-31"):
                     sales_amount *= np.random.uniform(1.1, 1.5)
 
                 data.append({
-                    'date': date.strftime('%Y-%m-%d'),
+                    'date': date,
                     'product_id': f"PROD_{category[:3].upper()}_{region[:1].upper()}_{np.random.randint(1, 100):03d}",
                     'category': category,
                     'region': region,
@@ -119,7 +161,7 @@ def generate_daily_sales(start_date="2022-01-01", end_date="2024-12-31"):
                     'promotion_flag': promotion_flag
                 })
 
-    return pd.DataFrame(data)
+    return pl.DataFrame(data)
 
 def generate_web_analytics(start_date="2023-01-01", end_date="2024-12-31"):
     """Generate web analytics data with realistic patterns."""
@@ -128,8 +170,9 @@ def generate_web_analytics(start_date="2023-01-01", end_date="2024-12-31"):
 
     start_dt = datetime.strptime(start_date, "%Y-%m-%d")
     end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    start_date_only = start_dt.date()
 
-    dates = pd.date_range(start=start_dt, end=end_dt, freq='D')
+    dates = date_seq(start_dt, end_dt)
 
     data = []
 
@@ -151,7 +194,7 @@ def generate_web_analytics(start_date="2023-01-01", end_date="2024-12-31"):
             weekly_conversion_factor = 1.1
 
         # Annual growth
-        days_since_start = (date - start_dt).days
+        days_since_start = (date - start_date_only).days
         growth_factor = 1.001 ** days_since_start  # ~36% annual growth
 
         # Seasonal patterns
@@ -183,7 +226,7 @@ def generate_web_analytics(start_date="2023-01-01", end_date="2024-12-31"):
         conversion_rate = max(0.01, min(0.1, conversion_rate))
 
         data.append({
-            'date': date.strftime('%Y-%m-%d'),
+            'date': date,
             'sessions': sessions,
             'pageviews': pageviews,
             'unique_visitors': unique_visitors,
@@ -192,7 +235,7 @@ def generate_web_analytics(start_date="2023-01-01", end_date="2024-12-31"):
             'conversion_rate': round(conversion_rate, 4)
         })
 
-    return pd.DataFrame(data)
+    return pl.DataFrame(data)
 
 def generate_product_metrics(start_date="2023-01-01", end_date="2024-12-31"):
     """Generate product performance metrics over time."""
@@ -202,7 +245,7 @@ def generate_product_metrics(start_date="2023-01-01", end_date="2024-12-31"):
     start_dt = datetime.strptime(start_date, "%Y-%m-%d")
     end_dt = datetime.strptime(end_date, "%Y-%m-%d")
 
-    dates = pd.date_range(start=start_dt, end=end_dt, freq='D')
+    dates = date_seq(start_dt, end_dt)
 
     # Products with different lifecycle stages
     products = [
@@ -290,7 +333,7 @@ def generate_product_metrics(start_date="2023-01-01", end_date="2024-12-31"):
             current_stock = max(50, 500 + daily_stock_change)
 
             data.append({
-                'date': date.strftime('%Y-%m-%d'),
+                'date': date,
                 'product_id': product['id'],
                 'product_name': product['name'],
                 'category': product['category'],
@@ -304,7 +347,7 @@ def generate_product_metrics(start_date="2023-01-01", end_date="2024-12-31"):
                 'conversion_rate': round(purchases / views, 4) if views > 0 else 0
             })
 
-    return pd.DataFrame(data)
+    return pl.DataFrame(data)
 
 def generate_operational_metrics(start_date="2023-01-01", end_date="2024-12-31"):
     """Generate operational KPIs and performance indicators."""
@@ -314,7 +357,7 @@ def generate_operational_metrics(start_date="2023-01-01", end_date="2024-12-31")
     start_dt = datetime.strptime(start_date, "%Y-%m-%d")
     end_dt = datetime.strptime(end_date, "%Y-%m-%d")
 
-    dates = pd.date_range(start=start_dt, end=end_dt, freq='D')
+    dates = date_seq(start_dt, end_dt)
 
     data = []
 
@@ -350,7 +393,7 @@ def generate_operational_metrics(start_date="2023-01-01", end_date="2024-12-31")
         energy_consumption = actual_production * np.random.uniform(0.8, 1.2) * 5
 
         data.append({
-            'date': date.strftime('%Y-%m-%d'),
+            'date': date,
             'production_target': production_target,
             'actual_production': actual_production,
             'production_efficiency': round(production_efficiency, 3),
@@ -368,60 +411,68 @@ def generate_operational_metrics(start_date="2023-01-01", end_date="2024-12-31")
             'downtime_minutes': np.random.poisson(30)
         })
 
-    return pd.DataFrame(data)
+    return pl.DataFrame(data)
 
 def main():
     """Generate all time-series analytics data."""
+    parser = argparse.ArgumentParser(description="Generate time-series analytics example data")
+    parser.add_argument(
+        "--partitioned",
+        action="store_true",
+        help="Also write partitioned parquet outputs (year/month) alongside single files",
+    )
+    parser.add_argument(
+        "--partitioned-only",
+        action="store_true",
+        help="Write only partitioned parquet outputs (implies --partitioned)",
+    )
+    args = parser.parse_args()
+    if args.partitioned_only:
+        args.partitioned = True
 
     print("Generating time-series analytics data...")
 
-    # Create data directory
     data_dir = Path("data")
     data_dir.mkdir(exist_ok=True)
 
-    # Generate daily sales data
     print("Generating daily sales data...")
     daily_sales_df = generate_daily_sales()
-    daily_sales_df.to_parquet(data_dir / "daily_sales.parquet", index=False)
-    print(f"Generated {len(daily_sales_df):,} daily sales records")
+    write_outputs(daily_sales_df, "daily_sales", "date", data_dir, args.partitioned, args.partitioned_only)
+    print(f"Generated {daily_sales_df.height:,} daily sales records")
 
-    # Generate web analytics data
     print("Generating web analytics data...")
     web_analytics_df = generate_web_analytics()
-    web_analytics_df.to_parquet(data_dir / "web_analytics.parquet", index=False)
-    print(f"Generated {len(web_analytics_df):,} web analytics records")
+    write_outputs(web_analytics_df, "web_analytics", "date", data_dir, args.partitioned, args.partitioned_only)
+    print(f"Generated {web_analytics_df.height:,} web analytics records")
 
-    # Generate product metrics data
     print("Generating product metrics data...")
     product_metrics_df = generate_product_metrics()
-    product_metrics_df.to_parquet(data_dir / "product_metrics.parquet", index=False)
-    print(f"Generated {len(product_metrics_df):,} product metrics records")
+    write_outputs(product_metrics_df, "product_metrics", "date", data_dir, args.partitioned, args.partitioned_only)
+    print(f"Generated {product_metrics_df.height:,} product metrics records")
 
-    # Generate operational metrics data
     print("Generating operational metrics data...")
     operational_metrics_df = generate_operational_metrics()
-    operational_metrics_df.to_parquet(data_dir / "operational_metrics.parquet", index=False)
-    print(f"Generated {len(operational_metrics_df):,} operational metrics records")
+    write_outputs(operational_metrics_df, "operational_metrics", "date", data_dir, args.partitioned, args.partitioned_only)
+    print(f"Generated {operational_metrics_df.height:,} operational metrics records")
 
-    # Summary statistics
     print("\nData Summary:")
-    print(f"Daily Sales: {len(daily_sales_df):,} records")
+    print(f"Daily Sales: {daily_sales_df.height:,} records")
     print(f"  - Date range: {daily_sales_df['date'].min()} to {daily_sales_df['date'].max()}")
-    print(f"  - Categories: {daily_sales_df['category'].nunique()}")
-    print(f"  - Regions: {daily_sales_df['region'].nunique()}")
+    print(f"  - Categories: {daily_sales_df['category'].n_unique()}")
+    print(f"  - Regions: {daily_sales_df['region'].n_unique()}")
     print(f"  - Total sales amount: ${daily_sales_df['sales_amount'].sum():,.2f}")
 
-    print(f"\nWeb Analytics: {len(web_analytics_df):,} records")
+    print(f"\nWeb Analytics: {web_analytics_df.height:,} records")
     print(f"  - Total sessions: {web_analytics_df['sessions'].sum():,}")
     print(f"  - Total pageviews: {web_analytics_df['pageviews'].sum():,}")
     print(f"  - Average conversion rate: {web_analytics_df['conversion_rate'].mean():.3%}")
 
-    print(f"\nProduct Metrics: {len(product_metrics_df):,} records")
-    print(f"  - Products: {product_metrics_df['product_id'].nunique()}")
+    print(f"\nProduct Metrics: {product_metrics_df.height:,} records")
+    print(f"  - Products: {product_metrics_df['product_id'].n_unique()}")
     print(f"  - Total revenue: ${product_metrics_df['revenue'].sum():,.2f}")
     print(f"  - Average rating: {product_metrics_df['avg_customer_rating'].mean():.2}")
 
-    print(f"\nOperational Metrics: {len(operational_metrics_df):,} records")
+    print(f"\nOperational Metrics: {operational_metrics_df.height:,} records")
     print(f"  - Average efficiency: {operational_metrics_df['production_efficiency'].mean():.1%}")
     print(f"  - Average quality score: {operational_metrics_df['quality_score'].mean():.1%}")
     print(f"  - Average delivery rate: {operational_metrics_df['on_time_delivery_rate'].mean():.1%}")

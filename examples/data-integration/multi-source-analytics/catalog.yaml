@@ -13,14 +13,14 @@ duckdb:
 attachments:
   duckdb:
     - alias: reference
-      path: /Users/volker/coding/libs/duckalog/examples/data-integration/multi-source-analytics/data/reference_data.duckdb
+      path: ./data/reference_data.duckdb
       read_only: true
 
 views:
   # Raw data from different sources
   - name: raw_events
     source: parquet
-    uri: "examples/data-integration/multi-source-analytics/data/events/*.parquet"
+    uri: ./data/events/*.parquet
     description: "Raw events from data lake simulation"
 
   - name: user_profiles

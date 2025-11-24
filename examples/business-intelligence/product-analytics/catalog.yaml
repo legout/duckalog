@@ -14,12 +14,12 @@ views:
   # Raw data sources
   - name: user_sessions
     source: parquet
-    uri: "examples/business-intelligence/product-analytics/data/user_sessions.parquet"
+    uri: "data/user_sessions_partitioned/**/*.parquet"
     description: "User session data with engagement metrics"
 
   - name: user_events
     source: parquet
-    uri: "examples/business-intelligence/product-analytics/data/user_events.parquet"
+    uri: "data/user_events_partitioned/**/*.parquet"
     description: "Detailed user interaction events"
 
   # Note: funnel_events, ab_tests, and feature_usage will be available after data generation completes

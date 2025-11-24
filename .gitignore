@@ -12,3 +12,7 @@ site/
 .claude
 .opencode
 .github/prompts
+**/data/
+**/datasets/
+**/*.duckdb
+**/__marimo__

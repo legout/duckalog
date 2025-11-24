@@ -73,14 +73,23 @@ Usage: python generate.py [--rows 10000] [--output data/]
 """
 
 import argparse
-import pandas as pd
+import polars as pl
 import random
 from datetime import datetime, timedelta
 
 def generate_data(rows: int, output_dir: str):
     """Generate synthetic data for the example."""
-    # Implementation here
-    pass
+    records = [
+        {
+            "id": i,
+            "value": random.random(),
+            "created_at": datetime.utcnow(),
+        }
+        for i in range(rows)
+    ]
+    df = pl.DataFrame(records)
+    pl.Config.set_tbl_rows(5)
+    df.write_parquet(f"{output_dir}/data.parquet", compression="zstd")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate example data")

@@ -167,12 +167,46 @@ con.close()
 
 This example demonstrates how Duckalog can help you create a cohesive analytics layer that combines data from multiple sources, applies business logic, and provides a single point of access for your data consumers.
 
+## Path Resolution Feature
+
+Duckalog includes automatic path resolution that converts relative file paths to absolute paths relative to the configuration file location. This provides consistent behavior across different working directories while maintaining security validation.
+
+### Key Benefits
+
+- **Portability**: Configurations can be moved between environments without breaking file references
+- **Security**: Built-in validation prevents directory traversal attacks while allowing reasonable parent directory access
+- **Consistency**: Paths are resolved consistently regardless of the current working directory
+- **Flexibility**: Works with relative paths, absolute paths, and remote URIs
+
+### Quick Example
+
+```yaml
+version: 1
+
+duckdb:
+  database: catalog.duckdb
+
+views:
+  - name: events
+    source: parquet
+    uri: data/events.parquet        # Automatically resolved to absolute path
+    
+  - name: reference
+    source: parquet  
+    uri: ../shared/data/users.parquet  # Parent directory access allowed
+```
+
+The paths above are automatically resolved relative to the configuration file location when loaded.
+
+**Learn more:** [Path Resolution Guide](guides/path-resolution.md)
+
 ## Quick Reference
 
 ### Documentation Structure
 
 - **[System Architecture](architecture.md)** - Understanding Duckalog's design, components, and patterns
-- **[Quick Start](index.md)** - Getting started guide and examples
+- **[Path Resolution Guide](guides/path-resolution.md)** - Automatic path resolution and security features
+- **[User Guide](guides/usage.md)** - Configuration patterns and troubleshooting
 
 ### Install
 

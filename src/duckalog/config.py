@@ -19,6 +19,12 @@ from pydantic import (
 )
 
 from .logging_utils import log_debug, log_info
+from .path_resolution import (
+    PathResolutionError,
+    is_relative_path,
+    resolve_relative_path,
+    validate_path_security,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - used for type checking only
     from .sql_file_loader import SQLFileLoader
@@ -482,9 +488,20 @@ class SemanticDimensionConfig(BaseModel):
         if value:
             # Only allow time_grains for time dimensions
             if info.data.get("type") != "time":
-                raise ValueError("time_grains can only be specified for time dimensions")
+                raise ValueError(
+                    "time_grains can only be specified for time dimensions"
+                )
 
-            valid_grains = {"year", "quarter", "month", "week", "day", "hour", "minute", "second"}
+            valid_grains = {
+                "year",
+                "quarter",
+                "month",
+                "week",
+                "day",
+                "hour",
+                "minute",
+                "second",
+            }
             for grain in value:
                 grain_clean = grain.strip().lower()
                 if grain_clean not in valid_grains:
@@ -709,8 +726,12 @@ class SemanticModelConfig(BaseModel):
                     )
                 # Verify the time dimension is actually typed as 'time'
                 time_dim = next(
-                    (dim for dim in self.dimensions if dim.name == self.defaults.time_dimension),
-                    None
+                    (
+                        dim
+                        for dim in self.dimensions
+                        if dim.name == self.defaults.time_dimension
+                    ),
+                    None,
                 )
                 if time_dim and time_dim.type != "time":
                     raise ValueError(
@@ -834,9 +855,7 @@ class Config(BaseModel):
         for semantic_model in self.semantic_models:
             for join in semantic_model.joins:
                 if join.to_view not in view_names:
-                    missing_join_views.append(
-                        f"{semantic_model.name}.{join.to_view}"
-                    )
+                    missing_join_views.append(f"{semantic_model.name}.{join.to_view}")
         if missing_join_views:
             details = ", ".join(missing_join_views)
             raise ValueError(
@@ -851,6 +870,7 @@ def load_config(
     path: str,
     load_sql_files: bool = True,
     sql_file_loader: Optional["SQLFileLoader"] = None,
+    resolve_paths: bool = True,
 ) -> Config:
     """Load, interpolate, and validate a Duckalog configuration file.
 
@@ -864,6 +884,9 @@ def load_config(
                       If False, SQL file references are left as-is for later processing.
         sql_file_loader: Optional SQLFileLoader instance for loading SQL files.
                         If None, a default loader will be created.
+        resolve_paths: Whether to resolve relative paths to absolute paths.
+                      If True, relative paths in view URIs and attachment paths
+                      will be resolved relative to the config file's directory.
 
     Returns:
         A validated :class:`Config` object.
@@ -912,6 +935,10 @@ def load_config(
         config = Config.model_validate(interpolated)
     except ValidationError as exc:  # pragma: no cover - raised in tests
         raise ConfigError(exc.errors()) from exc
+
+    # Resolve relative paths if requested
+    if resolve_paths:
+        config = _resolve_paths_in_config(config, config_path)
 
     # Load SQL from external files if requested
     if load_sql_files:
@@ -1059,6 +1086,140 @@ def _replace_env_match(match: re.Match[str]) -> str:
         return os.environ[var_name]
     except KeyError as exc:
         raise ConfigError(f"Environment variable '{var_name}' is not set") from exc
+
+
+def _resolve_paths_in_config(config: Config, config_path: Path) -> Config:
+    """Resolve relative paths in a configuration to absolute paths.
+
+    This function processes view URIs and attachment paths, resolving any
+    relative paths to absolute paths relative to the configuration file's directory.
+
+    Args:
+        config: The loaded configuration object
+        config_path: Path to the configuration file
+
+    Returns:
+        The configuration with resolved paths
+
+    Raises:
+        ConfigError: If path resolution fails due to security or access issues
+    """
+    from copy import deepcopy
+
+    try:
+        config_dict = config.model_dump(mode="python")
+        config_dir = config_path.parent
+
+        # Resolve paths in views
+        if "views" in config_dict and config_dict["views"]:
+            for view_data in config_dict["views"]:
+                _resolve_view_paths(view_data, config_dir)
+
+        # Resolve paths in attachments
+        if "attachments" in config_dict and config_dict["attachments"]:
+            _resolve_attachment_paths(config_dict["attachments"], config_dir)
+
+        # Revalidate the config with resolved paths
+        resolved_config = Config.model_validate(config_dict)
+
+        log_debug(
+            "Path resolution completed",
+            config_path=str(config_path),
+            views_count=len(resolved_config.views),
+            attachments_count=len(
+                resolved_config.attachments.duckdb
+                + resolved_config.attachments.sqlite
+                + resolved_config.attachments.postgres
+            ),
+        )
+
+        return resolved_config
+
+    except Exception as exc:
+        raise ConfigError(f"Path resolution failed: {exc}") from exc
+
+
+def _resolve_view_paths(view_data: dict, config_dir: Path) -> None:
+    """Resolve paths in a single view configuration.
+
+    Args:
+        view_data: Dictionary representation of a view
+        config_dir: Configuration file directory
+
+    Raises:
+        PathResolutionError: If path resolution fails security validation
+    """
+    if "uri" in view_data and view_data["uri"]:
+        original_uri = view_data["uri"]
+
+        if is_relative_path(original_uri):
+            # Resolve the path (security validation is handled within resolve_relative_path)
+            try:
+                resolved_uri = resolve_relative_path(original_uri, config_dir)
+                view_data["uri"] = resolved_uri
+                log_debug(
+                    "Resolved view URI", original=original_uri, resolved=resolved_uri
+                )
+            except ValueError as exc:
+                raise PathResolutionError(
+                    f"Failed to resolve URI '{original_uri}': {exc}",
+                    original_path=original_uri,
+                ) from exc
+
+
+def _resolve_attachment_paths(attachments_data: dict, config_dir: Path) -> None:
+    """Resolve paths in attachment configurations.
+
+    Args:
+        attachments_data: Dictionary representation of attachments
+        config_dir: Configuration file directory
+
+    Raises:
+        PathResolutionError: If path resolution fails security validation
+    """
+    # Resolve DuckDB attachment paths
+    if "duckdb" in attachments_data and attachments_data["duckdb"]:
+        for attachment in attachments_data["duckdb"]:
+            if "path" in attachment and attachment["path"]:
+                original_path = attachment["path"]
+
+                if is_relative_path(original_path):
+                    # Resolve the path (security validation is handled within resolve_relative_path)
+                    try:
+                        resolved_path = resolve_relative_path(original_path, config_dir)
+                        attachment["path"] = resolved_path
+                        log_debug(
+                            "Resolved DuckDB attachment",
+                            original=original_path,
+                            resolved=resolved_path,
+                        )
+                    except ValueError as exc:
+                        raise PathResolutionError(
+                            f"Failed to resolve DuckDB attachment path '{original_path}': {exc}",
+                            original_path=original_path,
+                        ) from exc
+
+    # Resolve SQLite attachment paths
+    if "sqlite" in attachments_data and attachments_data["sqlite"]:
+        for attachment in attachments_data["sqlite"]:
+            if "path" in attachment and attachment["path"]:
+                original_path = attachment["path"]
+
+                if is_relative_path(original_path):
+                    # Resolve the path (security validation is handled within resolve_relative_path)
+                    try:
+                        resolved_path = resolve_relative_path(original_path, config_dir)
+                        attachment["path"] = resolved_path
+                        log_debug(
+                            "Resolved SQLite attachment",
+                            original=original_path,
+                            resolved=resolved_path,
+                        )
+                    except ValueError as exc:
+                        raise PathResolutionError(
+                            f"Failed to resolve SQLite attachment path '{original_path}': {exc}",
+                            original_path=original_path,
+                        ) from exc
 
 
 __all__ = [

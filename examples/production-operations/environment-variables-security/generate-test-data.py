@@ -9,8 +9,8 @@ without requiring real credentials or data sources.
 import os
 import sys
 import duckdb
-import pandas as pd
 import numpy as np
+import polars as pl
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -77,9 +77,9 @@ def generate_sample_parquet_data():
             "category_id": np.random.randint(1, 6)
         })
 
-    events_df = pd.DataFrame(events_data)
+    events_df = pl.DataFrame(events_data)
     events_file = data_dir / "events_sample.parquet"
-    events_df.to_parquet(events_file, index=False)
+    events_df.write_parquet(events_file, compression="zstd")
     print(f"✅ Events data created: {events_file} ({len(events_df):,} records)")
 
     # Generate user profiles data
@@ -94,9 +94,9 @@ def generate_sample_parquet_data():
             "updated_at": datetime.now() - timedelta(days=np.random.randint(0, 30))
         })
 
-    users_df = pd.DataFrame(user_data)
+    users_df = pl.DataFrame(user_data)
     users_file = data_dir / "users_sample.parquet"
-    users_df.to_parquet(users_file, index=False)
+    users_df.write_parquet(users_file, compression="zstd")
     print(f"✅ User profiles created: {users_file} ({len(users_df):,} records)")
 
     return events_file, users_file
