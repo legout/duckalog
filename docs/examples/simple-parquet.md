@@ -19,13 +19,13 @@ Choose this example if:
    ```
 
 2. **Sample Parquet files** - You can use your own or create test data:
-   ```python
-   # Create sample Parquet files for testing
-   import pandas as pd
-   import duckdb
-   
-   # Create sample data
-   users_df = pd.DataFrame({
+    ```python
+    # Create sample Parquet files for testing
+    import polars as pl
+    import duckdb
+    
+    # Create sample data
+    users_df = pl.DataFrame({
        'user_id': range(1, 101),
        'name': [f'User {i}' for i in range(1, 101)],
        'signup_date': pd.date_range('2023-01-01', periods=100),
@@ -322,7 +322,7 @@ SELECT * FROM daily_active_users WHERE event_date >= CURRENT_DATE - INTERVAL 7 D
 ```python
 from duckalog import load_config
 import duckdb
-import pandas as pd
+import polars as pl
 
 # Load and build catalog
 build_catalog("simple-parquet.yaml")

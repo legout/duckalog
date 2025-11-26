@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
+
 import polars as pl
 import pyarrow as pa
 import pyarrow.dataset as ds
@@ -178,8 +178,8 @@ def generate_events_batch(sessions_data: np.ndarray, batch_size: int = 1000):
     for i in range(min(len(sessions_data), batch_size)):
         session_id = str(sessions_data[i, 0])
         user_id = str(sessions_data[i, 1])
-        start_time = pd.Timestamp(sessions_data[i, 2])
-        end_time = pd.Timestamp(sessions_data[i, 3])
+        start_time = sessions_data[i, 2]
+        end_time = sessions_data[i, 3]
         device_type = str(sessions_data[i, 4])
         browser = str(sessions_data[i, 5])
 
@@ -204,7 +204,7 @@ def generate_events_batch(sessions_data: np.ndarray, batch_size: int = 1000):
             time_positions = np.sort(np.random.uniform(0, 1, size=num_events))
             session_duration_sec = session_duration * 60
             event_times = [
-                start_time + pd.Timedelta(seconds=pos * session_duration_sec)
+                start_time + timedelta(seconds=pos * session_duration_sec)
                 for pos in time_positions
             ]
         else:
@@ -813,8 +813,8 @@ def generate_funnel_events(user_events_df: pl.DataFrame):
             # Get session start time efficiently
             session_start = (
                 user_events_df.filter(pl.col("session_id") == session_id)
-                .get_column("event_timestamp")
-                .min()
+                .select(pl.col("event_timestamp").min())
+                .item()
             )
 
             for stage_idx, stage in enumerate(stages_for_session):

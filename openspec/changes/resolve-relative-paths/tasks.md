@@ -53,21 +53,21 @@
   - [x] Windows path handling tests
   - [x] Permission and access denied tests
 
-- [ ] 4.3 Update existing examples
-  - [ ] Convert examples to use relative paths where appropriate
-  - [ ] Add documentation of path resolution behavior
-  - [ ] Validate all existing configurations still work
-  - [ ] Add path resolution examples to documentation
+- [x] 4.3 Update existing examples
+  - [x] Convert examples to use relative paths where appropriate
+  - [x] Add documentation of path resolution behavior
+  - [x] Validate all existing configurations still work
+  - [x] Add path resolution examples to documentation
 
 ## 5. Documentation and Migration (Phase 2)
-- [ ] 5.1 Update documentation
-  - [ ] Document path resolution behavior in README
-  - [ ] Add examples to configuration documentation
-  - [ ] Create migration guide for existing users
-  - [ ] Update API documentation for config module
+- [x] 5.1 Update documentation
+  - [x] Document path resolution behavior in README
+  - [x] Add examples to configuration documentation
+  - [x] Create migration guide for existing users
+  - [x] Update API documentation for config module
 
-- [ ] 5.2 Create migration utilities
-  - [ ] Add CLI flag to show resolved paths (dry-run mode)
-  - [ ] Create utility to convert absolute to relative paths
-  - [ ] Add validation command to check path accessibility
-  - [ ] Document best practices for path management
+- [x] 5.2 Create migration utilities
+  - [x] Add CLI flag to show resolved paths (dry-run mode)
+  - [x] Create utility to convert absolute to relative paths
+  - [x] Add validation command to check path accessibility
+  - [x] Document best practices for path management

@@ -460,6 +460,57 @@ duckdb:
     - "SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"
 ```
 
+### Path Resolution
+
+Duckalog automatically resolves relative paths to absolute paths, ensuring consistent behavior regardless of where Duckalog is executed from.
+
+#### **Automatic Path Resolution**
+- **Relative Paths**: Paths like `"data/file.parquet"` are automatically resolved relative to the configuration file's directory
+- **Absolute Paths**: Already absolute paths (e.g., `"/absolute/path/file.parquet"` or `"C:\path\file.parquet"`) are preserved unchanged
+- **Remote URIs**: Cloud storage URIs (`s3://`, `gs://`, `http://`) and database connections are not modified
+- **Cross-Platform**: Works consistently on Windows, macOS, and Linux
+
+#### **Security Features**
+- **Directory Traversal Protection**: Prevents malicious path patterns (e.g., `"../../../etc/passwd"`)
+- **Sandboxing**: Resolved paths are restricted to stay within reasonable bounds from the config directory
+- **Validation**: Path resolution is validated to ensure security and accessibility
+
+#### **Examples**
+
+```yaml
+# Relative paths (recommended)
+views:
+  - name: users
+    source: parquet
+    uri: "data/users.parquet"  # Resolved to: /path/to/config/data/users.parquet
+    description: "User data relative to config location"
+
+  - name: events
+    source: parquet
+    uri: "../shared/events.parquet"  # Resolved to: /path/to/../shared/events.parquet
+    description: "Shared data from parent directory"
+
+# Absolute paths (still supported)
+views:
+  - name: fixed_data
+    source: parquet
+    uri: "/absolute/path/data.parquet"  # Used as-is
+    description: "Absolute path preserved unchanged"
+
+# Remote URIs (not modified)
+views:
+  - name: s3_data
+    source: parquet
+    uri: "s3://my-bucket/data/file.parquet"  # Used as-is
+    description: "S3 paths unchanged"
+```
+
+#### **Benefits**
+- **Reproducible Builds**: Catalogs work consistently across different working directories
+- **Flexible Project Structure**: Organize data files relative to configuration location
+- **Portability**: Move configuration and data together without path updates
+- **Safety**: Security validation prevents path traversal attacks
+
 ### Configuration Format Preservation
 
 Duckalog automatically preserves your configuration file format when making updates through the web UI:

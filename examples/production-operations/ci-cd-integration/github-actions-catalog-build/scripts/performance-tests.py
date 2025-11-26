@@ -19,13 +19,13 @@ from typing import Any, Dict, List, Tuple
 try:
     import duckdb
     import matplotlib.pyplot as plt
-    import pandas as pd
+    import polars as pl
     import seaborn as sns
 
     from duckalog import build_catalog, load_config
 except ImportError as e:
     print(f"❌ Missing dependencies: {e}")
-    print("Install with: pip install duckalog pandas matplotlib seaborn")
+    print("Install with: pip install duckalog polars matplotlib seaborn")
     sys.exit(1)
 
 

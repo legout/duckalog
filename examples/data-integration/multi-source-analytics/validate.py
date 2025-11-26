@@ -9,7 +9,8 @@ import sys
 from pathlib import Path
 
 import duckdb
-import pandas as pd
+import polars as pl
+
 
 def validate_example():
     """Validate the multi-source analytics example functionality."""
@@ -22,9 +23,7 @@ def validate_example():
 
         # Check data files exist
         data_dir = script_dir / "data"
-        required_files = [
-            "reference_data.duckdb"
-        ]
+        required_files = ["reference_data.duckdb"]
 
         for file in required_files:
             if not (data_dir / file).exists():
@@ -40,6 +39,7 @@ def validate_example():
 
         # Validate configuration
         from duckalog import load_config
+
         config = load_config(script_dir / "catalog.yaml")
         print("✅ Configuration validation passed")
 
@@ -58,12 +58,19 @@ def validate_example():
 
         # Validate expected views exist
         expected_views = [
-            "raw_events", "user_profiles", "product_data",
-            "enriched_events", "event_metrics", "user_activity_summary",
-            "product_performance", "daily_kpi_report"
+            "raw_events",
+            "user_profiles",
+            "product_data",
+            "enriched_events",
+            "event_metrics",
+            "user_activity_summary",
+            "product_performance",
+            "daily_kpi_report",
         ]
 
-        existing_views = con.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'").fetchall()
+        existing_views = con.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+        ).fetchall()
         existing_view_names = [row[0] for row in existing_views]
 
         missing_views = set(expected_views) - set(existing_view_names)
@@ -97,7 +104,9 @@ def validate_example():
         print(f"✅ Products: {product_count:,}")
 
         # Validate enriched data
-        enriched_count = con.execute("SELECT COUNT(*) FROM enriched_events").fetchone()[0]
+        enriched_count = con.execute("SELECT COUNT(*) FROM enriched_events").fetchone()[
+            0
+        ]
         print(f"✅ Enriched events: {enriched_count:,}")
 
         # Check joins are working (should have user/product info for some events)
@@ -160,7 +169,9 @@ def validate_example():
             FROM raw_events
         """).fetchone()
 
-        print(f"✅ Date range: {date_range[0]} to {date_range[1]} ({date_range[2]} days)")
+        print(
+            f"✅ Date range: {date_range[0]} to {date_range[1]} ({date_range[2]} days)"
+        )
 
         # Check for data integrity
         null_check = con.execute("""
@@ -178,6 +189,7 @@ def validate_example():
 
         # Test query performance
         import time
+
         start_time = time.time()
 
         result = con.execute("""

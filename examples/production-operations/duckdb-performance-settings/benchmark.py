@@ -15,7 +15,6 @@ from pathlib import Path
 from datetime import datetime
 import argparse
 import duckdb
-import pandas as pd
 
 
 class PerformanceBenchmark:
@@ -28,13 +27,14 @@ class PerformanceBenchmark:
             "config_name": Path(config_path).stem,
             "dataset_size": dataset_size,
             "timestamp": datetime.now().isoformat(),
-            "benchmarks": []
+            "benchmarks": [],
         }
 
     def load_config(self):
         """Load and parse the Duckalog configuration."""
         try:
             from duckalog import load_config
+
             config = load_config(self.config_path)
             return config
         except Exception as e:
@@ -44,10 +44,10 @@ class PerformanceBenchmark:
     def setup_database(self, config):
         """Set up DuckDB database with the given configuration."""
         # Use in-memory database with configuration applied
-        con = duckdb.connect(':memory:')
+        con = duckdb.connect(":memory:")
 
         # Apply pragmas from configuration
-        if hasattr(config.duckdb, 'pragmas') and config.duckdb.pragmas:
+        if hasattr(config.duckdb, "pragmas") and config.duckdb.pragmas:
             for pragma in config.duckdb.pragmas:
                 try:
                     con.execute(pragma)
@@ -94,14 +94,17 @@ class PerformanceBenchmark:
                 "memory_before": str(start_memory),
                 "memory_after": str(end_memory),
                 "success": True,
-                "error": None
+                "error": None,
             }
 
-            print(f"    ✅ {duration:.3f}s, {row_count:,} rows ({row_count/duration:,.0f} rows/sec)")
+            print(
+                f"    ✅ {duration:.3f}s, {row_count:,} rows ({row_count / duration:,.0f} rows/sec)"
+            )
             return benchmark_result
 
         except Exception as e:
             print(f"    ❌ Failed: {e}")
+            end_memory = self.get_memory_usage(connection)
             return {
                 "query_name": query_name,
                 "duration_seconds": 0,
@@ -110,7 +113,7 @@ class PerformanceBenchmark:
                 "memory_before": str(start_memory),
                 "memory_after": str(end_memory),
                 "success": False,
-                "error": str(e)
+                "error": str(e),
             }
 
     def run_full_benchmark(self, connection):
@@ -118,19 +121,25 @@ class PerformanceBenchmark:
         print("🏃‍♂️ Running performance benchmark suite...")
 
         benchmark_queries = [
-            ("simple_select", """
+            (
+                "simple_select",
+                """
                 SELECT COUNT(*) as total_events
                 FROM events_medium
-            """),
-
-            ("simple_aggregation", """
+            """,
+            ),
+            (
+                "simple_aggregation",
+                """
                 SELECT event_type, COUNT(*) as event_count
                 FROM events_medium
                 GROUP BY event_type
                 ORDER BY event_count DESC
-            """),
-
-            ("complex_aggregation", """
+            """,
+            ),
+            (
+                "complex_aggregation",
+                """
                 SELECT
                     event_type,
                     COUNT(*) as event_count,
@@ -141,9 +150,11 @@ class PerformanceBenchmark:
                 GROUP BY event_type
                 HAVING COUNT(*) > 100
                 ORDER BY event_count DESC
-            """),
-
-            ("join_operation", """
+            """,
+            ),
+            (
+                "join_operation",
+                """
                 WITH daily_stats AS (
                     SELECT
                         DATE(timestamp) as event_date,
@@ -169,9 +180,11 @@ class PerformanceBenchmark:
                 WHERE d.daily_count > 50
                 ORDER BY d.event_date DESC, d.daily_count DESC
                 LIMIT 1000
-            """),
-
-            ("window_function", """
+            """,
+            ),
+            (
+                "window_function",
+                """
                 SELECT
                     user_id,
                     event_type,
@@ -182,9 +195,11 @@ class PerformanceBenchmark:
                 WHERE user_id IS NOT NULL
                 AND timestamp >= CURRENT_DATE - INTERVAL '7 days'
                 LIMIT 10000
-            """),
-
-            ("string_operations", """
+            """,
+            ),
+            (
+                "string_operations",
+                """
                 SELECT
                     event_type,
                     COUNT(*) as total_events,
@@ -193,7 +208,8 @@ class PerformanceBenchmark:
                 FROM events_medium
                 WHERE properties IS NOT NULL
                 GROUP BY event_type
-            """)
+            """,
+            ),
         ]
 
         # Adapt queries based on available views
@@ -205,12 +221,18 @@ class PerformanceBenchmark:
             view_names = [row[0] for row in existing_views]
 
             # Use available views if they exist
-            if 'test_aggregation' in view_names:
-                benchmark_queries.append(("view_aggregation", "SELECT * FROM test_aggregation LIMIT 1000"))
-            if 'test_join' in view_names:
-                benchmark_queries.append(("view_join", "SELECT * FROM test_join LIMIT 1000"))
-            if 'funnel_analysis' in view_names:
-                benchmark_queries.append(("analytics_funnel", "SELECT * FROM funnel_analysis"))
+            if "test_aggregation" in view_names:
+                benchmark_queries.append(
+                    ("view_aggregation", "SELECT * FROM test_aggregation LIMIT 1000")
+                )
+            if "test_join" in view_names:
+                benchmark_queries.append(
+                    ("view_join", "SELECT * FROM test_join LIMIT 1000")
+                )
+            if "funnel_analysis" in view_names:
+                benchmark_queries.append(
+                    ("analytics_funnel", "SELECT * FROM funnel_analysis")
+                )
 
         except Exception as e:
             print(f"  ⚠️  Could not check available views: {e}")
@@ -231,7 +253,7 @@ class PerformanceBenchmark:
         filename = f"benchmark_{self.results['config_name']}_{timestamp}.json"
         filepath = output_path / filename
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(self.results, f, indent=2)
 
         print(f"💾 Results saved to: {filepath}")
@@ -253,7 +275,11 @@ class PerformanceBenchmark:
 
         if successful_benchmarks:
             durations = [b["duration_seconds"] for b in successful_benchmarks]
-            throughputs = [b["rows_per_second"] for b in successful_benchmarks if b["rows_per_second"] > 0]
+            throughputs = [
+                b["rows_per_second"]
+                for b in successful_benchmarks
+                if b["rows_per_second"] > 0
+            ]
 
             print(f"\n⏱️  Performance Metrics:")
             print(f"   Average query time: {statistics.mean(durations):.3f}s")
@@ -261,7 +287,9 @@ class PerformanceBenchmark:
             print(f"   Slowest query: {max(durations):.3f}s")
 
             if throughputs:
-                print(f"   Average throughput: {statistics.mean(throughputs):,.0f} rows/sec")
+                print(
+                    f"   Average throughput: {statistics.mean(throughputs):,.0f} rows/sec"
+                )
                 print(f"   Peak throughput: {max(throughputs):,.0f} rows/sec")
 
         if failed_benchmarks:
@@ -272,26 +300,44 @@ class PerformanceBenchmark:
     def compare_with_baseline(self, baseline_path):
         """Compare current results with a baseline."""
         try:
-            with open(baseline_path, 'r') as f:
+            with open(baseline_path, "r") as f:
                 baseline = json.load(f)
 
             print(f"\n📈 Comparison with baseline: {Path(baseline_path).stem}")
             print("=" * 50)
 
-            current_results = {b["query_name"]: b for b in self.results["benchmarks"] if b["success"]}
-            baseline_results = {b["query_name"]: b for b in baseline["benchmarks"] if b["success"]}
+            current_results = {
+                b["query_name"]: b for b in self.results["benchmarks"] if b["success"]
+            }
+            baseline_results = {
+                b["query_name"]: b for b in baseline["benchmarks"] if b["success"]
+            }
 
             for query_name in current_results:
                 if query_name in baseline_results:
                     current = current_results[query_name]
                     baseline = baseline_results[query_name]
 
-                    duration_change = (current["duration_seconds"] - baseline["duration_seconds"]) / baseline["duration_seconds"] * 100
-                    throughput_change = (current["rows_per_second"] - baseline["rows_per_second"]) / baseline["rows_per_second"] * 100 if baseline["rows_per_second"] > 0 else 0
+                    duration_change = (
+                        (current["duration_seconds"] - baseline["duration_seconds"])
+                        / baseline["duration_seconds"]
+                        * 100
+                    )
+                    throughput_change = (
+                        (current["rows_per_second"] - baseline["rows_per_second"])
+                        / baseline["rows_per_second"]
+                        * 100
+                        if baseline["rows_per_second"] > 0
+                        else 0
+                    )
 
                     print(f"{query_name}:")
-                    print(f"  Duration: {current['duration_seconds']:.3f}s vs {baseline['duration_seconds']:.3f}s ({duration_change:+.1f}%)")
-                    print(f"  Throughput: {current['rows_per_second']:,.0f} vs {baseline['rows_per_second']:,.0f} rows/sec ({throughput_change:+.1f}%)")
+                    print(
+                        f"  Duration: {current['duration_seconds']:.3f}s vs {baseline['duration_seconds']:.3f}s ({duration_change:+.1f}%)"
+                    )
+                    print(
+                        f"  Throughput: {current['rows_per_second']:,.0f} vs {baseline['rows_per_second']:,.0f} rows/sec ({throughput_change:+.1f}%)"
+                    )
 
         except Exception as e:
             print(f"❌ Could not compare with baseline: {e}")
@@ -300,12 +346,23 @@ class PerformanceBenchmark:
 def main():
     """Main benchmark execution function."""
     parser = argparse.ArgumentParser(description="DuckDB Performance Benchmark")
-    parser.add_argument("--config", required=True, help="Path to catalog configuration file")
-    parser.add_argument("--dataset", default="medium", choices=["small", "medium", "large"], help="Dataset size to test")
+    parser.add_argument(
+        "--config", required=True, help="Path to catalog configuration file"
+    )
+    parser.add_argument(
+        "--dataset",
+        default="medium",
+        choices=["small", "medium", "large"],
+        help="Dataset size to test",
+    )
     parser.add_argument("--name", help="Custom name for this benchmark run")
-    parser.add_argument("--output", default="results", help="Output directory for results")
+    parser.add_argument(
+        "--output", default="results", help="Output directory for results"
+    )
     parser.add_argument("--compare", help="Compare results with baseline file")
-    parser.add_argument("--list-results", action="store_true", help="List all available result files")
+    parser.add_argument(
+        "--list-results", action="store_true", help="List all available result files"
+    )
 
     args = parser.parse_args()
 
@@ -344,7 +401,9 @@ def main():
     # Check dataset availability
     dataset_path = Path("datasets") / f"events_{args.dataset}.parquet"
     if not dataset_path.exists():
-        print(f"❌ Dataset {dataset_path} not found. Run 'python generate-datasets.py --size {args.dataset}' first.")
+        print(
+            f"❌ Dataset {dataset_path} not found. Run 'python generate-datasets.py --size {args.dataset}' first."
+        )
         sys.exit(1)
 
     print(f"✅ Using dataset: {dataset_path}")
@@ -352,7 +411,9 @@ def main():
     # Load dataset into view
     try:
         view_name = f"events_{args.dataset}"
-        connection.execute(f"CREATE OR REPLACE VIEW {view_name} AS SELECT * FROM '{dataset_path}'")
+        connection.execute(
+            f"CREATE OR REPLACE VIEW {view_name} AS SELECT * FROM '{dataset_path}'"
+        )
         print(f"✅ Created view {view_name}")
     except Exception as e:
         print(f"❌ Failed to create view: {e}")

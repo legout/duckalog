@@ -55,9 +55,19 @@ Advanced Duckalog capabilities and integrations:
 
 1. **Choose an example** based on your use case and skill level
 2. **Follow the README** for setup instructions
-3. **Generate data** using `python data/generate.py`
-4. **Build catalog** with `duckalog build catalog.yaml`
-5. **Validate results** with `python validate.py`
+3. **Install dependencies** including `polars>=0.20.0` for data generation
+4. **Generate data** using `python data/generate.py`
+5. **Build catalog** with `duckalog build catalog.yaml`
+6. **Validate results** with `python validate.py`
+
+### Dependencies
+
+Most examples use the following core dependencies:
+```bash
+pip install duckalog polars>=0.20.0 pyarrow>=12.0.0
+```
+
+Some advanced examples may require additional packages - check individual example READMEs for specific requirements.
 
 ## Contributing
 

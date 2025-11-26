@@ -137,7 +137,7 @@ You can also use the Python API for more advanced workflows:
 
 ```python
 from duckalog import build_catalog, generate_sql, load_config
-import pandas as pd
+import polars as pl
 import duckdb
 
 # Load configuration

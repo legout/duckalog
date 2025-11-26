@@ -14,6 +14,7 @@ import typer
 from .config import ConfigError, load_config
 from .engine import EngineError, build_catalog
 from .logging_utils import log_error, log_info
+from .path_resolution import validate_file_accessibility
 from .sql_generation import generate_all_views_sql
 
 app = typer.Typer(help="Duckalog CLI for building and inspecting DuckDB catalogs.")
@@ -168,6 +169,134 @@ def validate(
     typer.echo("Config is valid.")
 
 
+@app.command(help="Show resolved paths for a configuration file.")
+def show_paths(
+    config_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False
+    ),
+    check_accessibility: bool = typer.Option(
+        False, "--check", "-c", help="Check if files are accessible."
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
+) -> None:
+    """Show how paths in a configuration are resolved.
+
+    This command displays the original paths from the configuration file
+    and their resolved absolute paths.
+
+    Args:
+        config_path: Path to the configuration file.
+        check_accessibility: If True, check if resolved file paths are accessible.
+        verbose: If True, enable more verbose logging.
+    """
+    _configure_logging(verbose)
+    log_info("CLI show-paths invoked", config_path=str(config_path))
+
+    try:
+        config = load_config(str(config_path))
+    except ConfigError as exc:
+        log_error("Show-paths failed due to config error", error=str(exc))
+        _fail(f"Config error: {exc}", 2)
+
+    config_dir = config_path.resolve().parent
+    typer.echo(f"Configuration: {config_path}")
+    typer.echo(f"Config directory: {config_dir}")
+    typer.echo("")
+
+    # Show view paths
+    typer.echo("View Paths:")
+    typer.echo("-" * 80)
+    if config.views:
+        for view in config.views:
+            if view.uri:
+                typer.echo(f"{view.name}:")
+                typer.echo(f"  Original: {view.uri}")
+                # For file-based views, show what would be resolved
+                if view.source in ("parquet", "delta"):
+                    from .path_resolution import resolve_relative_path, is_relative_path
+
+                    if is_relative_path(view.uri):
+                        resolved = resolve_relative_path(view.uri, config_dir)
+                        typer.echo(f"  Resolved: {resolved}")
+                    else:
+                        typer.echo(f"  Resolved: {view.uri} (absolute path)")
+
+                    if check_accessibility:
+                        is_accessible, error_msg = validate_file_accessibility(resolved)
+                        if is_accessible:
+                            typer.echo(f"  Status: ✅ Accessible")
+                        else:
+                            typer.echo(f"  Status: ❌ {error_msg}")
+                typer.echo("")
+    else:
+        typer.echo("No views with file paths found.")
+
+
+@app.command(help="Validate config and check path accessibility.")
+def validate_paths(
+    config_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
+) -> None:
+    """Validate configuration and check path accessibility.
+
+    This command validates the configuration file and checks if all file
+    paths are accessible.
+
+    Args:
+        config_path: Path to the configuration file.
+        verbose: If True, enable more verbose logging.
+    """
+    _configure_logging(verbose)
+    log_info("CLI validate-paths invoked", config_path=str(config_path))
+
+    try:
+        config = load_config(str(config_path))
+        typer.echo("✅ Configuration is valid.")
+    except ConfigError as exc:
+        log_error("Validate-paths failed due to config error", error=str(exc))
+        _fail(f"Config error: {exc}", 2)
+
+    config_dir = config_path.resolve().parent
+    inaccessible_files = []
+
+    # Check accessibility of view files
+    typer.echo("")
+    typer.echo("Checking file accessibility...")
+    typer.echo("-" * 50)
+
+    if config.views:
+        for view in config.views:
+            if view.uri and view.source in ("parquet", "delta"):
+                from .path_resolution import resolve_relative_path, is_relative_path
+
+                path_to_check = view.uri
+                if is_relative_path(view.uri):
+                    path_to_check = resolve_relative_path(view.uri, config_dir)
+
+                is_accessible, error_msg = validate_file_accessibility(path_to_check)
+                if is_accessible:
+                    typer.echo(f"✅ {view.name}: {path_to_check}")
+                else:
+                    typer.echo(f"❌ {view.name}: {error_msg}")
+                    inaccessible_files.append((view.name, path_to_check, error_msg))
+
+    # Summary
+    typer.echo("")
+    if inaccessible_files:
+        typer.echo(f"❌ Found {len(inaccessible_files)} inaccessible files:")
+        for name, path, error in inaccessible_files:
+            typer.echo(f"  - {name}: {error}")
+        _fail("Some files are not accessible.", 3)
+    else:
+        typer.echo("✅ All files are accessible.")
+
+
 @app.command(help="Start the web UI for catalog management.")
 def ui(
     config_path: Path = typer.Argument(
@@ -198,6 +327,19 @@ def ui(
         host=host,
         port=port,
     )
+
+    # Ensure Path object even if Click/Typer handed us a string
+    if not isinstance(config_path, Path):
+        config_path = Path(config_path)
+
+    forbidden_exts = {".duckdb", ".db", ".sqlite", ".sqlite3", ".mdb"}
+    suffix = config_path.suffix.lower()
+    if suffix in forbidden_exts:
+        _fail(
+            "UI expects a Duckalog YAML/JSON config file (e.g., catalog.yaml), "
+            f"not a database file like '{config_path.name}'.",
+            2,
+        )
 
     try:
         # Import UI module with error handling

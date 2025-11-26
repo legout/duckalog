@@ -17,12 +17,12 @@ from typing import Any, Dict, List
 
 try:
     import duckdb
-    import pandas as pd
+    import polars as pl
 
     from duckalog import build_catalog, load_config
 except ImportError as e:
     print(f"❌ Missing dependencies: {e}")
-    print("Install with: pip install duckalog pandas")
+    print("Install with: pip install duckalog polars")
     sys.exit(1)
 
 
@@ -135,8 +135,8 @@ class CIExampleValidator:
 
         # Validate data files
         try:
-            users_df = pd.read_parquet(users_file)
-            events_df = pd.read_parquet(events_file)
+            users_df = pl.read_parquet(users_file)
+            events_df = pl.read_parquet(events_file)
 
             if len(users_df) == 0:
                 self.errors.append("Users data file is empty")
@@ -272,7 +272,7 @@ class CIExampleValidator:
 
             try:
                 # Build catalog
-                build_catalog(config)
+                build_catalog(str(config_file))
                 print(f"    🔨 Catalog building successful")
                 return True
 
@@ -296,23 +296,23 @@ class CIExampleValidator:
 
         try:
             # Load data
-            users_df = pd.read_parquet(users_file)
-            events_df = pd.read_parquet(events_file)
+            users_df = pl.read_parquet(users_file)
+            events_df = pl.read_parquet(events_file)
 
             issues = []
 
             # Check users data
-            if users_df["user_id"].duplicated().any():
+            if users_df["user_id"].is_duplicated().any():
                 issues.append("Duplicate user IDs found")
 
-            if users_df["email"].isnull().any():
+            if users_df["email"].null_count() > 0:
                 issues.append("Null email addresses found")
 
             # Check events data
-            if events_df["event_id"].duplicated().any():
+            if events_df["event_id"].is_duplicated().any():
                 issues.append("Duplicate event IDs found")
 
-            if events_df["event_timestamp"].isnull().any():
+            if events_df["event_timestamp"].null_count() > 0:
                 issues.append("Null event timestamps found")
 
             # Check referential integrity

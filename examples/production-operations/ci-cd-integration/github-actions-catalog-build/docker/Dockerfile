@@ -72,7 +72,7 @@ FROM base as runtime
 
 # Install only runtime dependencies
 RUN pip install --upgrade pip && \
-    pip install duckalog pyyaml pandas pyarrow
+    pip install duckalog pyyaml polars pyarrow
 
 # Create non-root user
 RUN groupadd -r duckalog && useradd -r -g duckalog duckalog

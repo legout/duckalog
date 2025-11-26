@@ -11,12 +11,14 @@ This script validates the time-series analytics example by:
 
 import sys
 import os
-import pandas as pd
+import polars as pl
 import numpy as np
 from pathlib import Path
 from datetime import datetime, timedelta
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
+
 
 def load_data():
     """Load all data files for validation."""
@@ -27,37 +29,63 @@ def load_data():
         return None
 
     try:
-        daily_sales = pd.read_parquet(data_dir / "daily_sales.parquet")
-        web_analytics = pd.read_parquet(data_dir / "web_analytics.parquet")
-        product_metrics = pd.read_parquet(data_dir / "product_metrics.parquet")
-        operational_metrics = pd.read_parquet(data_dir / "operational_metrics.parquet")
+        daily_sales = pl.read_parquet(data_dir / "daily_sales.parquet")
+        web_analytics = pl.read_parquet(data_dir / "web_analytics.parquet")
+        product_metrics = pl.read_parquet(data_dir / "product_metrics.parquet")
+        operational_metrics = pl.read_parquet(data_dir / "operational_metrics.parquet")
 
         return {
-            'daily_sales': daily_sales,
-            'web_analytics': web_analytics,
-            'product_metrics': product_metrics,
-            'operational_metrics': operational_metrics
+            "daily_sales": daily_sales,
+            "web_analytics": web_analytics,
+            "product_metrics": product_metrics,
+            "operational_metrics": operational_metrics,
         }
     except Exception as e:
         print(f"❌ Error loading data: {e}")
         return None
+
 
 def validate_time_series_integrity(data):
     """Validate time-series data integrity."""
     print("🔍 Validating Time-Series Data Integrity...")
     errors = []
 
-    daily_sales = data['daily_sales']
-    web_analytics = data['web_analytics']
-    product_metrics = data['product_metrics']
-    operational_metrics = data['operational_metrics']
+    daily_sales = data["daily_sales"]
+    web_analytics = data["web_analytics"]
+    product_metrics = data["product_metrics"]
+    operational_metrics = data["operational_metrics"]
 
     # Check for required columns
     required_columns = {
-        'daily_sales': ['date', 'product_id', 'category', 'region', 'sales_amount', 'units_sold'],
-        'web_analytics': ['date', 'sessions', 'pageviews', 'unique_visitors', 'bounce_rate'],
-        'product_metrics': ['date', 'product_id', 'views', 'clicks', 'purchases', 'revenue'],
-        'operational_metrics': ['date', 'production_target', 'actual_production', 'production_efficiency']
+        "daily_sales": [
+            "date",
+            "product_id",
+            "category",
+            "region",
+            "sales_amount",
+            "units_sold",
+        ],
+        "web_analytics": [
+            "date",
+            "sessions",
+            "pageviews",
+            "unique_visitors",
+            "bounce_rate",
+        ],
+        "product_metrics": [
+            "date",
+            "product_id",
+            "views",
+            "clicks",
+            "purchases",
+            "revenue",
+        ],
+        "operational_metrics": [
+            "date",
+            "production_target",
+            "actual_production",
+            "production_efficiency",
+        ],
     }
 
     for table, cols in required_columns.items():
@@ -68,61 +96,75 @@ def validate_time_series_integrity(data):
     # Validate date format and ranges
     for table_name, table_data in data.items():
         try:
-            table_data['date'] = pd.to_datetime(table_data['date'])
+            table_data = table_data.with_columns([pl.col("date").cast(pl.Datetime)])
+            data[table_name] = table_data
         except:
             errors.append(f"{table_name}: Invalid date format")
 
         # Check for future dates
-        future_dates = pd.to_datetime(table_data['date']) > datetime.now()
-        if future_dates.any():
-            errors.append(f"{table_name}: {future_dates.sum()} records have future dates")
+        future_data = table_data.filter(pl.col("date") > pl.lit(datetime.now()))
+        if future_data.height > 0:
+            errors.append(
+                f"{table_name}: {future_data.height} records have future dates"
+            )
 
         # Check for reasonable date ranges
-        min_date = pd.to_datetime(table_data['date']).min()
-        max_date = pd.to_datetime(table_data['date']).max()
+        min_date = table_data["date"].min()
+        max_date = table_data["date"].max()
         date_range = (max_date - min_date).days
 
         if date_range < 365:  # At least 1 year of data
-            errors.append(f"{table_name}: Insufficient time-series data - only {date_range} days")
+            errors.append(
+                f"{table_name}: Insufficient time-series data - only {date_range} days"
+            )
 
     # Check for time-series continuity
     for table_name, table_data in data.items():
-        if table_name == 'daily_sales':  # Skip for aggregated data
+        if table_name == "daily_sales":  # Skip for aggregated data
             continue
 
-        table_data['date'] = pd.to_datetime(table_data['date'])
-        expected_dates = pd.date_range(
-            start=table_data['date'].min(),
-            end=table_data['date'].max(),
-            freq='D'
-        )
+        expected_dates = pl.date_range(
+            start=table_data["date"].min(), end=table_data["date"].max(), interval="1d"
+        ).len()
 
-        missing_dates = len(expected_dates) - len(table_data['date'].unique())
+        missing_dates = expected_dates - table_data["date"].n_unique()
         if missing_dates > 5:  # Allow some gaps
             errors.append(f"{table_name}: {missing_dates} missing dates in time-series")
 
     # Validate numerical data
     for table_name, table_data in data.items():
         # Check for negative values where inappropriate
-        if 'sales_amount' in table_data.columns:
-            if (table_data['sales_amount'] < 0).any():
+        if "sales_amount" in table_data.columns:
+            if table_data.filter(pl.col("sales_amount") < 0).height > 0:
                 errors.append(f"{table_name}: Negative sales amounts found")
 
-        if 'sessions' in table_data.columns:
-            if (table_data['sessions'] < 0).any():
+        if "sessions" in table_data.columns:
+            if table_data.filter(pl.col("sessions") < 0).height > 0:
                 errors.append(f"{table_name}: Negative session counts found")
 
-        if 'units_sold' in table_data.columns:
-            if (table_data['units_sold'] < 0).any():
+        if "units_sold" in table_data.columns:
+            if table_data.filter(pl.col("units_sold") < 0).height > 0:
                 errors.append(f"{table_name}: Negative units sold found")
 
     # Check for reasonable values
-    if (web_analytics['bounce_rate'] < 0).any() or (web_analytics['bounce_rate'] > 1).any():
+    if (
+        web_analytics.filter(
+            (pl.col("bounce_rate") < 0) | (pl.col("bounce_rate") > 1)
+        ).height
+        > 0
+    ):
         errors.append("web_analytics: Bounce rate should be between 0 and 1")
 
-    if (operational_metrics['production_efficiency'] < 0).any() or \
-       (operational_metrics['production_efficiency'] > 2).any():
-        errors.append("operational_metrics: Production efficiency should be reasonable (0-200%)")
+    if (
+        operational_metrics.filter(
+            (pl.col("production_efficiency") < 0)
+            | (pl.col("production_efficiency") > 2)
+        ).height
+        > 0
+    ):
+        errors.append(
+            "operational_metrics: Production efficiency should be reasonable (0-200%)"
+        )
 
     if errors:
         print("❌ Time-Series Data Integrity Issues Found:")
@@ -133,23 +175,38 @@ def validate_time_series_integrity(data):
         print("✅ Time-Series data integrity checks passed")
         return True
 
+
 def validate_seasonal_patterns(data):
     """Validate seasonal patterns in the data."""
     print("\n📅 Validating Seasonal Patterns...")
 
-    daily_sales = data['daily_sales']
-    web_analytics = data['web_analytics']
+    daily_sales = data["daily_sales"]
+    web_analytics = data["web_analytics"]
 
-    daily_sales['date'] = pd.to_datetime(daily_sales['date'])
-    web_analytics['date'] = pd.to_datetime(web_analytics['date'])
+    daily_sales = daily_sales.with_columns(
+        [
+            pl.col("date").dt.weekday().alias("day_of_week"),
+            pl.col("date").dt.month().alias("month"),
+        ]
+    )
+    web_analytics = web_analytics.with_columns(
+        [pl.col("date").dt.weekday().alias("day_of_week")]
+    )
 
     # Check weekly patterns
-    daily_sales['day_of_week'] = daily_sales['date'].dt.dayofweek
-    weekly_pattern = daily_sales.groupby('day_of_week')['sales_amount'].mean()
+    weekly_pattern = (
+        daily_sales.group_by("day_of_week")
+        .agg(pl.col("sales_amount").mean())
+        .sort("day_of_week")
+    )
 
     # Weekend should generally have higher sales for retail
-    weekend_sales = weekly_pattern[[5, 6]].mean()  # Saturday, Sunday
-    weekday_sales = weekly_pattern[[0, 1, 2, 3, 4]].mean()  # Monday-Friday
+    weekend_sales = weekly_pattern.filter(pl.col("day_of_week").is_in([5, 6]))[
+        "sales_amount"
+    ].mean()
+    weekday_sales = weekly_pattern.filter(pl.col("day_of_week").is_in([0, 1, 2, 3, 4]))[
+        "sales_amount"
+    ].mean()
 
     if weekend_sales > weekday_sales * 1.1:
         print("   ✅ Weekly pattern detected - higher weekend sales")
@@ -157,12 +214,17 @@ def validate_seasonal_patterns(data):
         print("   ⚠️  Weekly pattern may be weak or inverted")
 
     # Check annual seasonality
-    daily_sales['month'] = daily_sales['date'].dt.month
-    monthly_pattern = daily_sales.groupby('month')['sales_amount'].mean()
+    monthly_pattern = (
+        daily_sales.group_by("month").agg(pl.col("sales_amount").mean()).sort("month")
+    )
 
     # Check for holiday peaks (November-December)
-    holiday_months = monthly_pattern[[11, 12]].mean()
-    other_months = monthly_pattern[[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]].mean()
+    holiday_months = monthly_pattern.filter(pl.col("month").is_in([11, 12]))[
+        "sales_amount"
+    ].mean()
+    other_months = monthly_pattern.filter(~pl.col("month").is_in([11, 12]))[
+        "sales_amount"
+    ].mean()
 
     if holiday_months > other_months * 1.2:
         print("   ✅ Holiday seasonality detected - higher sales in Nov-Dec")
@@ -170,44 +232,61 @@ def validate_seasonal_patterns(data):
         print("   ⚠️  Holiday seasonality may be weak")
 
     # Check web analytics patterns
-    web_analytics['day_of_week'] = web_analytics['date'].dt.dayofweek
-    web_weekly = web_analytics.groupby('day_of_week')['sessions'].mean()
+    web_weekly = (
+        web_analytics.group_by("day_of_week")
+        .agg(pl.col("sessions").mean())
+        .sort("day_of_week")
+    )
 
-    web_weekend = web_weekly[[5, 6]].mean()
-    web_weekday = web_weekly[[0, 1, 2, 3, 4]].mean()
+    web_weekend = web_weekly.filter(pl.col("day_of_week").is_in([5, 6]))[
+        "sessions"
+    ].mean()
+    web_weekday = web_weekly.filter(pl.col("day_of_week").is_in([0, 1, 2, 3, 4]))[
+        "sessions"
+    ].mean()
 
-    print(f"   - Retail weekend/weekday ratio: {weekend_sales/weekday_sales:.2f}")
-    print(f"   - Web weekend/weekday ratio: {web_weekend/web_weekday:.2f}")
+    print(f"   - Retail weekend/weekday ratio: {weekend_sales / weekday_sales:.2f}")
+    print(f"   - Web weekend/weekday ratio: {web_weekend / web_weekday:.2f}")
 
     return True
+
 
 def validate_growth_trends(data):
     """Validate growth trends and calculations."""
     print("\n📈 Validating Growth Trends...")
 
-    daily_sales = data['daily_sales']
-    web_analytics = data['web_analytics']
-
-    daily_sales['date'] = pd.to_datetime(daily_sales['date'])
-    web_analytics['date'] = pd.to_datetime(web_analytics['date'])
+    daily_sales = data["daily_sales"]
+    web_analytics = data["web_analytics"]
 
     # Calculate monthly trends
-    sales_monthly = daily_sales.groupby(pd.Grouper(key='date', freq='M'))['sales_amount'].sum()
-    web_monthly = web_analytics.groupby(pd.Grouper(key='date', freq='M'))['sessions'].sum()
+    sales_monthly = (
+        daily_sales.group_by_dynamic("date", every="1mo")
+        .agg(pl.col("sales_amount").sum())
+        .sort("date")
+    )
+
+    web_monthly = (
+        web_analytics.group_by_dynamic("date", every="1mo")
+        .agg(pl.col("sessions").sum())
+        .sort("date")
+    )
 
     # Calculate year-over-year growth
     sales_yoy_growth = []
     web_yoy_growth = []
 
-    for i in range(12, len(sales_monthly)):
-        current_year = sales_monthly.iloc[i-12:i].sum()
-        prev_year = sales_monthly.iloc[i-24:i-12].sum()
+    sales_data = sales_monthly["sales_amount"].to_list()
+    web_data = web_monthly["sessions"].to_list()
+
+    for i in range(12, len(sales_data)):
+        current_year = sum(sales_data[i - 12 : i])
+        prev_year = sum(sales_data[i - 24 : i - 12])
         if prev_year > 0:
             sales_yoy_growth.append((current_year - prev_year) / prev_year * 100)
 
-    for i in range(12, len(web_monthly)):
-        current_year = web_monthly.iloc[i-12:i].sum()
-        prev_year = web_monthly.iloc[i-24:i-12].sum()
+    for i in range(12, len(web_data)):
+        current_year = sum(web_data[i - 12 : i])
+        prev_year = sum(web_data[i - 24 : i - 12])
         if prev_year > 0:
             web_yoy_growth.append((current_year - prev_year) / prev_year * 100)
 
@@ -229,28 +308,39 @@ def validate_growth_trends(data):
 
     return True
 
+
 def validate_moving_averages(data):
     """Validate moving average calculations logic."""
     print("\n📊 Validating Moving Average Logic...")
 
-    daily_sales = data['daily_sales']
-    daily_sales['date'] = pd.to_datetime(daily_sales['date'])
+    daily_sales = data["daily_sales"]
 
     # Test simple moving average calculation
-    test_product = daily_sales[daily_sales['product_id'].notna()].iloc[0]['product_id']
-    test_region = daily_sales[daily_sales['region'].notna()].iloc[0]['region']
+    test_data = daily_sales.filter(pl.col("product_id").is_not_null())
+    if test_data.height == 0:
+        print("   ⚠️  No valid product data for moving average test")
+        return True
 
-    product_sales = daily_sales[
-        (daily_sales['product_id'] == test_product) &
-        (daily_sales['region'] == test_region)
-    ].sort_values('date')
+    test_product = test_data[0, "product_id"]
+    test_region = test_data[0, "region"]
 
-    if len(product_sales) >= 30:
+    product_sales = daily_sales.filter(
+        (pl.col("product_id") == test_product) & (pl.col("region") == test_region)
+    ).sort("date")
+
+    if product_sales.height >= 30:
         # Manual 7-day moving average
-        manual_ma_7 = product_sales['sales_amount'].rolling(window=7, min_periods=1).mean()
+        sales_data = product_sales["sales_amount"].to_list()
+        manual_ma_7 = []
+
+        for i in range(len(sales_data)):
+            start_idx = max(0, i - 6)
+            manual_ma_7.append(np.mean(sales_data[start_idx : i + 1]))
+
+        manual_ma_7 = np.array(manual_ma_7)
 
         # Check that moving average smooths the data
-        ma_smoothness = manual_ma_7.std() / product_sales['sales_amount'].std()
+        ma_smoothness = manual_ma_7.std() / product_sales["sales_amount"].std()
 
         if ma_smoothness < 0.9:
             print("   ✅ Moving average successfully smooths volatility")
@@ -263,24 +353,26 @@ def validate_moving_averages(data):
 
     return True
 
+
 def validate_forecasting_logic(data):
     """Validate forecasting logic and reasonableness."""
     print("\n🔮 Validating Forecasting Logic...")
 
-    daily_sales = data['daily_sales']
-    daily_sales['date'] = pd.to_datetime(daily_sales['date'])
+    daily_sales = data["daily_sales"]
 
     # Get recent data for forecasting validation
-    recent_data = daily_sales[daily_sales['date'] >= (datetime.now() - timedelta(days=90))]
+    recent_data = daily_sales.filter(
+        pl.col("date") >= (datetime.now() - timedelta(days=90))
+    )
 
     # Check if there's enough data for reasonable forecasting
-    if len(recent_data) < 30:
+    if recent_data.height < 30:
         print("   ⚠️  Insufficient recent data for forecasting validation")
         return False
 
     # Calculate basic forecast components
-    avg_recent_sales = recent_data['sales_amount'].mean()
-    recent_volatility = recent_data['sales_amount'].std()
+    avg_recent_sales = recent_data["sales_amount"].mean()
+    recent_volatility = recent_data["sales_amount"].std()
 
     # Check if volatility is reasonable for forecasting
     cv = recent_volatility / avg_recent_sales  # Coefficient of variation
@@ -296,8 +388,8 @@ def validate_forecasting_logic(data):
     print(f"   - Coefficient of variation: {cv:.3f}")
 
     # Check for trend in recent data
-    recent_data_sorted = recent_data.sort_values('date')
-    recent_sales = recent_data_sorted['sales_amount'].values
+    recent_data_sorted = recent_data.sort("date")
+    recent_sales = recent_data_sorted["sales_amount"].to_numpy()
 
     # Simple linear trend
     x = np.arange(len(recent_sales))
@@ -312,34 +404,34 @@ def validate_forecasting_logic(data):
 
     return True
 
+
 def validate_performance_characteristics(data):
     """Validate performance and scalability characteristics."""
     print("\n⚡ Validating Performance Characteristics...")
 
-    daily_sales = data['daily_sales']
-    web_analytics = data['web_analytics']
+    daily_sales = data["daily_sales"]
+    web_analytics = data["web_analytics"]
 
     # Check data sizes
     print(f"   Data Sizes:")
-    print(f"   - Daily Sales: {len(daily_sales):,} records")
-    print(f"   - Web Analytics: {len(web_analytics):,} records")
+    print(f"   - Daily Sales: {daily_sales.height:,} records")
+    print(f"   - Web Analytics: {web_analytics.height:,} records")
 
     # Check time-series density
-    daily_sales['date'] = pd.to_datetime(daily_sales['date'])
-    date_range_days = (daily_sales['date'].max() - daily_sales['date'].min()).days
-    records_per_day = len(daily_sales) / date_range_days
+    date_range_days = (daily_sales["date"].max() - daily_sales["date"].min()).days
+    records_per_day = daily_sales.height / date_range_days
 
     print(f"   - Records per day: {records_per_day:.1f}")
 
     # Memory usage estimation for common operations
-    unique_products = daily_sales['product_id'].nunique()
-    unique_regions = daily_sales['region'].nunique()
+    unique_products = daily_sales["product_id"].n_unique()
+    unique_regions = daily_sales["region"].n_unique()
     total_combinations = unique_products * unique_regions
 
     print(f"   Memory usage estimates:")
     print(f"   - Product-Region combinations: {total_combinations:,}")
     print(f"   - 30-day moving averages: ~{total_combinations * 30:,} data points")
-    print(f"   - Growth rate calculations: ~{len(daily_sales):,} comparisons")
+    print(f"   - Growth rate calculations: ~{daily_sales.height:,} comparisons")
 
     # Performance recommendations
     if records_per_day > 100:
@@ -350,6 +442,7 @@ def validate_performance_characteristics(data):
 
     print("✅ Performance characteristics validated")
     return True
+
 
 def main():
     """Main validation function."""
@@ -368,7 +461,7 @@ def main():
         validate_growth_trends(data),
         validate_moving_averages(data),
         validate_forecasting_logic(data),
-        validate_performance_characteristics(data)
+        validate_performance_characteristics(data),
     ]
 
     print("\n" + "=" * 50)
@@ -379,6 +472,7 @@ def main():
     else:
         print("❌ Some validations failed. Please review the issues above.")
         return False
+
 
 if __name__ == "__main__":
     success = main()

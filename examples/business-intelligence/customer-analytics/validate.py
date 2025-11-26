@@ -11,12 +11,14 @@ This script validates the customer analytics example by:
 
 import sys
 import os
-import pandas as pd
+import polars as pl
 import numpy as np
 from pathlib import Path
 from datetime import datetime, timedelta
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
+
 
 def load_data():
     """Load all data files for validation."""
@@ -27,37 +29,43 @@ def load_data():
         return None
 
     try:
-        customers = pd.read_parquet(data_dir / "customers.parquet")
-        orders = pd.read_parquet(data_dir / "orders.parquet")
-        events = pd.read_parquet(data_dir / "events.parquet")
-        subscriptions = pd.read_parquet(data_dir / "subscriptions.parquet")
+        customers = pl.read_parquet(data_dir / "customers.parquet")
+        orders = pl.read_parquet(data_dir / "orders.parquet")
+        events = pl.read_parquet(data_dir / "events.parquet")
+        subscriptions = pl.read_parquet(data_dir / "subscriptions.parquet")
 
         return {
-            'customers': customers,
-            'orders': orders,
-            'events': events,
-            'subscriptions': subscriptions
+            "customers": customers,
+            "orders": orders,
+            "events": events,
+            "subscriptions": subscriptions,
         }
     except Exception as e:
         print(f"❌ Error loading data: {e}")
         return None
+
 
 def validate_data_integrity(data):
     """Validate basic data integrity."""
     print("🔍 Validating Data Integrity...")
     errors = []
 
-    customers = data['customers']
-    orders = data['orders']
-    events = data['events']
-    subscriptions = data['subscriptions']
+    customers = data["customers"]
+    orders = data["orders"]
+    events = data["events"]
+    subscriptions = data["subscriptions"]
 
     # Check for required columns
     required_columns = {
-        'customers': ['customer_id', 'signup_date', 'acquisition_channel'],
-        'orders': ['order_id', 'customer_id', 'order_date', 'order_value'],
-        'events': ['event_id', 'customer_id', 'event_date', 'event_type'],
-        'subscriptions': ['subscription_id', 'customer_id', 'start_date', 'monthly_price']
+        "customers": ["customer_id", "signup_date", "acquisition_channel"],
+        "orders": ["order_id", "customer_id", "order_date", "order_value"],
+        "events": ["event_id", "customer_id", "event_date", "event_type"],
+        "subscriptions": [
+            "subscription_id",
+            "customer_id",
+            "start_date",
+            "monthly_price",
+        ],
     }
 
     for table, cols in required_columns.items():
@@ -66,52 +74,68 @@ def validate_data_integrity(data):
             errors.append(f"{table}: Missing columns {missing_cols}")
 
     # Check for duplicate primary keys
-    if customers['customer_id'].duplicated().any():
+    if customers["customer_id"].is_duplicated().any():
         errors.append("customers: Duplicate customer_id found")
 
-    if orders['order_id'].duplicated().any():
+    if orders["order_id"].is_duplicated().any():
         errors.append("orders: Duplicate order_id found")
 
-    if events['event_id'].duplicated().any():
+    if events["event_id"].is_duplicated().any():
         errors.append("events: Duplicate event_id found")
 
-    if subscriptions['subscription_id'].duplicated().any():
+    if subscriptions["subscription_id"].is_duplicated().any():
         errors.append("subscriptions: Duplicate subscription_id found")
 
     # Check foreign key relationships
-    order_customers = set(orders['customer_id'])
-    customer_ids = set(customers['customer_id'])
+    order_customers = set(orders["customer_id"].unique().to_list())
+    customer_ids = set(customers["customer_id"].unique().to_list())
     invalid_orders = order_customers - customer_ids
     if invalid_orders:
-        errors.append(f"orders: {len(invalid_orders)} orders reference non-existent customers")
+        errors.append(
+            f"orders: {len(invalid_orders)} orders reference non-existent customers"
+        )
 
-    event_customers = set(events['customer_id'])
+    event_customers = set(events["customer_id"].unique().to_list())
     invalid_events = event_customers - customer_ids
     if invalid_events:
-        errors.append(f"events: {len(invalid_events)} events reference non-existent customers")
+        errors.append(
+            f"events: {len(invalid_events)} events reference non-existent customers"
+        )
 
-    sub_customers = set(subscriptions['customer_id'])
+    sub_customers = set(subscriptions["customer_id"].unique().to_list())
     invalid_subs = sub_customers - customer_ids
     if invalid_subs:
-        errors.append(f"subscriptions: {len(invalid_subs)} subscriptions reference non-existent customers")
+        errors.append(
+            f"subscriptions: {len(invalid_subs)} subscriptions reference non-existent customers"
+        )
 
     # Check for negative values
-    if (orders['order_value'] < 0).any():
+    if orders.filter(pl.col("order_value") < 0).height > 0:
         errors.append("orders: Negative order values found")
 
-    if (subscriptions['monthly_price'] < 0).any():
+    if subscriptions.filter(pl.col("monthly_price") < 0).height > 0:
         errors.append("subscriptions: Negative monthly prices found")
 
     # Check date ranges
     today = datetime.now().date()
 
-    invalid_signup_dates = pd.to_datetime(customers['signup_date']).dt.date > today
-    if invalid_signup_dates.any():
-        errors.append(f"customers: {invalid_signup_dates.sum()} customers have future signup dates")
+    customers_with_dates = customers.with_columns(
+        [pl.col("signup_date").cast(pl.Datetime)]
+    )
+    invalid_signup_dates = customers_with_dates.filter(
+        pl.col("signup_date").dt.date() > today
+    )
+    if invalid_signup_dates.height > 0:
+        errors.append(
+            f"customers: {invalid_signup_dates.height} customers have future signup dates"
+        )
 
-    invalid_order_dates = pd.to_datetime(orders['order_date']).dt.date > today
-    if invalid_order_dates.any():
-        errors.append(f"orders: {invalid_order_dates.sum()} orders have future dates")
+    orders_with_dates = orders.with_columns([pl.col("order_date").cast(pl.Datetime)])
+    invalid_order_dates = orders_with_dates.filter(
+        pl.col("order_date").dt.date() > today
+    )
+    if invalid_order_dates.height > 0:
+        errors.append(f"orders: {invalid_order_dates.height} orders have future dates")
 
     if errors:
         print("❌ Data Integrity Issues Found:")
@@ -122,38 +146,52 @@ def validate_data_integrity(data):
         print("✅ Data integrity checks passed")
         return True
 
+
 def validate_business_logic(data):
     """Validate business logic and metrics."""
     print("\n📊 Validating Business Logic...")
     errors = []
 
-    customers = data['customers']
-    orders = data['orders']
-    events = data['events']
-    subscriptions = data['subscriptions']
+    customers = data["customers"]
+    orders = data["orders"]
+    events = data["events"]
+    subscriptions = data["subscriptions"]
 
     # Test 1: Cohort size logic
     print("   Testing cohort analysis logic...")
 
     # Create cohorts manually
-    customers['cohort_month'] = pd.to_datetime(customers['signup_date']).dt.to_period('M')
-    cohort_sizes = customers.groupby('cohort_month').size()
+    customers_with_cohort = customers.with_columns(
+        [
+            pl.col("signup_date")
+            .cast(pl.Datetime)
+            .dt.truncate("1mo")
+            .alias("cohort_month")
+        ]
+    )
+    cohort_sizes = customers_with_cohort.group_by("cohort_month").count()
 
-    if cohort_sizes.empty:
+    if cohort_sizes.height == 0:
         errors.append("No cohorts found - all customers should belong to a cohort")
     else:
-        print(f"   Found {len(cohort_sizes)} cohorts with sizes ranging from {cohort_sizes.min()} to {cohort_sizes.max()}")
+        min_size = cohort_sizes["count"].min()
+        max_size = cohort_sizes["count"].max()
+        print(
+            f"   Found {cohort_sizes.height} cohorts with sizes ranging from {min_size} to {max_size}"
+        )
 
     # Test 2: LTV calculation logic
     print("   Testing LTV calculation logic...")
 
-    customer_revenue = orders.groupby('customer_id')['order_value'].sum().reset_index()
-    if len(customer_revenue) == 0:
+    customer_revenue = orders.group_by("customer_id").agg(
+        pl.col("order_value").sum().alias("total_revenue")
+    )
+    if customer_revenue.height == 0:
         errors.append("No customer revenue data found")
     else:
         # Check if LTV calculations make sense
-        total_customers = len(customers)
-        paying_customers = len(customer_revenue)
+        total_customers = customers.height
+        paying_customers = customer_revenue.height
         conversion_rate = paying_customers / total_customers
 
         if conversion_rate > 1.0:
@@ -167,47 +205,59 @@ def validate_business_logic(data):
     print("   Testing RFM segmentation logic...")
 
     # Calculate RFM metrics
-    customer_rfm = orders.groupby('customer_id').agg({
-        'order_date': 'max',
-        'order_id': 'count',
-        'order_value': 'sum'
-    }).reset_index()
+    customer_rfm = orders.group_by("customer_id").agg(
+        [
+            pl.col("order_date").max().alias("last_order_date"),
+            pl.col("order_id").count().alias("frequency"),
+            pl.col("order_value").sum().alias("monetary_value"),
+        ]
+    )
 
-    customer_rfm.columns = ['customer_id', 'last_order_date', 'frequency', 'monetary_value']
-
-    if len(customer_rfm) > 0:
+    if customer_rfm.height > 0:
         # Check recency calculation
-        customer_rfm['recency_days'] = (pd.to_datetime('today') - pd.to_datetime(customer_rfm['last_order_date'])).dt.days
+        customer_rfm_with_recency = customer_rfm.with_columns(
+            [
+                (pl.lit(datetime.now()) - pl.col("last_order_date").cast(pl.Datetime))
+                .dt.total_days()
+                .alias("recency_days")
+            ]
+        )
 
-        if (customer_rfm['recency_days'] < 0).any():
+        if customer_rfm_with_recency.filter(pl.col("recency_days") < 0).height > 0:
             errors.append("Some customers have negative recency (future orders)")
 
         # Check if frequency and monetary values are reasonable
-        if (customer_rfm['frequency'] <= 0).any():
+        if customer_rfm.filter(pl.col("frequency") <= 0).height > 0:
             errors.append("Some customers have zero or negative frequency")
 
-        if (customer_rfm['monetary_value'] < 0).any():
+        if customer_rfm.filter(pl.col("monetary_value") < 0).height > 0:
             errors.append("Some customers have negative monetary value")
 
-        print(f"   RFM analysis covers {len(customer_rfm)} paying customers")
+        print(f"   RFM analysis covers {customer_rfm.height} paying customers")
 
     # Test 4: Churn analysis logic
     print("   Testing churn analysis logic...")
 
     # Calculate monthly active customers
-    events['month'] = pd.to_datetime(events['event_date']).dt.to_period('M')
-    monthly_active = events.groupby('month')['customer_id'].nunique()
+    events_with_month = events.with_columns(
+        [pl.col("event_date").cast(pl.Datetime).dt.truncate("1mo").alias("month")]
+    )
+    monthly_active = (
+        events_with_month.group_by("month")
+        .agg(pl.col("customer_id").n_unique().alias("active_customers"))
+        .sort("month")
+    )
 
-    if len(monthly_active) < 2:
+    if monthly_active.height < 2:
         errors.append("Not enough monthly data for churn analysis")
     else:
         # Check for reasonable churn patterns
-        monthly_active_sorted = monthly_active.sort_index()
+        active_data = monthly_active["active_customers"].to_list()
         churn_rates = []
 
-        for i in range(1, len(monthly_active_sorted)):
-            prev_month = monthly_active_sorted.iloc[i-1]
-            curr_month = monthly_active_sorted.iloc[i]
+        for i in range(1, len(active_data)):
+            prev_month = active_data[i - 1]
+            curr_month = active_data[i]
 
             if prev_month > 0:
                 churn_rate = (prev_month - curr_month) / prev_month
@@ -218,7 +268,9 @@ def validate_business_logic(data):
             if avg_churn > 0.5:  # More than 50% monthly churn seems unrealistic
                 errors.append(f"Very high average monthly churn: {avg_churn:.1%}")
             elif avg_churn < -0.5:  # More than 50% negative churn seems unrealistic
-                errors.append(f"Very high negative churn (rapid growth): {avg_churn:.1%}")
+                errors.append(
+                    f"Very high negative churn (rapid growth): {avg_churn:.1%}"
+                )
             else:
                 print(f"   Average monthly change: {avg_churn:.1%}")
                 if avg_churn < 0:
@@ -229,21 +281,29 @@ def validate_business_logic(data):
     # Test 5: Subscription logic
     print("   Testing subscription logic...")
 
-    if len(subscriptions) > 0:
+    if subscriptions.height > 0:
         # Check subscription dates
-        subscriptions['start_date'] = pd.to_datetime(subscriptions['start_date'])
+        subs_with_dates = subscriptions.with_columns(
+            [
+                pl.col("start_date").cast(pl.Datetime),
+                pl.col("end_date").cast(pl.Datetime),
+            ]
+        )
 
         # Start dates should not be after end dates
-        active_subs = subscriptions[subscriptions['end_date'].notna()]
-        if len(active_subs) > 0:
-            active_subs['end_date'] = pd.to_datetime(active_subs['end_date'])
-            invalid_dates = active_subs[active_subs['start_date'] > active_subs['end_date']]
-            if len(invalid_dates) > 0:
-                errors.append(f"{len(invalid_subs)} subscriptions have end date before start date")
+        active_subs = subs_with_dates.filter(pl.col("end_date").is_not_null())
+        if active_subs.height > 0:
+            invalid_dates = active_subs.filter(
+                pl.col("start_date") > pl.col("end_date")
+            )
+            if invalid_dates.height > 0:
+                errors.append(
+                    f"{invalid_dates.height} subscriptions have end date before start date"
+                )
 
         # Check MRR calculation
-        active_now = subscriptions[subscriptions['status'] == 'active']
-        mrr = active_now['monthly_price'].sum()
+        active_now = subscriptions.filter(pl.col("status") == "active")
+        mrr = active_now["monthly_price"].sum()
 
         if mrr < 0:
             errors.append("Negative MRR calculated")
@@ -259,47 +319,56 @@ def validate_business_logic(data):
         print("✅ Business logic validation passed")
         return True
 
+
 def validate_performance_characteristics(data):
     """Validate performance and scalability characteristics."""
     print("\n⚡ Validating Performance Characteristics...")
 
-    customers = data['customers']
-    orders = data['orders']
-    events = data['events']
+    customers = data["customers"]
+    orders = data["orders"]
+    events = data["events"]
 
     # Check data sizes
     print(f"   Data Sizes:")
-    print(f"   - Customers: {len(customers):,}")
-    print(f"   - Orders: {len(orders):,}")
-    print(f"   - Events: {len(events):,}")
+    print(f"   - Customers: {customers.height:,}")
+    print(f"   - Orders: {orders.height:,}")
+    print(f"   - Events: {events.height:,}")
 
     # Check for reasonable data distributions
-    order_per_customer = len(orders) / len(customers)
-    events_per_customer = len(events) / len(customers)
+    order_per_customer = orders.height / customers.height
+    events_per_customer = events.height / customers.height
 
     print(f"   - Orders per customer: {order_per_customer:.1f}")
     print(f"   - Events per customer: {events_per_customer:.1f}")
 
     # Check for data skew
-    customer_order_counts = orders['customer_id'].value_counts()
-    top_1_percent_customers = int(len(customer_order_counts) * 0.01)
+    customer_order_counts = (
+        orders.group_by("customer_id").count().sort("count", descending=True)
+    )
+    top_1_percent_customers = int(customer_order_counts.height * 0.01)
 
     if top_1_percent_customers > 0:
-        top_1_percent_orders = customer_order_counts.head(top_1_percent_customers).sum()
-        total_orders = len(orders)
+        top_1_percent_orders = customer_order_counts.head(top_1_percent_customers)[
+            "count"
+        ].sum()
+        total_orders = orders.height
         concentration = top_1_percent_orders / total_orders
 
         print(f"   - Top 1% customers generate {concentration:.1%} of orders")
 
-        if concentration > 0.8:  # More than 80% of orders from top 1% might indicate skew
+        if (
+            concentration > 0.8
+        ):  # More than 80% of orders from top 1% might indicate skew
             print("   ⚠️  High customer concentration detected")
 
     # Memory usage estimation
     print(f"   Estimated memory usage for key operations:")
 
     # Cohort analysis memory
-    unique_customers = customers['customer_id'].nunique()
-    unique_months = pd.to_datetime(customers['signup_date']).dt.to_period('M').nunique()
+    unique_customers = customers["customer_id"].n_unique()
+    unique_months = customers.with_columns(
+        [pl.col("signup_date").cast(pl.Datetime).dt.truncate("1mo").alias("month")]
+    )["month"].n_unique()
     cohort_matrix_size = unique_customers * unique_months
     print(f"   - Cohort matrix: ~{cohort_matrix_size:,} cells")
 
@@ -310,6 +379,7 @@ def validate_performance_characteristics(data):
     print("✅ Performance characteristics validated")
     return True
 
+
 def run_metric_validations():
     """Run specific metric validations to ensure calculations are correct."""
     print("\n🧮 Running Metric Validations...")
@@ -317,10 +387,13 @@ def run_metric_validations():
     # These would typically run against a DuckDB instance with the views
     # For now, we'll validate the underlying data logic
 
-    print("   Note: Full metric validation requires running DuckDB with the catalog views")
+    print(
+        "   Note: Full metric validation requires running DuckDB with the catalog views"
+    )
     print("   Basic data logic validation completed above")
 
     return True
+
 
 def main():
     """Main validation function."""
@@ -337,7 +410,7 @@ def main():
         validate_data_integrity(data),
         validate_business_logic(data),
         validate_performance_characteristics(data),
-        run_metric_validations()
+        run_metric_validations(),
     ]
 
     print("\n" + "=" * 50)
@@ -348,6 +421,7 @@ def main():
     else:
         print("❌ Some validations failed. Please review the issues above.")
         return False
+
 
 if __name__ == "__main__":
     success = main()

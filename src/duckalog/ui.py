@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -169,41 +170,107 @@ except ImportError as exc:
     ) from exc
 
 
+def _json_error(message: str, status_code: int = 400) -> JSONResponse:
+    """Small helper to keep JSON error responses consistent."""
+    return JSONResponse({"error": message}, status_code=status_code)
+
+
+def _strip_non_code(sql: str) -> tuple[str, int]:
+    """Strip out strings/comments and count semicolons outside them."""
+    in_squote = in_dquote = in_bquote = False
+    in_line_comment = False
+    in_block_comment = False
+    cleaned_chars: list[str] = []
+    semicolons = 0
+    i = 0
+    while i < len(sql):
+        ch = sql[i]
+        nxt = sql[i + 1] if i + 1 < len(sql) else ""
+
+        if in_line_comment:
+            if ch == "\n":
+                in_line_comment = False
+            i += 1
+            continue
+
+        if in_block_comment:
+            if ch == "*" and nxt == "/":
+                in_block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+
+        if not (in_squote or in_dquote or in_bquote):
+            if ch == "-" and nxt == "-":
+                in_line_comment = True
+                i += 2
+                continue
+            if ch == "/" and nxt == "*":
+                in_block_comment = True
+                i += 2
+                continue
+            if ch == "'":
+                in_squote = True
+                cleaned_chars.append(" ")
+                i += 1
+                continue
+            if ch == '"':
+                in_dquote = True
+                cleaned_chars.append(" ")
+                i += 1
+                continue
+            if ch == "`":
+                in_bquote = True
+                cleaned_chars.append(" ")
+                i += 1
+                continue
+            if ch == ";":
+                semicolons += 1
+            cleaned_chars.append(ch)
+            i += 1
+            continue
+
+        # Inside a quote
+        if in_squote and ch == "'":
+            in_squote = False
+        elif in_dquote and ch == '"':
+            in_dquote = False
+        elif in_bquote and ch == "`":
+            in_bquote = False
+        i += 1
+
+    return "".join(cleaned_chars), semicolons
+
+
 def _validate_read_only_query(query: str) -> str:
-    """Validate that query is read-only and single-statement with safe identifier handling.
+    """Validate that query is read-only and single-statement with safe identifier handling."""
 
-    Args:
-        query: SQL query to validate
-
-    Returns:
-        Original query if valid
-
-    Raises:
-        ValueError: If query contains DDL/DML or multiple statements
-    """
     if not query or not query.strip():
         raise ValueError("Query cannot be empty")
 
-    # Remove leading/trailing whitespace and normalize case
     normalized_query = query.strip()
+    cleaned, semicolons = _strip_non_code(normalized_query)
+    cleaned_lower = cleaned.lower().strip()
 
-    # Check for DDL keywords
-    ddl_keywords = [
+    # Allow a single trailing semicolon only
+    if semicolons > 1:
+        raise ValueError("Multiple statements are not allowed")
+
+    if not cleaned_lower.startswith("select"):
+        raise ValueError("Only SELECT queries are allowed for security")
+
+    forbidden = (
         "create",
         "drop",
         "alter",
         "truncate",
         "rename",
-        "comment",
         "grant",
         "revoke",
         "commit",
         "rollback",
         "savepoint",
-    ]
-
-    # Check for DML keywords (excluding SELECT)
-    dml_keywords = [
         "insert",
         "update",
         "delete",
@@ -215,26 +282,12 @@ def _validate_read_only_query(query: str) -> str:
         "analyze",
         "optimize",
         "vacuum",
-    ]
+    )
 
-    # Check if query starts with SELECT (case-insensitive)
-    if not normalized_query.lower().startswith("select"):
-        raise ValueError("Only SELECT queries are allowed for security")
+    import re
 
-    # Check for forbidden keywords
-    for keyword in ddl_keywords + dml_keywords:
-        if (
-            f" {keyword} " in normalized_query.lower()
-            or f"\n{keyword}" in normalized_query.lower()
-        ):
-            raise ValueError(f"Query contains forbidden keyword: {keyword.upper()}")
-
-    # Check for multiple statements (semicolon separation)
-    if ";" in normalized_query.replace("'", "").replace('"', "").replace("`", ""):
-        # Count semicolons not in string literals
-        semicolon_count = normalized_query.count(";")
-        if semicolon_count > 1:
-            raise ValueError("Multiple statements are not allowed")
+    if re.search(r"\b(" + "|".join(forbidden) + r")\b", cleaned_lower):
+        raise ValueError("Query contains forbidden keyword")
 
     return query
 
@@ -340,14 +393,6 @@ def _check_auth(request: Request) -> Optional[Response]:
     return None
 
 
-try:
-    from datastar_py import ServerSentEventGenerator as SSE
-except ImportError as exc:
-    raise ImportError(
-        "Datastar dependencies not found. Install with: pip install datastar datastar-python"
-    ) from exc
-
-
 class UIError(Exception):
     """UI-related error.
 
@@ -378,6 +423,8 @@ class UIServer:
 
         # Background task result storage
         self._task_results: Dict[str, Dict[str, Any]] = {}
+        self._task_ttl_seconds: int = 600
+        self._task_max_items: int = 200
 
         # Track original config format
         self._config_format: str = "json"  # Default to JSON
@@ -415,6 +462,11 @@ class UIServer:
             self.app.mount(
                 "/static", StaticFiles(directory=str(static_dir)), name="static"
             )
+        else:
+            log_info(
+                "Static assets directory not found; UI will run without bundled assets",
+                directory=str(static_dir),
+            )
 
         # Apply CORS middleware
         self.app.add_middleware(
@@ -430,9 +482,30 @@ class UIServer:
         """Access task results for testing."""
         return self._task_results
 
+    def _prune_task_results(self) -> None:
+        """Evict stale or excess background task results."""
+        now = time.time()
+        keys = list(self._task_results.keys())
+        for key in keys:
+            created = self._task_results[key].get("created_at", now)
+            if now - created > self._task_ttl_seconds:
+                self._task_results.pop(key, None)
+
+        while len(self._task_results) > self._task_max_items:
+            oldest_key = next(iter(self._task_results))
+            self._task_results.pop(oldest_key, None)
+
     def _load_config(self) -> None:
         """Load the Duckalog configuration."""
         try:
+            binary_exts = {".duckdb", ".db", ".sqlite", ".sqlite3", ".mdb"}
+            suffix = self.config_path.suffix.lower()
+            if suffix in binary_exts:
+                raise UIError(
+                    "UI expects a Duckalog YAML/JSON config file (e.g., catalog.yaml), "
+                    f"not a database file like '{self.config_path.name}'."
+                )
+
             # Detect file format by file extension and content
             if self.config_path.exists():
                 if self.config_path.suffix.lower() in [".yaml", ".yml"]:
@@ -441,7 +514,14 @@ class UIServer:
                     self._config_format = "json"
                 else:
                     # Try to detect by content
-                    content = self.config_path.read_text().strip()
+                    try:
+                        content = self.config_path.read_text().strip()
+                    except UnicodeDecodeError as exc:
+                        raise UIError(
+                            "Config file is not valid UTF-8 text. The UI requires a "
+                            "Duckalog YAML/JSON config (e.g., catalog.yaml)."
+                        ) from exc
+
                     if content.startswith("{") or content.startswith("["):
                         self._config_format = "json"
                     else:
@@ -459,21 +539,19 @@ class UIServer:
     def _get_config(self, request: Request) -> Response:
         """Get current configuration as JSON."""
         if not self.config:
-            return JSONResponse({"error": "No configuration loaded"}, status_code=500)
+            return _json_error("No configuration loaded", status_code=500)
 
         try:
             config_dict = self.config.model_dump(mode="json")
             return JSONResponse(config_dict)
         except Exception as exc:
             log_error("Failed to serialize config", error=str(exc))
-            return JSONResponse(
-                {"error": f"Failed to serialize config: {exc}"}, status_code=500
-            )
+            return _json_error(f"Failed to serialize config: {exc}", status_code=500)
 
     async def _update_config(self, request: Request) -> Response:
         """Update configuration with new view data."""
         if not self.config:
-            return JSONResponse({"error": "No configuration loaded"}, status_code=500)
+            return _json_error("No configuration loaded", status_code=500)
 
         # Check authentication for mutating endpoint
         auth_result = _check_auth(request)
@@ -484,7 +562,7 @@ class UIServer:
             # Get request body
             body = await request.json()
             if not isinstance(body, dict):
-                return JSONResponse({"error": "Invalid request body"}, status_code=400)
+                return _json_error("Invalid request body", status_code=400)
 
             # Create temporary config with new view
             current_config_dict = self.config.model_dump(mode="json")
@@ -511,72 +589,34 @@ class UIServer:
 
         except Exception as exc:
             log_error("Failed to update config", error=str(exc))
-            return JSONResponse(
-                {"error": f"Failed to update config: {exc}"}, status_code=500
-            )
+            return _json_error(f"Failed to update config: {exc}", status_code=500)
 
     def _write_config_preserving_format(self, config: Config) -> None:
-        """Write configuration to file, preserving original format."""
+        """Write configuration to file, preserving original format with a single atomic helper."""
         try:
             if self._config_format == "yaml":
-                # Try to preserve YAML formatting using ruamel.yaml if available
-                try:
-                    from ruamel.yaml import YAML
+                import yaml  # type: ignore
 
-                    yaml = YAML()
-                    yaml.preserve_quotes = True
-                    yaml.width = 4096  # Prevent line wrapping
-
-                    # Convert to dict for YAML serialization
-                    config_dict = config.model_dump(mode="json")
-
-                    # Write to temporary YAML file first
-                    temp_path = self.config_path.with_suffix(".tmp")
-                    try:
-                        with open(temp_path, "w") as f:
-                            yaml.dump(config_dict, f)
-
-                        # Atomic move
-                        shutil.move(str(temp_path), str(self.config_path))
-                    except Exception as exc:
-                        # Clean up temp file if it exists
-                        if temp_path.exists():
-                            temp_path.unlink()
-                        raise exc
-
-                except ImportError:
-                    # Fallback to basic YAML if ruamel.yaml not available
-                    import yaml
-
-                    config_dict = config.model_dump(mode="json")
-                    config_yaml = yaml.dump(
-                        config_dict, default_flow_style=False, sort_keys=False
-                    )
-
-                    # Use the original atomic write method
-                    self._write_config_atomic(config_yaml)
-
+                config_dict = config.model_dump(mode="json")
+                config_data = yaml.safe_dump(
+                    config_dict, default_flow_style=False, sort_keys=False
+                )
             else:
-                # JSON format - use existing method
-                config_json = config.model_dump_json(indent=2)
-                self._write_config_atomic(config_json)
+                config_data = config.model_dump_json(indent=2)
 
+            self._atomic_write_text(config_data)
         except Exception as exc:
             raise UIError(
                 f"Failed to write config in {self._config_format} format: {exc}"
             )
 
-    def _write_config_atomic(self, config_data: str) -> None:
-        """Atomically write configuration to file."""
-        # Write to temporary file first
+    def _atomic_write_text(self, config_data: str) -> None:
+        """Atomically write text data to the config path."""
         temp_path = self.config_path.with_suffix(".tmp")
         try:
             temp_path.write_text(config_data)
-
-            # Atomic move
             shutil.move(str(temp_path), str(self.config_path))
         except Exception as exc:
-            # Clean up temp file if it exists
             if temp_path.exists():
                 temp_path.unlink()
             raise UIError(f"Failed to write config: {exc}")
@@ -781,7 +821,8 @@ class UIServer:
 
             try:
                 # Get column info
-                result = conn.execute(f"DESCRIBE {target_view.name}")
+                safe_view_name = _safe_identifier(target_view.name)
+                result = conn.execute(f"DESCRIBE {safe_view_name}")
                 columns = []
                 for row in result.fetchall():
                     columns.append(
@@ -818,8 +859,13 @@ class UIServer:
         try:
             # Generate task ID and create result store
             task_id = str(uuid.uuid4())
-            result_store = {"task_id": task_id, "status": "pending"}
+            result_store = {
+                "task_id": task_id,
+                "status": "pending",
+                "created_at": time.time(),
+            }
             self._task_results[task_id] = result_store
+            self._prune_task_results()
 
             # Add background task
             background_tasks.add_task(_rebuild_catalog_task, self.config, result_store)
@@ -865,8 +911,13 @@ class UIServer:
 
             # Generate task ID and create result store
             task_id = str(uuid.uuid4())
-            result_store = {"task_id": task_id, "status": "pending"}
+            result_store = {
+                "task_id": task_id,
+                "status": "pending",
+                "created_at": time.time(),
+            }
             self._task_results[task_id] = result_store
+            self._prune_task_results()
 
             # Add background task
             background_tasks.add_task(
@@ -1043,8 +1094,10 @@ class UIServer:
                 "task_id": task_id,
                 "status": "pending",
                 "format": format_type,
+                "created_at": time.time(),
             }
             self._task_results[task_id] = result_store
+            self._prune_task_results()
 
             # Add background task
             background_tasks.add_task(

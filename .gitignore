@@ -16,3 +16,4 @@ site/
 **/datasets/
 **/*.duckdb
 **/__marimo__
+.worktree
