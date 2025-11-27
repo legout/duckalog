@@ -34,7 +34,7 @@ permissions:
   actions: read
 
 env:
-  PYTHON_DEFAULT: "3.11"
+  PYTHON_DEFAULT: "3.12"
 
 jobs:
   secret-scanning:
