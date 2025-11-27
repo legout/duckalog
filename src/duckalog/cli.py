@@ -24,6 +24,7 @@ from .path_resolution import validate_file_accessibility
 from .sql_generation import generate_all_views_sql
 from .dashboard import create_app
 from .dashboard.state import DashboardContext
+from .config_init import create_config_template, validate_generated_config
 
 app = typer.Typer(help="Duckalog CLI for building and inspecting DuckDB catalogs.")
 
@@ -818,13 +819,23 @@ def _fail(message: str, code: int) -> None:
     raise typer.Exit(code)
 
 
-@app.command(name="ui", help="Launch the local starhtml/starui dashboard for a catalog.")
+@app.command(
+    name="ui", help="Launch the local starhtml/starui dashboard for a catalog."
+)
 def ui(
-    config_path: str = typer.Argument(..., help="Path to configuration file (local or remote)."),
-    host: str = typer.Option("127.0.0.1", "--host", help="Host to bind (default: loopback)."),
+    config_path: str = typer.Argument(
+        ..., help="Path to configuration file (local or remote)."
+    ),
+    host: str = typer.Option(
+        "127.0.0.1", "--host", help="Host to bind (default: loopback)."
+    ),
     port: int = typer.Option(8787, "--port", help="Port to bind (default: 8787)."),
-    row_limit: int = typer.Option(500, "--row-limit", help="Max rows to show in query results."),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging output."),
+    row_limit: int = typer.Option(
+        500, "--row-limit", help="Max rows to show in query results."
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
 ) -> None:
     """Start a local dashboard to inspect and query a Duckalog catalog."""
 
@@ -845,8 +856,135 @@ def ui(
 
     typer.echo(f"Starting dashboard at http://{host}:{port}")
     if host not in ("127.0.0.1", "localhost", "::1"):
-        typer.echo("Warning: binding to a non-loopback host may expose the dashboard to others on your network.", err=True)
+        typer.echo(
+            "Warning: binding to a non-loopback host may expose the dashboard to others on your network.",
+            err=True,
+        )
     uvicorn.run(app, host=host, port=port, log_level="info")
+
+
+@app.command(help="Initialize a new Duckalog configuration file.")
+def init(
+    output: Optional[str] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output file path for the configuration. Defaults to catalog.yaml or catalog.json based on format.",
+    ),
+    format: str = typer.Option(
+        "yaml",
+        "--format",
+        "-f",
+        help="Output format: yaml or json (default: yaml)",
+    ),
+    database_name: str = typer.Option(
+        "analytics_catalog.duckdb",
+        "--database",
+        "-d",
+        help="DuckDB database filename (default: analytics_catalog.duckdb)",
+    ),
+    project_name: str = typer.Option(
+        "my_analytics_project",
+        "--project",
+        "-p",
+        help="Project name used in comments (default: my_analytics_project)",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Overwrite existing file without prompting",
+    ),
+    skip_existing: bool = typer.Option(
+        False,
+        "--skip-existing",
+        help="Skip file creation if it already exists",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
+) -> None:
+    """Create a new Duckalog configuration file.
+
+    This command generates a basic, valid configuration template with
+    sensible defaults and educational example content.
+
+    Examples:
+        # Create a basic YAML config
+        duckalog init
+
+        # Create a JSON config with custom filename
+        duckalog init --format json --output my_config.json
+
+        # Create with custom database and project names
+        duckalog init --database sales.db --project sales_analytics
+
+        # Force overwrite existing file
+        duckalog init --force
+    """
+    from pathlib import Path
+
+    _configure_logging(verbose)
+
+    # Validate format
+    if format not in ("yaml", "json"):
+        typer.echo(f"Error: Format must be 'yaml' or 'json', got '{format}'", err=True)
+        raise typer.Exit(1)
+
+    # Determine default output path
+    if not output:
+        output = f"catalog.{format}"
+
+    output_path = Path(output)
+
+    # Check if file already exists
+    if output_path.exists():
+        if skip_existing:
+            typer.echo(f"File {output_path} already exists, skipping.")
+            return
+        elif not force:
+            # Prompt for confirmation
+            if not typer.confirm(f"File {output_path} already exists. Overwrite?"):
+                typer.echo("Operation cancelled.")
+                return
+
+    try:
+        # Generate the configuration template
+        content = create_config_template(
+            format=format,
+            output_path=str(output_path),
+            database_name=database_name,
+            project_name=project_name,
+        )
+
+        # Validate the generated content
+        validate_generated_config(content, format=format)
+
+        # Determine default filename for messaging
+        if output == f"catalog.{format}":
+            filename_msg = f"catalog.{format} (default filename)"
+        else:
+            filename_msg = str(output_path)
+
+        typer.echo(f"✅ Created Duckalog configuration: {filename_msg}")
+        typer.echo(f"📁 Path: {output_path.resolve()}")
+        typer.echo(f"📄 Format: {format.upper()}")
+        typer.echo(f"💾 Database: {database_name}")
+
+        if verbose:
+            typer.echo("\n🔧 Next steps:")
+            typer.echo(f"   1. Edit {output_path} to customize views and data sources")
+            typer.echo(
+                f"   2. Run 'duckalog validate {output_path}' to check your configuration"
+            )
+            typer.echo(
+                f"   3. Run 'duckalog build {output_path}' to create your catalog"
+            )
+
+    except Exception as exc:
+        if verbose:
+            raise
+        typer.echo(f"Error creating configuration: {exc}", err=True)
+        raise typer.Exit(1)
 
 
 def main_entry() -> None:

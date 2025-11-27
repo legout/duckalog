@@ -20,6 +20,7 @@ from .sql_generation import (
     render_options,
 )
 from .python_api import generate_sql, validate_config
+from .config_init import create_config_template, validate_generated_config, ConfigFormat
 
 __all__ = [
     "Config",
@@ -40,4 +41,7 @@ __all__ = [
     "render_options",
     "generate_view_sql",
     "generate_all_views_sql",
+    "create_config_template",
+    "validate_generated_config",
+    "ConfigFormat",
 ]

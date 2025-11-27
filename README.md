@@ -192,7 +192,31 @@ views:
     uri: "s3://my-bucket/data/users/*.parquet"
 ```
 
-### 2. Build the catalog via CLI
+### 2. Initialize a new configuration
+
+Duckalog makes it easy to get started with the `init` command, which generates a basic configuration template with educational examples:
+
+```bash
+# Create a basic YAML config (default)
+duckalog init
+
+# Create a JSON config with custom filename
+duckalog init --format json --output my_config.json
+
+# Create with custom database and project names
+duckalog init --database sales.db --project sales_analytics
+
+# Force overwrite existing file
+duckalog init --force
+```
+
+The generated config includes:
+- Sensible defaults for DuckDB settings
+- Example views showing common data sources and patterns
+- Educational comments explaining each section
+- Valid, working configuration that can be immediately used
+
+### 3. Build the catalog via CLI
 
 ```bash
 duckalog build catalog.yaml
@@ -572,16 +596,26 @@ convenience functions:
 
 ```python
 from duckalog import build_catalog, generate_sql, validate_config
+from duckalog.config_init import create_config_template
 
+# Generate a basic configuration template
+content = create_config_template(format="yaml")
+print(content)
+
+# Save a template to a file
+create_config_template(
+    format="yaml", 
+    output_path="my_config.yaml",
+    database_name="analytics.db",
+    project_name="my_project"
+)
 
 # Build or update a catalog file in place
 build_catalog("catalog.yaml")
 
-
 # Generate SQL without executing it
 sql = generate_sql("catalog.yaml")
 print(sql)
-
 
 # Validate config (raises ConfigError on failure)
 validate_config("catalog.yaml")
