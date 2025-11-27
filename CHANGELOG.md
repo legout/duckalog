@@ -1,5 +1,9 @@
 # Changelog
-## [2025-11-27] - 0.2.2
+## [2025-11-27] - 0.2.2.1
+
+### Changed
+- Docs: auto-update changelog.md for version 0.2.2 (c701f39)
+
 
 ### Added
 - Add config initialization functionality (f3bf221)
