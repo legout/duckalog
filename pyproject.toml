@@ -1,6 +1,6 @@
 [project]
 name = "duckalog"
-version = "0.2.2"
+version = "0.2.2.1"
 description = "Python library and CLI to build DuckDB catalogs from declarative YAML/JSON configs"
 readme = "README.md"
 authors = [

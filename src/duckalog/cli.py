@@ -18,13 +18,14 @@ except ImportError:
     fsspec = None  # Will be handled in the function
 
 from .config import ConfigError, load_config
+
+# from .dashboard import create_app
+# from .dashboard.state import DashboardContext
+from .config_init import create_config_template, validate_generated_config
 from .engine import EngineError, build_catalog
 from .logging_utils import log_error, log_info
 from .path_resolution import validate_file_accessibility
 from .sql_generation import generate_all_views_sql
-from .dashboard import create_app
-from .dashboard.state import DashboardContext
-from .config_init import create_config_template, validate_generated_config
 
 app = typer.Typer(help="Duckalog CLI for building and inspecting DuckDB catalogs.")
 
@@ -819,48 +820,48 @@ def _fail(message: str, code: int) -> None:
     raise typer.Exit(code)
 
 
-@app.command(
-    name="ui", help="Launch the local starhtml/starui dashboard for a catalog."
-)
-def ui(
-    config_path: str = typer.Argument(
-        ..., help="Path to configuration file (local or remote)."
-    ),
-    host: str = typer.Option(
-        "127.0.0.1", "--host", help="Host to bind (default: loopback)."
-    ),
-    port: int = typer.Option(8787, "--port", help="Port to bind (default: 8787)."),
-    row_limit: int = typer.Option(
-        500, "--row-limit", help="Max rows to show in query results."
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose logging output."
-    ),
-) -> None:
-    """Start a local dashboard to inspect and query a Duckalog catalog."""
+# @app.command(
+#     name="ui", help="Launch the local starhtml/starui dashboard for a catalog."
+# )
+# def ui(
+#     config_path: str = typer.Argument(
+#         ..., help="Path to configuration file (local or remote)."
+#     ),
+#     host: str = typer.Option(
+#         "127.0.0.1", "--host", help="Host to bind (default: loopback)."
+#     ),
+#     port: int = typer.Option(8787, "--port", help="Port to bind (default: 8787)."),
+#     row_limit: int = typer.Option(
+#         500, "--row-limit", help="Max rows to show in query results."
+#     ),
+#     verbose: bool = typer.Option(
+#         False, "--verbose", "-v", help="Enable verbose logging output."
+#     ),
+# ) -> None:
+#     """Start a local dashboard to inspect and query a Duckalog catalog."""
 
-    _configure_logging(verbose)
+#     _configure_logging(verbose)
 
-    try:
-        config = load_config(config_path)
-    except ConfigError as exc:
-        _fail(f"Config error: {exc}", 2)
+#     try:
+#         config = load_config(config_path)
+#     except ConfigError as exc:
+#         _fail(f"Config error: {exc}", 2)
 
-    ctx = DashboardContext(config, config_path=config_path, row_limit=row_limit)
-    app = create_app(ctx)
+#     ctx = DashboardContext(config, config_path=config_path, row_limit=row_limit)
+#     app = create_app(ctx)
 
-    try:
-        import uvicorn
-    except ImportError:  # pragma: no cover
-        _fail("uvicorn is required. Install with: pip install duckalog[ui]", 2)
+#     try:
+#         import uvicorn
+#     except ImportError:  # pragma: no cover
+#         _fail("uvicorn is required. Install with: pip install duckalog[ui]", 2)
 
-    typer.echo(f"Starting dashboard at http://{host}:{port}")
-    if host not in ("127.0.0.1", "localhost", "::1"):
-        typer.echo(
-            "Warning: binding to a non-loopback host may expose the dashboard to others on your network.",
-            err=True,
-        )
-    uvicorn.run(app, host=host, port=port, log_level="info")
+#     typer.echo(f"Starting dashboard at http://{host}:{port}")
+#     if host not in ("127.0.0.1", "localhost", "::1"):
+#         typer.echo(
+#             "Warning: binding to a non-loopback host may expose the dashboard to others on your network.",
+#             err=True,
+#         )
+#     uvicorn.run(app, host=host, port=port, log_level="info")
 
 
 @app.command(help="Initialize a new Duckalog configuration file.")
