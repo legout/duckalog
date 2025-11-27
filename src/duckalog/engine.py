@@ -3,15 +3,203 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+import shutil
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
 
 import duckdb
 
 from .config import Config, load_config
 from .logging_utils import get_logger, log_debug, log_info
+from .path_resolution import is_relative_path, resolve_relative_path
 from .sql_generation import generate_all_views_sql, generate_view_sql
 
+# Optional imports for remote export functionality
+try:
+    import fsspec
+    from urllib.parse import urlparse
+
+    FSSPEC_AVAILABLE = True
+except ImportError:
+    fsspec = None  # type: ignore
+    urlparse = None  # type: ignore
+    FSSPEC_AVAILABLE = False
+
 logger = get_logger()
+
+# Supported remote export URI schemes for catalog export
+REMOTE_EXPORT_SCHEMES = {
+    "s3://": "Amazon S3",
+    "gs://": "Google Cloud Storage",
+    "gcs://": "Google Cloud Storage",
+    "abfs://": "Azure Blob Storage",
+    "adl://": "Azure Data Lake Storage",
+    "sftp://": "SFTP Server",
+}
+
+
+@dataclass
+class BuildResult:
+    """Result of building a Duckalog config."""
+    database_path: str
+    config_path: str
+    was_built: bool  # True if newly built, False if cached
+
+
+class ConfigDependencyGraph:
+    """Manages Duckalog config dependencies and detects cycles."""
+
+    def __init__(self):
+        self.visiting: Set[str] = set()
+        self.visited: Set[str] = set()
+        self.build_cache: Dict[str, BuildResult] = {}
+
+    def build_config_with_dependencies(
+        self,
+        config_path: str,
+        dry_run: bool = False,
+        parent_alias: Optional[str] = None,
+        database_override: Optional[str] = None
+    ) -> BuildResult:
+        """Build config with all its dependencies recursively."""
+        config_path = str(Path(config_path).resolve())
+
+        # Check cache first
+        if config_path in self.build_cache:
+            cached_result = self.build_cache[config_path]
+            log_debug(
+                "Using cached build result",
+                config_path=config_path,
+                database_path=cached_result.database_path,
+            )
+            return cached_result
+
+        # Detect cycles
+        if config_path in self.visiting:
+            cycle_path = " -> ".join(self.visiting) + f" -> {config_path}"
+            raise EngineError(f"Cyclic attachment detected: {cycle_path}")
+
+        self.visiting.add(config_path)
+
+        try:
+            # Load the child config
+            child_config = load_config(config_path)
+
+            # Validate that child config has a durable database
+            child_db_path = child_config.duckdb.database
+            if child_db_path == ":memory:":
+                if parent_alias:
+                    raise EngineError(
+                        f"Child config '{config_path}' uses in-memory database. "
+                        f"Child configs must use persistent database paths for attachments. "
+                        f"Found in attachment '{parent_alias}'."
+                    )
+                else:
+                    raise EngineError(
+                        f"Child config '{config_path}' uses in-memory database. "
+                        "Child configs must use persistent database paths for attachments."
+                    )
+
+            # Apply database override from parent if provided
+            effective_db_path = child_db_path
+            if database_override:
+                effective_db_path = database_override
+                log_info(
+                    "Using database override for child config",
+                    config_path=config_path,
+                    original_path=child_db_path,
+                    override_path=effective_db_path
+                )
+            else:
+                # Resolve child's database path relative to child config directory
+                if is_relative_path(effective_db_path):
+                    child_config_dir = Path(config_path).parent
+                    effective_db_path = str(child_config_dir / effective_db_path)
+                    log_debug(
+                        "Resolved child database path",
+                        config_path=config_path,
+                        original_db=child_db_path,
+                        resolved_db=effective_db_path
+                    )
+
+            # Recursively build nested Duckalog attachments
+            nested_results = {}
+            for duckalog_attachment in child_config.attachments.duckalog:
+                nested_config_path = duckalog_attachment.config_path
+                log_info(
+                    "Building nested Duckalog attachment",
+                    parent_config=config_path,
+                    child_config=nested_config_path,
+                    alias=duckalog_attachment.alias,
+                )
+
+                nested_result = self.build_config_with_dependencies(
+                    nested_config_path, dry_run, duckalog_attachment.alias
+                )
+                nested_results[duckalog_attachment.alias] = nested_result
+
+            # Handle building the database
+            if dry_run:
+                # In dry run, we just return the theoretical result
+                result = BuildResult(
+                    database_path=effective_db_path,
+                    config_path=config_path,
+                    was_built=True
+                )
+            else:
+                # Actually build the database (for both parent and child configs)
+                target_db = effective_db_path
+                if not Path(target_db).parent.exists():
+                    Path(target_db).parent.mkdir(parents=True, exist_ok=True)
+
+                log_info(
+                    "Building child catalog",
+                    config_path=config_path,
+                    database_path=target_db,
+                )
+
+                # Create child connection and setup
+                child_conn = duckdb.connect(target_db)
+                try:
+                    _apply_duckdb_settings(child_conn, child_config, False)
+                    _setup_attachments(child_conn, child_config, False)
+
+                    # Setup nested Duckalog attachments that were built during dependency resolution
+                    for duckalog_attachment in child_config.attachments.duckalog:
+                        if duckalog_attachment.alias in nested_results:
+                            nested_result = nested_results[duckalog_attachment.alias]
+
+                            clause = " (READ_ONLY)" if duckalog_attachment.read_only else ""
+                            log_info(
+                                "Attaching built DuckDB child catalog",
+                                alias=duckalog_attachment.alias,
+                                database_path=nested_result.database_path,
+                                read_only=duckalog_attachment.read_only,
+                            )
+                            child_conn.execute(
+                                f"ATTACH DATABASE '{_quote_literal(nested_result.database_path)}' "
+                                f"AS \"{duckalog_attachment.alias}\"{clause}"
+                            )
+
+                    _setup_iceberg_catalogs(child_conn, child_config, False)
+                    _create_views(child_conn, child_config, False)
+                finally:
+                    child_conn.close()
+
+                result = BuildResult(
+                    database_path=effective_db_path,
+                    config_path=config_path,
+                    was_built=True
+                )
+
+            self.build_cache[config_path] = result
+            return result
+
+        finally:
+            self.visiting.remove(config_path)
+            self.visited.add(config_path)
 
 
 class EngineError(Exception):
@@ -28,6 +216,7 @@ def build_catalog(
     db_path: Optional[str] = None,
     dry_run: bool = False,
     verbose: bool = False,
+    filesystem: Optional[Any] = None,
 ) -> Optional[str]:
     """Build or update a DuckDB catalog from a configuration file.
 
@@ -39,10 +228,13 @@ def build_catalog(
     Args:
         config_path: Path to the YAML/JSON configuration file.
         db_path: Optional override for ``duckdb.database`` in the config.
+            Can be a local path or remote URI (s3://, gs://, gcs://, abfs://, adl://, sftp://).
         dry_run: If ``True``, do not connect to DuckDB; instead generate and
             return the full SQL script for all views.
         verbose: If ``True``, enable more verbose logging via the standard
             logging module.
+        filesystem: Optional pre-configured fsspec filesystem object for remote export
+            authentication. If not provided, default authentication will be used.
 
     Returns:
         The generated SQL script as a string when ``dry_run`` is ``True``,
@@ -50,7 +242,7 @@ def build_catalog(
 
     Raises:
         ConfigError: If the configuration file is invalid.
-        EngineError: If connecting to DuckDB or executing SQL fails.
+        EngineError: If connecting to DuckDB or executing SQL fails, or if remote export fails.
 
     Example:
         Build a catalog in-place::
@@ -58,6 +250,10 @@ def build_catalog(
             from duckalog import build_catalog
 
             build_catalog("catalog.yaml")
+
+        Build and export to remote storage::
+
+            build_catalog("catalog.yaml", db_path="s3://my-bucket/catalog.duckdb")
 
         Generate SQL without modifying the database::
 
@@ -71,32 +267,223 @@ def build_catalog(
     config = load_config(config_path)
 
     if dry_run:
+        # Validate Duckalog attachments in dry run mode
+        if config.attachments.duckalog:
+            dependency_graph = ConfigDependencyGraph()
+            for duckalog_attachment in config.attachments.duckalog:
+                try:
+                    dependency_graph.build_config_with_dependencies(
+                        duckalog_attachment.config_path, dry_run=True
+                    )
+                except EngineError as exc:
+                    raise EngineError(
+                        f"Dry run validation failed for Duckalog attachment "
+                        f"'{duckalog_attachment.alias}': {exc}"
+                    ) from exc
+
         sql = generate_all_views_sql(config)
         log_info("Dry run SQL generation complete", views=len(config.views))
         return sql
 
     target_db = _resolve_db_path(config, db_path)
+
+    # Handle remote export: create temp file locally, then upload
+    remote_uri = None
+    temp_file = None
+
+    if is_remote_export_uri(target_db):
+        if not FSSPEC_AVAILABLE:
+            raise EngineError(
+                "Remote export requires fsspec. Install with: pip install duckalog[remote]"
+            )
+        remote_uri = target_db
+        # Create temporary file for local database creation
+        temp_file = tempfile.NamedTemporaryFile(suffix='.duckdb', delete=False)
+        temp_file.close()
+        target_db = temp_file.name
+        log_info("Building catalog locally for remote export", temp_file=target_db, remote_uri=remote_uri)
+
+    # Handle Duckalog attachments separately from regular attachments
+    dependency_graph = ConfigDependencyGraph()
+    duckalog_results = {}
+
+    if config.attachments.duckalog:
+        log_info(
+            "Building Duckalog attachment dependencies",
+            count=len(config.attachments.duckalog)
+        )
+
+        for duckalog_attachment in config.attachments.duckalog:
+            try:
+                # Resolve database override path if provided
+                database_override = None
+                if duckalog_attachment.database:
+                    database_override = duckalog_attachment.database
+                    if is_relative_path(database_override):
+                        # Resolve override path relative to parent config directory
+                        parent_config_dir = Path(config_path).parent
+                        try:
+                            database_override = resolve_relative_path(database_override, parent_config_dir)
+                        except Exception as exc:
+                            raise EngineError(
+                                f"Failed to resolve database override '{duckalog_attachment.database}' "
+                                f"for attachment '{duckalog_attachment.alias}': {exc}"
+                            ) from exc
+
+                result = dependency_graph.build_config_with_dependencies(
+                    duckalog_attachment.config_path, dry_run, duckalog_attachment.alias, database_override
+                )
+                duckalog_results[duckalog_attachment.alias] = result
+
+            except EngineError as exc:
+                raise EngineError(
+                    f"Failed to build Duckalog attachment '{duckalog_attachment.alias}' "
+                    f"from '{duckalog_attachment.config_path}': {exc}"
+                ) from exc
+
     log_info("Connecting to DuckDB", db_path=target_db)
+    conn = None
     try:
         conn = duckdb.connect(target_db)
     except Exception as exc:  # pragma: no cover - duckdb handles errors
+        # Clean up temp file on connection failure
+        if temp_file:
+            try:
+                Path(temp_file.name).unlink()
+            except Exception:
+                pass  # Best effort cleanup
         raise EngineError(f"Failed to connect to DuckDB at {target_db}: {exc}") from exc
 
     try:
         _apply_duckdb_settings(conn, config, verbose)
-        _setup_attachments(conn, config, verbose)
+
+        # Setup regular attachments (DuckDB, SQLite, Postgres)
+        if config.attachments.duckdb or config.attachments.sqlite or config.attachments.postgres:
+            _setup_attachments(conn, config, verbose)
+
+        # Setup built Duckalog attachments
+        if duckalog_results:
+            log_info("Attaching built Duckalog catalogs", count=len(duckalog_results))
+            for duckalog_attachment in config.attachments.duckalog:
+                if duckalog_attachment.alias in duckalog_results:
+                    result = duckalog_results[duckalog_attachment.alias]
+                    clause = " (READ_ONLY)" if duckalog_attachment.read_only else ""
+                    log_info(
+                        "Attaching Duckalog child catalog",
+                        alias=duckalog_attachment.alias,
+                        database_path=result.database_path,
+                        read_only=duckalog_attachment.read_only,
+                    )
+                    attach_command = (
+                        f"ATTACH DATABASE '{_quote_literal(result.database_path)}' "
+                        f"AS \"{duckalog_attachment.alias}\"{clause}"
+                    )
+                    log_debug("Executing attach command", command=attach_command)
+                    conn.execute(attach_command)
+                    log_debug("Attach command completed successfully")
+
+                    # Verify the attachment actually worked
+                    databases = conn.execute("PRAGMA database_list").fetchall()
+                    attached_aliases = [row[1] for row in databases]
+                    if duckalog_attachment.alias not in attached_aliases:
+                        raise EngineError(
+                            f"Failed to attach Duckalog catalog '{duckalog_attachment.alias}'. "
+                            f"Expected alias not found in attached databases: {attached_aliases}"
+                        )
+                    log_debug("Attachment verified", alias=duckalog_attachment.alias, attached_databases=attached_aliases)
+
         _setup_iceberg_catalogs(conn, config, verbose)
         _create_views(conn, config, verbose)
     except EngineError:
         conn.close()
+        # Clean up temp file on engine error
+        if temp_file:
+            try:
+                Path(temp_file.name).unlink()
+            except Exception:
+                pass  # Best effort cleanup
         raise
     except Exception as exc:  # pragma: no cover - wrapped for clarity
         conn.close()
+        # Clean up temp file on unexpected error
+        if temp_file:
+            try:
+                Path(temp_file.name).unlink()
+            except Exception:
+                pass  # Best effort cleanup
         raise EngineError(f"DuckDB execution failed: {exc}") from exc
 
     conn.close()
-    log_info("Catalog build complete", db_path=target_db)
+
+    # Upload to remote storage if needed
+    if remote_uri:
+        try:
+            _upload_to_remote(Path(temp_file.name), remote_uri, filesystem)
+            log_info("Remote export complete", remote_uri=remote_uri)
+        finally:
+            # Always clean up temp file
+            try:
+                Path(temp_file.name).unlink()
+            except Exception:
+                pass  # Best effort cleanup
+    else:
+        log_info("Catalog build complete", db_path=target_db)
+
     return None
+
+
+def is_remote_export_uri(path: str) -> bool:
+    """Check if a path is a remote export URI that requires upload.
+
+    Args:
+        path: The path to check
+
+    Returns:
+        True if the path is a remote export URI, False otherwise
+    """
+    if not path or not FSSPEC_AVAILABLE:
+        return False
+
+    return any(path.startswith(scheme) for scheme in REMOTE_EXPORT_SCHEMES)
+
+
+def _upload_to_remote(local_file: Path, remote_uri: str, filesystem=None) -> None:
+    """Upload local database file to remote storage using fsspec.
+
+    Args:
+        local_file: Path to the local database file to upload
+        remote_uri: Remote URI to upload to (e.g., s3://bucket/catalog.duckdb)
+        filesystem: Optional pre-configured fsspec filesystem object
+
+    Raises:
+        EngineError: If upload fails due to missing dependencies, auth, or network issues
+    """
+    if not FSSPEC_AVAILABLE:
+        raise EngineError(
+            "Remote export requires fsspec. Install with: pip install duckalog[remote]"
+        )
+
+    try:
+        # Use provided filesystem or create one from the URI
+        if filesystem is None:
+            # Extract protocol from URI for filesystem creation
+            parsed = urlparse(remote_uri)
+            protocol = parsed.scheme
+
+            # Create filesystem with default authentication
+            filesystem = fsspec.filesystem(protocol)
+
+        log_info("Uploading catalog to remote storage", remote_uri=remote_uri)
+
+        # Stream upload to minimize memory usage
+        with open(local_file, 'rb') as local_f:
+            with filesystem.open(remote_uri, 'wb') as remote_f:
+                shutil.copyfileobj(local_f, remote_f)
+
+        log_info("Upload complete", remote_uri=remote_uri)
+
+    except Exception as exc:
+        raise EngineError(f"Failed to upload catalog to {remote_uri}: {exc}") from exc
 
 
 def _resolve_db_path(config: Config, override: Optional[str]) -> str:
@@ -295,7 +682,7 @@ def _create_views(
         conn.execute(sql)
 
 
-__all__ = ["build_catalog", "EngineError"]
+__all__ = ["build_catalog", "EngineError", "is_remote_export_uri"]
 
 
 def _quote_literal(value: str) -> str:

@@ -4,19 +4,14 @@
 TBD - created by archiving change add-config-schema. Update Purpose after archive.
 ## Requirements
 ### Requirement: Catalog Config Format
-Catalog configuration MUST be provided as a YAML or JSON document that includes a numeric `version` field and top-level sections for `duckdb`, `views`, and optional `attachments` and `iceberg_catalogs`.
+The catalog configuration MUST support the existing required keys and MAY include an optional top-level `semantic_models` section in addition to them.
 
-#### Scenario: YAML config accepted
-- **GIVEN** a valid `catalog.yaml` file with keys `version`, `duckdb`, and `views`
+#### Scenario: Optional semantic_models section
+- **GIVEN** a YAML or JSON config with top-level keys `version`, `duckdb`, `views`, and an optional `semantic_models` array
 - **WHEN** the configuration is loaded
 - **THEN** it is parsed successfully into the `Config` model
-- **AND** the `version` field is present and numeric.
-
-#### Scenario: JSON config accepted
-- **GIVEN** a valid `catalog.json` file with equivalent structure to `catalog.yaml`
-- **WHEN** the configuration is loaded
-- **THEN** it is parsed successfully into the `Config` model
-- **AND** the `version` field is present and numeric.
+- **AND** the `semantic_models` section is available as a typed collection when present
+- **AND** configs that omit `semantic_models` remain valid with no behavioural change to catalog builds.
 
 ### Requirement: Environment Variable Interpolation
 The system MUST support `${env:VAR_NAME}` placeholders in any string value and resolve them from the process environment, failing fast when required variables are missing.
@@ -175,4 +170,59 @@ The system SHALL allow users to define optional semantic models that provide bus
 #### Scenario: Semantic model metadata
 - **WHEN** a user provides optional metadata like `label`, `description`, or `tags` on semantic models, dimensions, or measures
 - **THEN** the system SHALL accept and preserve this metadata without validation beyond basic type checking
+
+### Requirement: Duckalog config attachments
+Duckalog configurations SHALL support attaching other Duckalog configs via `attachments.duckalog[]`, each entry providing an `alias`, a `config_path` to the child config file, an optional `database` override for the child catalog file, and an optional `read_only` flag that defaults to `true`.
+
+#### Scenario: Valid nested config attachment accepted
+- **GIVEN** a config with `attachments.duckalog` containing an entry with `alias: ref_data` and `config_path: ./ref/catalog.yaml`
+- **AND** the referenced child config defines a `duckdb.database` file path (or the attachment supplies `database`)
+- **WHEN** the configuration is loaded and validated
+- **THEN** the attachment entry is accepted
+- **AND** `read_only` defaults to `true` when omitted.
+
+#### Scenario: Relative paths resolved for nested configs
+- **GIVEN** a parent config located at `/projects/main/catalog.yaml`
+- **AND** it declares `attachments.duckalog[0].config_path: "../shared/ref.yaml"` and `database: "./data/ref.duckdb"`
+- **WHEN** the configuration is loaded
+- **THEN** `config_path` resolves to `/projects/shared/ref.yaml`
+- **AND** `database` resolves to `/projects/main/data/ref.duckdb`.
+
+#### Scenario: Missing path or in-memory child rejected
+- **GIVEN** a `attachments.duckalog` entry missing `alias` or `config_path`, **OR** referencing a child config whose effective database is `:memory:` without a `database` override
+- **WHEN** the configuration is validated
+- **THEN** validation fails with a clear error describing the missing field or requirement for a durable database path.
+
+### Requirement: Remote config loading
+The system SHALL support loading Duckalog configs from remote URIs via a filesystem abstraction (e.g., fsspec/obstore).
+
+#### Scenario: S3 config URI
+- **WHEN** a user supplies a config path like `s3://bucket/path/catalog.yaml`
+- **THEN** the loader SHALL fetch the object contents, validate as YAML/JSON, and apply the existing config schema.
+- **AND** authentication SHALL follow AWS-standard resolution (env, profile, IAM); embedding secrets in the URI is rejected.
+
+#### Scenario: Other fsspec-compatible config URI
+- **WHEN** a user supplies a config URI such as `gcs://bucket/path/catalog.yaml`, `abfs://container/path/catalog.yaml` (adlfs), `sftp://host/path/catalog.yaml`, or a github/https read-only URL
+- **THEN** the loader SHALL fetch the content via the appropriate filesystem backend
+- **AND** use that backend’s standard auth resolution (e.g., ADC for GCS, Azure env/managed identity for ADLS, SSH auth for SFTP)
+- **AND** unsupported schemes SHALL fail fast with a clear message.
+
+#### Scenario: HTTPS config URI
+- **WHEN** a user supplies an https URL to a YAML/JSON config
+- **THEN** the loader SHALL download it with TLS verification enabled by default
+- **AND** timeouts and HTTP errors SHALL surface clear messages.
+
+### Requirement: Optional dependencies and clear errors
+Remote loading SHALL not break local-only users.
+
+#### Scenario: Missing remote deps
+- **WHEN** a remote URI is used but the required client library (e.g., fsspec with needed extra, obstore, or requests for https) is not installed
+- **THEN** the system SHALL emit a clear error instructing how to install the appropriate optional extra and fail gracefully.
+
+### Requirement: CLI parity
+The CLI SHALL accept remote config URIs anywhere a config path is currently allowed.
+
+#### Scenario: CLI remote path
+- **WHEN** running `duckalog build|validate|ui` with a remote URI
+- **THEN** the command SHALL behave the same as with a local file, after fetching and validating the remote content.
 

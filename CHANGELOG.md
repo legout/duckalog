@@ -1,5 +1,22 @@
 # Changelog
-## [2025-11-21] - Unreleased
+## [Unreleased]
+
+### Added
+- **Remote Catalog Export**: Export built DuckDB catalogs directly to cloud storage using fsspec
+  - **Cloud Storage Support**: S3, GCS, Azure Blob Storage, Azure Data Lake, SFTP destinations
+  - **Extended CLI**: `--db-path` parameter now accepts remote URIs (s3://, gs://, gcs://, abfs://, adl://, sftp://)
+  - **Python API**: `build_catalog(config, db_path="s3://bucket/catalog.duckdb", filesystem=custom_fs)`
+  - **Temp File Strategy**: Builds locally then streams upload to minimize memory usage
+  - **Authentication**: Reuses existing filesystem authentication patterns with provider-specific options
+  - **Error Handling**: Clear error messages for missing dependencies and authentication failures
+  - **Testing Infrastructure**: Comprehensive test coverage for remote export scenarios
+- **Custom Filesystem Authentication**: Enhanced remote configuration loading with flexible filesystem parameter support
+  - **Python API**: `load_config(uri, filesystem=custom_fs)` for programmatic credential management
+  - **CLI Support**: Added `--fs-*` options for all commands (build, validate, generate-sql)
+  - **Multi-Cloud Support**: S3, GCS, Azure, SFTP, GitHub with custom authentication
+  - **Backward Compatibility**: Existing environment variable authentication preserved
+  - **Testing Infrastructure**: Comprehensive test suite for filesystem scenarios
+  - **Documentation**: Updated README with detailed filesystem usage examples
 
 ### Changed
 - **Security**: Bundle Datastar JavaScript locally (v1.0.0-RC.6) instead of loading from external CDN

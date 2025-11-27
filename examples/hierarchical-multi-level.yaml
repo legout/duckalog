@@ -1,0 +1,192 @@
+# Multi-Level Hierarchical Duckalog Configuration
+
+This example demonstrates multiple levels of nesting: main → shared → foundation.
+
+## foundation.yaml - Core Data Layer
+```yaml
+# Core reference data used across the organization
+version: 1
+duckdb:
+  database: foundation.duckdb
+
+views:
+  - name: countries
+    sql: |
+      SELECT
+        'US' AS code,
+        'United States' AS name,
+        'USD' AS currency
+      UNION ALL
+      SELECT
+        'CA' AS code,
+        'Canada' AS name,
+        'CAD' AS currency
+      UNION ALL
+      SELECT
+        'MX' AS code,
+        'Mexico' AS name,
+        'MXN' AS currency
+
+  - name: currencies
+    sql: |
+      SELECT
+        'USD' AS code,
+        'US Dollar' AS name,
+        1.0 AS usd_rate
+      UNION ALL
+      SELECT
+        'CAD' AS code,
+        'Canadian Dollar' AS name,
+        0.75 AS usd_rate
+      UNION ALL
+      SELECT
+        'MXN' AS code,
+        'Mexican Peso' AS name,
+        0.05 AS usd_rate
+```
+
+## shared.yaml - Business Logic Layer
+```yaml
+# Shared business views that depend on foundation data
+version: 1
+duckdb:
+  database: shared.duckdb
+
+attachments:
+  duckalog:
+    - alias: foundation
+      config_path: ./foundation.yaml
+      read_only: true
+
+views:
+  - name: regions
+    sql: |
+      SELECT
+        'North America' AS region_name,
+        ARRAY['US', 'CA', 'MX'] AS country_codes
+      UNION ALL
+      SELECT
+        'Europe' AS region_name,
+        ARRAY['GB', 'FR', 'DE'] AS country_codes
+      UNION ALL
+      SELECT
+        'Asia Pacific' AS region_name,
+        ARRAY['JP', 'AU', 'SG'] AS country_codes
+
+  - name: country_region_mapping
+    sql: |
+      SELECT
+        f.code AS country_code,
+        f.name AS country_name,
+        f.currency AS currency_code,
+        c.usd_rate AS currency_usd_rate,
+        r.region_name
+      FROM foundation.countries f
+      JOIN foundation.currencies c ON f.currency = c.code
+      CROSS JOIN regions r
+      WHERE f.code = ANY(r.country_codes)
+
+  - name: regional_currency_summary
+    sql: |
+      SELECT
+        region_name,
+        COUNT(*) AS country_count,
+        STRING_AGG(country_name, ', ') AS country_list,
+        AVG(currency_usd_rate) AS avg_usd_rate
+      FROM country_region_mapping
+      GROUP BY region_name
+```
+
+## main.yaml - Application Layer
+```yaml
+# Main application catalog that builds on shared and foundation layers
+version: 1
+duckdb:
+  database: main.duckdb
+
+attachments:
+  duckalog:
+    - alias: shared
+      config_path: ./shared.yaml
+      read_only: true
+
+views:
+  - name: complete_country_profile
+    sql: |
+      SELECT
+        crm.country_code,
+        crm.country_name,
+        crm.currency_code,
+        crm.currency_usd_rate,
+        crm.region_name,
+        rcs.country_count AS region_country_count,
+        rcs.avg_usd_rate AS region_avg_rate,
+        CASE
+          WHEN crm.currency_usd_rate > rcs.avg_usd_rate THEN 'Above Average'
+          WHEN crm.currency_usd_rate < rcs.avg_usd_rate THEN 'Below Average'
+          ELSE 'Average'
+        END AS rate_comparison
+      FROM shared.country_region_mapping crm
+      JOIN shared.regional_currency_summary rcs
+        ON crm.region_name = rcs.region_name
+
+  - name: regional_analysis
+    sql: |
+      SELECT
+        region_name,
+        country_count,
+        country_list,
+        avg_usd_rate,
+        CASE
+          WHEN avg_usd_rate >= 0.8 THEN 'Strong Currency Region'
+          WHEN avg_usd_rate >= 0.3 THEN 'Moderate Currency Region'
+          ELSE 'Emerging Currency Region'
+        END AS economic_tier
+      FROM shared.regional_currency_summary
+      ORDER BY avg_usd_rate DESC
+
+  - name: currency_strength_report
+    sql: |
+      SELECT
+        'Regional Average' AS metric_type,
+        region_name AS identifier,
+        avg_usd_rate AS value,
+        'USD rate' AS unit
+      FROM shared.regional_currency_summary
+
+      UNION ALL
+
+      SELECT
+        'Individual Country' AS metric_type,
+        country_code AS identifier,
+        currency_usd_rate AS value,
+        'USD rate' AS unit
+      FROM shared.country_region_mapping
+```
+
+## Usage
+
+Build the multi-level hierarchical catalog:
+
+```bash
+duckalog build main.yaml
+```
+
+This will build the catalogs in dependency order:
+1. `foundation.duckdb` (core reference data)
+2. `shared.duckdb` (depends on foundation)
+3. `main.duckdb` (depends on shared)
+
+The build process will:
+- Detect and resolve dependencies automatically
+- Build each catalog only once (even if referenced multiple times)
+- Create proper attachments at each level
+- Handle circular dependency detection
+
+## Key Features Demonstrated
+
+1. **Three-level nesting**: main → shared → foundation
+2. **Automatic dependency resolution**: child configs build before parents
+3. **Build optimization**: each config built only once
+4. **Cross-level queries**: main can query foundation data through shared layer
+5. **Complex transformations**: views build upon views from multiple levels

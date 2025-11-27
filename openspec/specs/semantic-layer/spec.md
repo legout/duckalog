@@ -3,9 +3,7 @@
 ## Purpose
 
 The semantic layer provides business-friendly metadata on top of existing Duckalog views, allowing users to define dimensions and measures that map to underlying data columns and expressions. This enables business intelligence tools and analytics applications to work with intuitive, business-oriented concepts rather than raw technical SQL queries.
-
 ## Requirements
-
 ### Requirement: Define business-friendly semantic models
 Users SHALL be able to define semantic models that wrap existing Duckalog views with business metadata.
 
@@ -79,6 +77,49 @@ All v1 semantic models SHALL continue to work without changes.
 - **THEN** the system SHALL accept the model without errors
 - **AND** SHALL treat missing v2 fields as empty/unspecified
 - **AND** SHALL apply all existing v1 validation rules
+
+### Requirement: Semantic model configuration
+Semantic models MUST be able to declare optional joins to other configured views so relationships between facts and dimensions are described in configuration.
+
+#### Scenario: Semantic model with joins to other views
+- **GIVEN** a config where `views` includes `fct_sales` and `dim_customers`
+- **AND** a semantic model named `sales` with `base_view: fct_sales`
+- **AND** a `joins` list containing an entry with `to_view: dim_customers`, a supported join `type` (for example, `left`), and a non-empty `on` join condition
+- **WHEN** the configuration is validated
+- **THEN** the join entry is accepted
+- **AND** validation confirms that `to_view` matches an existing view name
+- **AND** unsupported join types or missing `on` conditions are rejected with clear errors.
+
+### Requirement: Dimensions and measures metadata
+Dimensions in semantic models MAY declare a type (such as `time`) and, for time dimensions, the system MUST support configuring valid time grains.
+
+#### Scenario: Dimension types and time grains
+- **GIVEN** a semantic model with one or more dimensions
+- **AND** some dimensions declare `type: time` and a list of `time_grains` (for example, `day`, `month`)
+- **WHEN** the configuration is validated
+- **THEN** recognized dimension types and time grains are accepted
+- **AND** unsupported types or invalid grain values are rejected with clear errors
+- **AND** non-time dimensions MAY omit `time_grains` without error.
+
+### Requirement: Semantic model validation and uniqueness
+Semantic models MUST validate that any default fields reference existing dimensions and measures within the same model.
+
+#### Scenario: Defaults reference existing fields
+- **GIVEN** a semantic model that defines `dimensions` and `measures`
+- **AND** a `defaults` block with `time_dimension` and `primary_measure` fields
+- **WHEN** the configuration is validated
+- **THEN** validation confirms that `defaults.time_dimension` refers to a defined dimension name in the same model
+- **AND** `defaults.primary_measure` refers to a defined measure name in the same model
+- **AND** unknown references cause validation to fail with a clear error.
+
+### Requirement: Metadata-only behaviour in v1
+The initial semantic layer MUST NOT change catalog build behaviour or DuckDB views; it is metadata for higher-level tools.
+
+#### Scenario: Catalog build unaffected by semantic_models
+- **GIVEN** a valid config with one or more `semantic_models` defined
+- **WHEN** a catalog is built using the existing Duckalog CLI or Python API
+- **THEN** the set of DuckDB views created in the catalog is determined solely by the `views` section
+- **AND** the presence of `semantic_models` does not cause additional views to be created or alter the SQL used for existing ones.
 
 ## v1 Scope
 

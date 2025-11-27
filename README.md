@@ -125,6 +125,51 @@ pip install -e .
 uv pip install duckalog
 ```
 
+### Install with Remote Configuration Support
+
+For loading configuration files from remote storage systems and exporting catalogs to cloud storage (S3, GCS, Azure, SFTP), install with remote dependencies:
+
+```bash
+pip install duckalog[remote]
+```
+
+#### **Remote Storage Support**
+
+The `duckalog[remote]` extra includes support for:
+
+- **fsspec** (`fsspec>=2023.6.0`): Unified filesystem interface for remote storage
+- **requests** (`requests>=2.28.0`): HTTP/HTTPS support for remote configs
+
+#### **Backend-Specific Extras**
+
+For specific cloud storage backends, install additional extras:
+
+```bash
+# AWS S3 support
+pip install duckalog[remote-s3]
+
+# Google Cloud Storage support  
+pip install duckalog[remote-gcs]
+
+# Azure Blob Storage support
+pip install duckalog[remote-azure]
+
+# SFTP/SSH support
+pip install duckalog[remote-sftp]
+```
+
+#### **Authentication**
+
+Remote configurations use standard authentication methods for each backend:
+
+- **S3**: AWS credentials via environment variables, `~/.aws/credentials`, or IAM role
+- **GCS/GS**: Google Cloud credentials via `GOOGLE_APPLICATION_CREDENTIALS` or Application Default Credentials
+- **Azure/ABFS/ADL**: Azure credentials via environment variables or managed identity
+- **SFTP/SSH**: SSH config or environment variables
+- **HTTPS**: No authentication required for public URLs
+
+**Note**: Credentials are not embedded in URIs for security. Use standard authentication methods for each cloud provider.
+
 ---
 
 ## Quickstart
@@ -169,7 +214,53 @@ duckalog generate-sql catalog.yaml --output create_views.sql
 `create_views.sql` will contain `CREATE OR REPLACE VIEW` statements for all
 views defined in the config.
 
-### 4. Validate a config
+### 4. Export catalogs to remote storage
+
+Export built DuckDB catalogs directly to cloud storage:
+
+```bash
+# Export to Amazon S3
+duckalog build catalog.yaml --db-path s3://my-bucket/catalogs/analytics.duckdb
+
+# Export to Google Cloud Storage
+duckalog build catalog.yaml --db-path gs://my-project-bucket/catalogs/analytics.duckdb
+
+# Export to Azure Blob Storage
+duckalog build catalog.yaml --db-path abfs://account@container/catalogs/analytics.duckdb \
+  --azure-connection-string "DefaultEndpointsProtocol=https;AccountName=..."
+
+# Export to SFTP server
+duckalog build catalog.yaml --db-path sftp://server/path/catalogs/analytics.duckdb \
+  --sftp-host server.com --sftp-key-file ~/.ssh/id_rsa
+
+# Export with custom authentication
+duckalog build catalog.yaml --db-path s3://secure-bucket/catalogs/analytics.duckdb \
+  --fs-key AKIAIOSFODNN7EXAMPLE \
+  --fs-secret wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+#### **Remote Export Authentication**
+
+Remote export uses the same authentication patterns as remote configuration loading:
+
+```bash
+# AWS profiles (recommended)
+duckalog build catalog.yaml --db-path s3://bucket/catalog.duckdb --aws-profile production
+
+# Google Cloud service accounts
+duckalog build catalog.yaml --db-path gs://bucket/catalog.duckdb \
+  --gcs-credentials-file /path/to/service-account.json
+
+# Azure managed identities or connection strings
+duckalog build catalog.yaml --db-path abfs://account@container/catalog.duckdb \
+  --azure-connection-string "DefaultEndpointsProtocol=https;..."
+
+# SFTP with SSH keys
+duckalog build catalog.yaml --db-path sftp://server/path/catalog.duckdb \
+  --sftp-host server.com --sftp-key-file ~/.ssh/id_rsa
+```
+
+### 5. Validate a config
 
 ```bash
 duckalog validate catalog.yaml
@@ -178,7 +269,7 @@ duckalog validate catalog.yaml
 This parses and validates config (including env interpolation), without
 connecting to DuckDB.
 
-### 5. Explore Examples
+### 6. Explore Examples
 
 ```bash
 # Try multi-source analytics
@@ -197,9 +288,243 @@ python generate-datasets.py --size small
 duckalog build catalog-limited.yaml
 ```
 
-### 6. Start the web UI
+### 7. Use Remote Configuration
+
+Duckalog supports loading configuration files directly from remote storage systems:
 
 ```bash
+# Load config from S3
+duckalog build s3://my-bucket/configs/catalog.yaml
+
+# Load config from Google Cloud Storage
+duckalog validate gs://my-project/configs/catalog.yaml
+
+# Load config from Azure Blob Storage
+duckalog generate-sql abfs://my-account@my-container/configs/catalog.yaml
+
+# Load config from HTTPS URL
+duckalog build https://raw.githubusercontent.com/user/repo/main/catalog.yaml
+
+# Load config from SFTP server
+duckalog validate sftp://user@server/path/configs/catalog.yaml
+```
+
+**Remote Configuration Features:**
+
+- **Transparent usage**: Same CLI commands work with local and remote configs
+- **Environment interpolation**: `${env:VAR}` patterns work with remote configs
+- **SQL file references**: Remote configs can reference both local and remote SQL files
+- **Error handling**: Clear error messages for authentication or connectivity issues
+- **Timeout control**: Configurable timeout for remote fetching (default: 30 seconds)
+
+**Limitations:**
+
+- **Web UI**: Currently only supports local configuration files
+- **Path resolution**: Relative paths are not resolved for remote configs
+- **SQL file references**: Local SQL files in remote configs require manual download
+
+### Custom Filesystem Authentication
+
+For advanced authentication scenarios, you can pass pre-configured fsspec filesystem objects directly to the Python API or use CLI options for dynamic filesystem creation.
+
+#### **Supported Cloud Providers**
+
+Duckalog supports authentication for all major cloud storage providers through custom filesystems:
+
+| Provider | Protocol | Authentication Methods | CLI Options |
+|----------|----------|------------------------|-------------|
+| **Amazon S3** | `s3://` | AWS credentials, profiles, IAM roles | `--fs-key/--fs-secret`, `--aws-profile` |
+| **Google Cloud Storage** | `gs://` | Service accounts, ADC | `--gcs-credentials-file` |
+| **Azure Blob Storage** | `abfs://` | Connection strings, account keys | `--azure-connection-string` |
+| **GitHub** | `github://` | Personal access tokens, username/password | `--fs-token`, `--fs-key/--fs-secret` |
+| **SFTP** | `sftp://` | SSH keys, passwords, key files | `--sftp-host`, `--sftp-key-file` |
+
+#### **Python API with Custom Filesystems**
+
+```python
+import fsspec
+from duckalog import load_config
+
+# S3 with direct credentials
+fs = fsspec.filesystem("s3", 
+    key="AKIAIOSFODNN7EXAMPLE", 
+    secret="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+)
+config = load_config("s3://my-bucket/config.yaml", filesystem=fs)
+
+# GitHub with personal access token
+fs = fsspec.filesystem("github", token="ghp_xxxxxxxxxxxxxxxxxxxx")
+config = load_config("github://user/repo/config.yaml", filesystem=fs)
+
+# Azure with connection string
+fs = fsspec.filesystem("abfs", 
+    connection_string="DefaultEndpointsProtocol=https;AccountName=account;AccountKey=key;EndpointSuffix=core.windows.net"
+)
+config = load_config("abfs://account@container/config.yaml", filesystem=fs)
+
+# SFTP with SSH key
+fs = fsspec.filesystem("sftp", 
+    host="sftp.example.com",
+    username="user",
+    private_key="~/.ssh/id_rsa"
+)
+config = load_config("sftp://user@sftp.example.com/path/config.yaml", filesystem=fs)
+
+# Google Cloud with service account
+fs = fsspec.filesystem("gcs", token="/path/to/service-account.json")
+config = load_config("gs://my-bucket/config.yaml", filesystem=fs)
+```
+
+#### **CLI with Filesystem Options**
+
+```bash
+# S3 with direct credentials
+duckalog build s3://bucket/config.yaml \
+  --fs-key AKIAIOSFODNN7EXAMPLE \
+  --fs-secret wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
+  --fs-timeout 60
+
+# S3 with AWS profile (recommended for production)
+duckalog build s3://bucket/config.yaml \
+  --aws-profile myprofile
+
+# GitHub with personal access token
+duckalog validate github://user/repo/config.yaml \
+  --fs-token ghp_xxxxxxxxxxxxxxxxxxxx
+
+# Azure with connection string
+duckalog generate-sql abfs://account@container/config.yaml \
+  --azure-connection-string "DefaultEndpointsProtocol=https;AccountName=account;AccountKey=key"
+
+# Azure with account key authentication
+duckalog build abfs://account@container/config.yaml \
+  --fs-key myaccountname \
+  --fs-secret myaccountkey
+
+# SFTP with SSH key file
+duckalog build sftp://user@server/path/config.yaml \
+  --sftp-host sftp.example.com \
+  --sftp-key-file ~/.ssh/id_rsa \
+  --sftp-port 22
+
+# SFTP with password authentication
+duckalog build sftp://user@server/path/config.yaml \
+  --sftp-host sftp.example.com \
+  --fs-key username \
+  --fs-secret password
+
+# Google Cloud with service account file
+duckalog validate gs://my-project/config.yaml \
+  --gcs-credentials-file /path/to/service-account.json
+
+# Anonymous access (public S3 buckets)
+duckalog build s3://public-bucket/config.yaml \
+  --fs-anon true
+
+# HTTP/HTTPS (no authentication needed)
+duckalog build https://raw.githubusercontent.com/user/repo/main/config.yaml
+```
+
+#### **Protocol Inference**
+
+The CLI can automatically infer the filesystem protocol from the provided options:
+
+```bash
+# These commands will automatically use the correct protocol:
+duckalog build s3://bucket/config.yaml --aws-profile myprofile    # → S3
+duckalog build gs://bucket/config.yaml --gcs-credentials-file file.json   # → GCS
+duckalog build github://user/repo/config.yaml --fs-token token    # → GitHub
+duckalog build sftp://server/config.yaml --sftp-host server.com   # → SFTP
+```
+
+#### **Error Handling and Validation**
+
+Duckalog provides comprehensive validation for filesystem options:
+
+```bash
+# Examples of helpful error messages
+duckalog build s3://bucket/config.yaml --aws-profile myprofile --fs-key key
+# Error: Cannot specify both --aws-profile and --fs-key
+
+duckalog build sftp://server/config.yaml --sftp-key-file missing.txt
+# Error: SFTP key file not found: missing.txt
+
+duckalog build s3://bucket/config.yaml --fs-anon true --fs-key key
+# Error: S3 with anonymous access doesn't require credentials
+
+duckalog build gs://bucket/config.yaml --gcs-credentials-file invalid.json
+# Error: GCS credentials file not found: invalid.json
+```
+
+#### **Benefits of Custom Filesystems**
+
+- **Programmatic credential management** - No need to set environment variables
+- **Testing scenarios** - Easy to inject test filesystems with mocked credentials
+- **CI/CD integration** - Credentials can be passed securely from secrets
+- **Multi-cloud support** - Different authentication methods for different backends
+- **Backward compatibility** - Existing environment variable authentication preserved
+- **Dynamic configuration** - Change authentication methods without environment setup
+
+#### **Security Best Practices**
+
+| Use Case | Recommended Method | Reason |
+|----------|-------------------|---------|
+| **Production deployments** | Environment variables | Most secure, no credentials in code |
+| **CI/CD pipelines** | Custom filesystems | Secure credential injection |
+| **Local development** | Environment variables or profiles | Easy and secure |
+| **Testing** | Custom filesystems | Easy to mock and test |
+| **One-off commands** | CLI options | Convenient for ad-hoc usage |
+
+#### **Security Guidelines**
+
+- **Environment variables remain most secure** for production use and regular workflows
+- **Custom filesystems enable secure credential injection** in code and CI/CD
+- **No credentials embedded in URIs** - maintains security principles
+- **CLI credentials visible in process list** - be aware of this limitation
+- **Use least privilege** - grant only necessary permissions to credentials
+- **Rotate credentials regularly** - follow cloud provider best practices
+
+#### **Troubleshooting**
+
+**Common Issues:**
+
+1. **"fsspec is required" error**
+   ```bash
+   pip install duckalog[remote]  # Install with remote dependencies
+   ```
+
+2. **Authentication failures**
+   ```bash
+   # Check credentials are correct
+   # Verify cloud provider permissions
+   # Test connectivity with cloud provider tools
+   ```
+
+3. **Timeout issues**
+   ```bash
+   # Increase timeout for slow connections
+   duckalog build s3://bucket/config.yaml --fs-timeout 120
+   ```
+
+4. **Protocol inference not working**
+   ```bash
+   # Explicitly specify protocol
+   duckalog build s3://bucket/config.yaml --fs-protocol s3 --fs-key key --fs-secret secret
+   ```
+
+### 8. Start the web UI
+
+```bash
+duckalog ui catalog.yaml
+```
+
+**Note**: The web UI currently only supports local configuration files. For remote configs, download them locally first:
+
+```bash
+# Download remote config locally
+curl -o catalog.yaml https://raw.githubusercontent.com/user/repo/main/catalog.yaml
+
+# Then use with UI
 duckalog ui catalog.yaml
 ```
 

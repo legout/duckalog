@@ -1244,6 +1244,7 @@ def test_semantic_models_python_api_access(tmp_path):
 
 # Semantic Layer v2 Tests
 
+
 def test_semantic_models_v2_with_joins_and_time_dimensions(tmp_path):
     config_path = _write(
         tmp_path / "catalog.yaml",
@@ -1324,7 +1325,9 @@ def test_semantic_models_v2_with_joins_and_time_dimensions(tmp_path):
 
     # Test dimensions with time grains
     assert len(semantic_model.dimensions) == 3
-    time_dim = next(dim for dim in semantic_model.dimensions if dim.name == "order_date")
+    time_dim = next(
+        dim for dim in semantic_model.dimensions if dim.name == "order_date"
+    )
     assert time_dim.type == "time"
     assert time_dim.time_grains == ["year", "quarter", "month", "day"]
 
@@ -1383,7 +1386,9 @@ def test_semantic_models_v2_time_grains_only_for_time_dimensions(tmp_path):
         """,
     )
 
-    with pytest.raises(ConfigError, match="time_grains can only be specified for time dimensions"):
+    with pytest.raises(
+        ConfigError, match="time_grains can only be specified for time dimensions"
+    ):
         load_config(str(config_path))
 
 
@@ -1456,7 +1461,10 @@ def test_semantic_models_v2_join_to_nonexistent_view_rejected(tmp_path):
         """,
     )
 
-    with pytest.raises(ConfigError, match="Semantic model join\\(s\\) reference undefined view\\(s\\): sales_analytics.nonexistent_view"):
+    with pytest.raises(
+        ConfigError,
+        match="Semantic model join\\(s\\) reference undefined view\\(s\\): sales_analytics.nonexistent_view",
+    ):
         load_config(str(config_path))
 
 
@@ -1478,7 +1486,10 @@ def test_semantic_models_v2_default_time_dimension_must_exist(tmp_path):
         """,
     )
 
-    with pytest.raises(ConfigError, match="Default time dimension 'nonexistent_dimension' does not exist in dimensions"):
+    with pytest.raises(
+        ConfigError,
+        match="Default time dimension 'nonexistent_dimension' does not exist in dimensions",
+    ):
         load_config(str(config_path))
 
 
@@ -1504,7 +1515,10 @@ def test_semantic_models_v2_default_time_dimension_must_be_time_type(tmp_path):
         """,
     )
 
-    with pytest.raises(ConfigError, match="Default time dimension 'customer_region' must have type 'time'"):
+    with pytest.raises(
+        ConfigError,
+        match="Default time dimension 'customer_region' must have type 'time'",
+    ):
         load_config(str(config_path))
 
 
@@ -1526,7 +1540,10 @@ def test_semantic_models_v2_default_primary_measure_must_exist(tmp_path):
         """,
     )
 
-    with pytest.raises(ConfigError, match="Default primary measure 'nonexistent_measure' does not exist in measures"):
+    with pytest.raises(
+        ConfigError,
+        match="Default primary measure 'nonexistent_measure' does not exist in measures",
+    ):
         load_config(str(config_path))
 
 
@@ -1551,7 +1568,10 @@ def test_semantic_models_v2_default_filter_dimension_must_exist(tmp_path):
         """,
     )
 
-    with pytest.raises(ConfigError, match="Default filter dimension 'nonexistent_dimension' does not exist in dimensions"):
+    with pytest.raises(
+        ConfigError,
+        match="Default filter dimension 'nonexistent_dimension' does not exist in dimensions",
+    ):
         load_config(str(config_path))
 
 
@@ -1628,3 +1648,188 @@ def test_semantic_models_v2_backward_compatibility(tmp_path):
     # Original dimensions and measures should work
     assert len(semantic_model.dimensions) == 2
     assert len(semantic_model.measures) == 2
+
+
+def test_load_config_filesystem_parameter_backward_compatibility(tmp_path):
+    """Test that filesystem parameter doesn't break local config loading."""
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    # Test without filesystem parameter (should still work)
+    config1 = load_config(str(config_path))
+    assert config1.version == 1
+    assert len(config1.views) == 1
+
+    # Test with None filesystem parameter (should still work)
+    config2 = load_config(str(config_path), filesystem=None)
+    assert config2.version == 1
+    assert len(config2.views) == 1
+
+    # Test that they produce the same result
+    assert config1.views[0].name == config2.views[0].name
+
+
+def test_load_config_filesystem_parameter_validation():
+    """Test filesystem parameter type validation."""
+    config_path = "s3://bucket/config.yaml"
+
+    # Test with invalid filesystem parameter
+    with pytest.raises((TypeError, ValueError)):
+        load_config(config_path, filesystem="not_a_filesystem")  # type: ignore
+
+    with pytest.raises((TypeError, ValueError)):
+        load_config(config_path, filesystem=123)  # type: ignore
+
+
+def test_duckalog_attachment_validation(tmp_path):
+    """Test DuckalogAttachment validation."""
+    # Test missing alias
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        attachments:
+          duckalog:
+            - config_path: child.yaml
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    with pytest.raises(Exception) as exc:
+        load_config(str(config_path))
+    assert "alias" in str(exc.value).lower()
+
+
+def test_duckalog_attachment_validation_empty_config_path(tmp_path):
+    """Test DuckalogAttachment with empty config_path."""
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        attachments:
+          duckalog:
+            - alias: child
+              config_path: ""
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    with pytest.raises(Exception) as exc:
+        load_config(str(config_path))
+    assert "config_path" in str(exc.value).lower() or "empty" in str(exc.value).lower()
+
+
+def test_duckalog_attachment_validation_empty_alias(tmp_path):
+    """Test DuckalogAttachment with empty alias."""
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        attachments:
+          duckalog:
+            - alias: ""
+              config_path: child.yaml
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    with pytest.raises(Exception) as exc:
+        load_config(str(config_path))
+    assert "alias" in str(exc.value).lower() or "empty" in str(exc.value).lower()
+
+
+def test_duckalog_attachment_path_resolution(tmp_path):
+    """Test path resolution for Duckalog attachments."""
+    child_config_path = _write(
+        tmp_path / "child.yaml",
+        """
+        version: 1
+        duckdb:
+          database: child.duckdb
+        views:
+          - name: child_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        f"""
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        attachments:
+          duckalog:
+            - alias: child_catalog
+              config_path: ./child.yaml
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    attachment = config.attachments.duckalog[0]
+    assert attachment.config_path == str(child_config_path.resolve())
+
+
+def test_duckalog_attachment_database_override_path_resolution(tmp_path):
+    """Test database override path resolution for Duckalog attachments."""
+    # Create override directory
+    override_dir = tmp_path / "custom_databases"
+    override_dir.mkdir()
+
+    child_config_path = _write(
+        tmp_path / "child.yaml",
+        """
+        version: 1
+        duckdb:
+          database: child.duckdb
+        views:
+          - name: child_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        f"""
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        attachments:
+          duckalog:
+            - alias: child_catalog
+              config_path: {child_config_path}
+              database: ./custom_databases/overridden.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+    attachment = config.attachments.duckalog[0]
+    assert attachment.config_path == str(child_config_path.resolve())
+    assert attachment.database == str((tmp_path / "custom_databases" / "overridden.duckdb").resolve())

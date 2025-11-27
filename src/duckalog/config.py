@@ -13,6 +13,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    ValidationInfo,
     ValidationError,
     field_validator,
     model_validator,
@@ -249,6 +250,39 @@ class PostgresAttachment(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class DuckalogAttachment(BaseModel):
+    """Configuration for attaching another Duckalog catalog config.
+
+    Attributes:
+        alias: Alias under which the child catalog will be attached.
+        config_path: Path to the child Duckalog config file.
+        database: Optional override for the child's database file path.
+        read_only: Whether the attachment should be opened in read-only mode.
+            Defaults to ``True`` for safety.
+    """
+
+    alias: str
+    config_path: str
+    database: Optional[str] = None
+    read_only: bool = True
+
+    @field_validator("alias")
+    @classmethod
+    def _validate_alias(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("Duckalog attachment alias cannot be empty")
+        return value.strip()
+
+    @field_validator("config_path")
+    @classmethod
+    def _validate_config_path(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("Duckalog attachment config_path cannot be empty")
+        return value.strip()
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class AttachmentsConfig(BaseModel):
     """Collection of attachment configurations.
 
@@ -256,11 +290,13 @@ class AttachmentsConfig(BaseModel):
         duckdb: DuckDB attachment entries.
         sqlite: SQLite attachment entries.
         postgres: Postgres attachment entries.
+        duckalog: Duckalog config attachment entries.
     """
 
     duckdb: List[DuckDBAttachment] = Field(default_factory=list)
     sqlite: List[SQLiteAttachment] = Field(default_factory=list)
     postgres: List[PostgresAttachment] = Field(default_factory=list)
+    duckalog: List[DuckalogAttachment] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -871,6 +907,7 @@ def load_config(
     load_sql_files: bool = True,
     sql_file_loader: Optional["SQLFileLoader"] = None,
     resolve_paths: bool = True,
+    filesystem: Optional[Any] = None,
 ) -> Config:
     """Load, interpolate, and validate a Duckalog configuration file.
 
@@ -879,7 +916,7 @@ def load_config(
     interpolation and enforces the configuration schema.
 
     Args:
-        path: Path to a YAML or JSON config file.
+        path: Path to a YAML or JSON config file, or a remote URI.
         load_sql_files: Whether to load and process SQL from external files.
                       If False, SQL file references are left as-is for later processing.
         sql_file_loader: Optional SQLFileLoader instance for loading SQL files.
@@ -887,6 +924,11 @@ def load_config(
         resolve_paths: Whether to resolve relative paths to absolute paths.
                       If True, relative paths in view URIs and attachment paths
                       will be resolved relative to the config file's directory.
+                      For remote configs, this defaults to False.
+        filesystem: Optional fsspec filesystem object to use for remote operations.
+                   If provided, this filesystem will be used instead of creating
+                   a new one based on URI scheme. Useful for custom
+                   authentication or advanced use cases.
 
     Returns:
         A validated :class:`Config` object.
@@ -903,8 +945,38 @@ def load_config(
 
             config = load_config("catalog.yaml")
             print(len(config.views))
-    """
 
+        Load a catalog from S3::
+
+            config = load_config("s3://my-bucket/configs/catalog.yaml")
+            print(len(config.views))
+
+        Load a catalog with custom filesystem::
+
+            import fsspec
+            fs = fsspec.filesystem("s3", key="key", secret="secret", anon=False)
+            config = load_config("s3://my-bucket/configs/catalog.yaml", filesystem=fs)
+            print(len(config.views))
+    """
+    # Check if this is a remote URI
+    try:
+        from .remote_config import is_remote_uri, load_config_from_uri
+
+        if is_remote_uri(path):
+            # For remote URIs, use the remote loader
+            # Default resolve_paths to False for remote configs
+            return load_config_from_uri(
+                uri=path,
+                load_sql_files=load_sql_files,
+                sql_file_loader=sql_file_loader,
+                resolve_paths=False,  # Remote configs don't resolve relative paths by default
+                filesystem=filesystem,  # Pass through filesystem parameter
+            )
+    except ImportError:
+        # Remote functionality not available, continue with local loading
+        pass
+
+    # Local file loading
     config_path = Path(path)
     if not config_path.exists():
         raise ConfigError(f"Config file not found: {path}")
@@ -1130,6 +1202,7 @@ def _resolve_paths_in_config(config: Config, config_path: Path) -> Config:
                 resolved_config.attachments.duckdb
                 + resolved_config.attachments.sqlite
                 + resolved_config.attachments.postgres
+                + resolved_config.attachments.duckalog
             ),
         )
 
@@ -1221,6 +1294,45 @@ def _resolve_attachment_paths(attachments_data: dict, config_dir: Path) -> None:
                             original_path=original_path,
                         ) from exc
 
+    # Resolve Duckalog attachment paths
+    if "duckalog" in attachments_data and attachments_data["duckalog"]:
+        for attachment in attachments_data["duckalog"]:
+            # Resolve config_path relative to parent config
+            if "config_path" in attachment and attachment["config_path"]:
+                original_path = attachment["config_path"]
+                if is_relative_path(original_path):
+                    try:
+                        resolved_path = resolve_relative_path(original_path, config_dir)
+                        attachment["config_path"] = resolved_path
+                        log_debug(
+                            "Resolved Duckalog attachment config path",
+                            original=original_path,
+                            resolved=resolved_path,
+                        )
+                    except ValueError as exc:
+                        raise PathResolutionError(
+                            f"Failed to resolve Duckalog attachment config_path '{original_path}': {exc}",
+                            original_path=original_path,
+                        ) from exc
+
+            # Resolve database override relative to parent config
+            if "database" in attachment and attachment["database"]:
+                original_db = attachment["database"]
+                if is_relative_path(original_db):
+                    try:
+                        resolved_db = resolve_relative_path(original_db, config_dir)
+                        attachment["database"] = resolved_db
+                        log_debug(
+                            "Resolved Duckalog attachment database override",
+                            original=original_db,
+                            resolved=resolved_db,
+                        )
+                    except ValueError as exc:
+                        raise PathResolutionError(
+                            f"Failed to resolve Duckalog attachment database '{original_db}': {exc}",
+                            original_path=original_db,
+                        ) from exc
+
 
 __all__ = [
     "Config",
@@ -1231,6 +1343,7 @@ __all__ = [
     "DuckDBAttachment",
     "SQLiteAttachment",
     "PostgresAttachment",
+    "DuckalogAttachment",
     "IcebergCatalogConfig",
     "ViewConfig",
     "SemanticModelConfig",

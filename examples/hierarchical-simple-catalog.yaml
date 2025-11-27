@@ -1,0 +1,119 @@
+# Simple Hierarchical Duckalog Configuration
+
+This example demonstrates a basic parent-child relationship between Duckalog configs.
+
+## child.yaml - Reference Data Catalog
+```yaml
+# Reference data catalog with basic lookup tables
+version: 1
+duckdb:
+  database: reference.duckdb
+
+views:
+  - name: customer_segments
+    sql: |
+      SELECT
+        'premium' AS segment_id,
+        'Premium Customers' AS segment_name,
+        1000 AS min_spend,
+        999999 AS max_spend
+      UNION ALL
+      SELECT
+        'standard' AS segment_id,
+        'Standard Customers' AS segment_name,
+        100 AS min_spend,
+        999 AS max_spend
+      UNION ALL
+      SELECT
+        'basic' AS segment_id,
+        'Basic Customers' AS segment_name,
+        0 AS min_spend,
+        99 AS max_spend
+
+  - name: product_categories
+    sql: |
+      SELECT
+        'electronics' AS category_id,
+        'Electronics' AS category_name
+      UNION ALL
+      SELECT
+        'clothing' AS category_id,
+        'Clothing' AS category_name
+      UNION ALL
+      SELECT
+        'books' AS category_id,
+        'Books' AS category_name
+```
+
+## parent.yaml - Main Analytics Catalog
+```yaml
+# Main analytics catalog that extends reference data
+version: 1
+duckdb:
+  database: analytics.duckdb
+
+attachments:
+  duckalog:
+    - alias: ref
+      config_path: ./child.yaml
+      read_only: true
+
+views:
+  - name: customer_summary
+    sql: |
+      SELECT
+        segment_id,
+        segment_name,
+        min_spend,
+        max_spend,
+        CASE
+          WHEN min_spend >= 1000 THEN 'High Value'
+          WHEN min_spend >= 100 THEN 'Medium Value'
+          ELSE 'Low Value'
+        END AS value_tier
+      FROM ref.customer_segments
+
+  - name: enhanced_categories
+    sql: |
+      SELECT
+        category_id,
+        category_name,
+        LENGTH(category_name) AS name_length,
+        LOWER(category_name) AS category_slug
+      FROM ref.product_categories
+
+  - name: cross_reference_metrics
+    sql: |
+      SELECT
+        'segments' AS entity_type,
+        COUNT(*) AS total_count,
+        AVG(min_spend) AS avg_min_spend
+      FROM ref.customer_segments
+
+      UNION ALL
+
+      SELECT
+        'categories' AS entity_type,
+        COUNT(*) AS total_count,
+        0 AS avg_min_spend
+      FROM ref.product_categories
+```
+
+## Usage
+
+Build the hierarchical catalog:
+
+```bash
+duckalog build parent.yaml
+```
+
+This will:
+1. Build the child `reference.duckdb` catalog first
+2. Build the parent `analytics.duckdb` catalog
+3. Attach the child catalog as `ref` during the build process
+4. Create views that reference both local and attached data
+
+The resulting `analytics.duckdb` will contain views like:
+- `customer_summary` - aggregates reference segment data
+- `enhanced_categories` - transforms reference category data
+- `cross_reference_metrics` - combines data from multiple reference tables
