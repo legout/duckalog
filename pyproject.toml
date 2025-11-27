@@ -1,12 +1,12 @@
 [project]
 name = "duckalog"
-version = "0.2.0"
+version = "0.2.1"
 description = "Python library and CLI to build DuckDB catalogs from declarative YAML/JSON configs"
 readme = "README.md"
 authors = [
     { name = "legout", email = "ligno.blades@gmail.com" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = [
     "duckdb",
     "catalog",
@@ -49,14 +49,15 @@ dependencies = [
     "pydantic>=2.0.0",
     "click>=8.0.0",
     "loguru>=0.7.0",
+    "typer>=0.20.0",
 ]
 
 [project.optional-dependencies]
 ui = [
     "starlette>=0.27.0",
-    "datastar-py>=0.7.0",
-    "htpy>=25.10.0",
     "uvicorn[standard]>=0.24.0",
+    "starhtml>=0.1.0",
+    "starui>=0.1.0",
     "pyarrow>=10.0.0",
     "pandas>=1.5.0",
     "openpyxl>=3.0.0",

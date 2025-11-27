@@ -10,6 +10,7 @@ theme:
 nav:
   - Home: index.md
   - Architecture: architecture.md
+  - Dashboard UI: guides/ui-dashboard.md
   - User Guide: guides/index.md
   - Examples: examples/index.md
   - API Reference: reference/index.md
