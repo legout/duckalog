@@ -1,5 +1,9 @@
 # Changelog
-## [Unreleased]
+## [2025-11-27] - 0.2.1
+
+### Added
+- Feat: complete semantic ui labels feature and add ci/cd integration examples (4dc5188)
+
 
 ### Added
 - **Remote Catalog Export**: Export built DuckDB catalogs directly to cloud storage using fsspec
