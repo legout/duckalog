@@ -1,5 +1,9 @@
 # Changelog
-## [2025-11-27] - 0.2.3
+## [2025-11-27] - 0.2.4
+
+### Changed
+- Docs: auto-update changelog.md for version 0.2.3 (c34577b)
+
 
 ### Changed
 - Docs: auto-update changelog.md for version 0.2.2.1 (b23c35a)
