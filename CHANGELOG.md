@@ -1,5 +1,12 @@
 # Changelog
-## [2025-11-27] - 0.2.1
+## [2025-11-27] - 0.2.2
+
+### Added
+- Add config initialization functionality (f3bf221)
+
+### Changed
+- Docs: auto-update changelog.md for version 0.2.1 (1319bc4)
+
 
 ### Added
 - Feat: complete semantic ui labels feature and add ci/cd integration examples (4dc5188)
