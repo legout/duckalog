@@ -201,6 +201,43 @@ views:
     description: "Data from HTTP API with basic authentication"
 ```
 
+### S3 Secret with Options
+
+For advanced S3 configurations, use the `options` field to specify DuckDB-specific parameters:
+
+```yaml
+version: 1
+
+duckdb:
+  database: s3_advanced_catalog.duckdb
+  install_extensions:
+    - httpfs
+  
+  secrets:
+    - type: s3
+      name: advanced_s3
+      key_id: ${env:LODL_ACCESS_KEY_ID}
+      secret: ${env:LODL_SECRET_ACCESS_KEY}
+      endpoint: ${env:LODL_ENDPOINT_URL}
+      options:
+        use_ssl: true                # Enable/disable SSL (default: true)
+        url_style: path              # URL style: 'path' or 'virtual'
+        session_token: ${env:AWS_SESSION_TOKEN}  # For temporary credentials
+        region: us-east-1           # Override region in options
+
+views:
+  - name: advanced_data
+    source: parquet
+    uri: "s3://my-advanced-bucket/data/*.parquet"
+    description: "Data from S3 with advanced options configuration"
+```
+
+**Common S3 Options:**
+- `use_ssl`: Enable/disable SSL encryption (use `false` for local testing)
+- `url_style`: URL style for S3-compatible storage (`path` for MinIO/other, `virtual` for standard AWS S3)
+- `session_token`: AWS temporary session token
+- `region`: AWS region override
+
 ## Environment Variable Integration
 
 ### Using Environment Variables for Security
@@ -243,110 +280,94 @@ export AWS_DEFAULT_REGION="us-west-2"
 export DATABASE_URL="postgresql://user:password@localhost:5432/analytics"
 ```
 
-## Multiple Secrets and Scoping
+## Understanding the Options Field
 
-### Multiple S3 Secrets for Different Environments
+The `options` field is available for **all secret types** (S3, Azure, GCS, Database, HTTP) and allows you to specify additional key-value parameters that are specific to each secret type. This field is particularly useful for:
+
+- **DuckDB-specific parameters**: Settings like `use_ssl`, `url_style` for S3
+- **Service-specific options**: Custom parameters for different providers  
+- **Advanced configurations**: Session tokens, custom headers, connection settings
+
+### How the Options Field Works
+
+The `options` field accepts a dictionary of key-value pairs:
 
 ```yaml
-version: 1
-
-duckdb:
-  database: multi_env_catalog.duckdb
-  install_extensions:
-    - httpfs
-  
-  secrets:
-    # Production S3 with persistent secret
-    - type: s3
-      name: prod_s3
-      provider: config
-      persistent: true
-      scope: 's3://prod-bucket/'
-      key_id: ${env:PROD_AWS_KEY}
-      secret: ${env:PROD_AWS_SECRET}
-      region: us-east-1
-      
-    # Development S3 with temporary secret
-    - type: s3
-      name: dev_s3
-      provider: config
-      scope: 's3://dev-bucket/'
-      key_id: ${env:DEV_AWS_KEY}
-      secret: ${env:DEV_AWS_SECRET}
-      region: us-west-2
-      
-    # Staging S3 with credential chain
-    - type: s3
-      name: staging_s3
-      provider: credential_chain
-      scope: 's3://staging-bucket/'
-      region: us-central-1
-
-views:
-  - name: production_data
-    source: parquet
-    uri: "s3://prod-bucket/sales/*.parquet"
-    description: "Production sales data"
-    
-  - name: development_data
-    source: parquet
-    uri: "s3://dev-bucket/experiments/*.parquet"
-    description: "Development experiment data"
-    
-  - name: staging_logs
-    source: parquet
-    uri: "s3://staging-bucket/logs/*.parquet"
-    description: "Staging log data"
+secrets:
+  - type: s3
+    name: my_secret
+    key_id: ${env:MY_KEY}
+    secret: ${env:MY_SECRET}
+    options:
+      # S3-specific parameters
+      use_ssl: true
+      url_style: path
+      session_token: ${env:AWS_SESSION_TOKEN}
 ```
 
-## Step-by-Step Usage
+**Key Points:**
+- `options` works the same way for all secret types
+- The exact parameters available depend on the secret type
+- Environment variables can be used within options values
+- This field helps prevent validation errors when you need additional parameters
 
-### 1. Create Configuration
+### Best Practices for Using Options
 
-Save one of the examples above as `secrets-example.yaml`.
+1. **Use Environment Variables**: Keep secrets secure by using environment variables within options:
+   ```yaml
+   options:
+     session_token: ${env:AWS_SESSION_TOKEN}
+   ```
 
-### 2. Set Environment Variables (if using interpolation)
+2. **Documentation First**: Check if a parameter is supported by the underlying service before adding it to options
 
-```bash
-# For S3 secrets
-export AWS_ACCESS_KEY_ID="your-access-key"
-export AWS_SECRET_ACCESS_KEY="your-secret-key"
-export AWS_DEFAULT_REGION="us-west-2"
+3. **Consistent Configuration**: Use similar option patterns across different secret types when available
 
-# For database secrets
-export DATABASE_URL="postgresql://user:password@localhost:5432/analytics"
+4. **Testing**: Test options configuration in non-production environments first
+
+5. **Version Control**: Document which options are required for your specific setup
+
+### S3 Options Usage Examples
+
+Different configurations require different S3 options. Here are common scenarios:
+
+#### MinIO/S3-Compatible Storage
+```yaml
+secrets:
+  - type: s3
+    name: minio_storage
+    key_id: ${env:MINIO_ACCESS_KEY}
+    secret: ${env:MINIO_SECRET_KEY}
+    endpoint: http://minio-server:9000
+    options:
+      use_ssl: false          # Often disabled for local MinIO
+      url_style: path          # Path style common for MinIO
 ```
 
-### 3. Validate Configuration
-
-```bash
-duckalog validate secrets-example.yaml
+#### AWS S3 with Session Token
+```yaml
+secrets:
+  - type: s3
+    name: aws_s3_temp
+    key_id: ${env:AWS_ACCESS_KEY_ID}
+    secret: ${env:AWS_SECRET_ACCESS_KEY}
+    region: us-east-1
+    options:
+      session_token: ${env:AWS_SESSION_TOKEN}
+      url_style: virtual        # Virtual style for standard AWS S3
 ```
 
-Expected output:
-```
-✅ Configuration is valid
-✅ All secrets defined correctly
-✅ Environment variables resolved
-```
-
-### 4. Build Catalog
-
-```bash
-duckalog build secrets-example.yaml
-```
-
-### 5. Verify Secrets
-
-```bash
-# Connect to the created database
-duckdb secrets_catalog.duckdb
-
-# List created secrets
-SELECT name, type, provider FROM duckdb_secrets();
-
-# Check specific secret details
-SELECT * FROM duckdb_secrets() WHERE name = 'production_s3';
+#### Custom S3 Endpoint
+```yaml
+secrets:
+  - type: s3
+    name: custom_endpoint
+    key_id: ${env:MY_ACCESS_KEY}
+    secret: ${env:MY_SECRET_KEY}
+    endpoint: https://s3.example.com
+    options:
+      use_ssl: true
+      region: custom-region-1
 ```
 
 ## Secret Types Reference
@@ -363,6 +384,7 @@ SELECT * FROM duckdb_secrets() WHERE name = 'production_s3';
 | `scope` | Optional | URL prefix for secret scope |
 | `provider` | Optional | `"config"` (default) or `"credential_chain"` |
 | `persistent` | Optional | Whether secret persists across sessions |
+| `options` | Optional | Additional S3-specific parameters (e.g., `use_ssl`, `url_style`) |
 
 ### Azure Secret Fields
 
@@ -374,6 +396,7 @@ SELECT * FROM duckdb_secrets() WHERE name = 'production_s3';
 | `account_name` | Either/or | Storage account name |
 | `secret` | For explicit auth | Account key or password |
 | `scope` | Optional | URL prefix for secret scope |
+| `options` | Optional | Additional Azure-specific parameters |
 
 ### GCS Secret Fields
 
@@ -384,6 +407,7 @@ SELECT * FROM duckdb_secrets() WHERE name = 'production_s3';
 | `secret` | For `config` provider | Private key content |
 | `endpoint` | Optional | Custom GCS endpoint |
 | `scope` | Optional | URL prefix for secret scope |
+| `options` | Optional | Additional GCS-specific parameters |
 
 ### Database Secret Fields
 
@@ -396,6 +420,7 @@ SELECT * FROM duckdb_secrets() WHERE name = 'production_s3';
 | `database` | Either/or | Database name |
 | `key_id` | Either/or | Database username |
 | `secret` | Either/or | Database password |
+| `options` | Optional | Additional database-specific parameters |
 
 ### HTTP Secret Fields
 
