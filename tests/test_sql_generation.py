@@ -128,10 +128,12 @@ def test_generate_view_sql_injection_prevention():
     # The SQL should contain properly quoted identifiers, not injected SQL
     expected_db = malicious_db.replace('"', '""')
     expected_table = malicious_table.replace('"', '""')
-    expected = f'SELECT * FROM "{expected_db}".{expected_table}"'
+    expected = f'SELECT * FROM "{expected_db}"."{expected_table}"'
     assert expected in sql
-    assert "DROP TABLE" not in sql
-    assert "INSERT INTO" not in sql
+    # The malicious content should be safely contained within quoted identifiers
+    # It should NOT be executed as actual SQL statements
+    assert sql.count("CREATE OR REPLACE VIEW") == 1  # Only our intended CREATE VIEW
+    assert sql.count("SELECT * FROM") == 1  # Only our intended SELECT
 
 
 def test_generate_view_sql_special_characters_in_identifiers():
@@ -149,7 +151,9 @@ def test_generate_view_sql_special_characters_in_identifiers():
     assert '"test view"' in sql  # quoted view name
     assert '"db with ""quotes"""' in sql  # quoted database with escaped quotes
     assert '"table; DROP TABLE other;"' in sql  # quoted table with escaped content
-    assert "DROP TABLE" not in sql  # no injection
+    # The malicious content should be safely contained within quoted identifiers
+    assert sql.count("CREATE OR REPLACE VIEW") == 1  # Only our intended CREATE VIEW
+    assert sql.count("SELECT * FROM") == 1  # Only our intended SELECT
 
 
 def test_generate_view_sql_raw_sql_preserves_body():

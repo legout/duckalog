@@ -314,3 +314,53 @@ Secret configurations MUST enforce strict typing for options and use safe SQL qu
 - **WHEN** `CREATE SECRET` SQL statements are generated
 - **THEN** all string values SHALL be emitted using safe SQL literal quoting that doubles embedded single quotes
 
+### Security Regression Tests
+
+The system MUST maintain a comprehensive suite of regression tests to prevent security vulnerabilities from being re-introduced during future development and refactoring.
+
+#### Requirement: SQL Injection Resilience Tests
+SQL generation MUST be resilient to malicious input designed to inject additional SQL statements or alter the structure of generated queries.
+
+##### Scenario: View identifier injection attempts
+- **GIVEN** view configurations with names, databases, or tables containing quotes (`"`, `'`), semicolons (`;`), SQL comment markers (`--`, `/* */`), or SQL keywords
+- **WHEN** `generate_view_sql()` and `generate_all_views_sql()` are called
+- **THEN** the generated SQL SHALL remain syntactically valid
+- **AND** malicious content SHALL remain safely contained within properly quoted identifiers
+- **AND** no additional SQL statements SHALL be injected via these fields
+
+##### Scenario: Secret SQL injection prevention
+- **GIVEN** secret configurations with values containing quotes, backslashes, and other special characters
+- **WHEN** `generate_secret_sql()` is called
+- **THEN** all string values SHALL be properly quoted as SQL literals
+- **AND** embedded quotes SHALL be doubled to prevent injection
+- **AND** the generated CREATE SECRET statements SHALL be syntactically valid
+
+##### Scenario: Secret option type enforcement
+- **GIVEN** secret configurations with options containing unsupported value types (e.g., lists, dictionaries, objects)
+- **WHEN** `generate_secret_sql()` is called
+- **THEN** the system SHALL raise a `TypeError` with a clear message
+- **AND** the error message SHALL include the problematic option key and the rejected type
+- **AND** the system SHALL NOT interpolate an unsafe string representation
+
+#### Requirement: Path Traversal Protection Tests
+Path resolution MUST prevent unauthorized file system access through path traversal attacks and validate paths against security boundaries.
+
+##### Scenario: Valid path acceptance
+- **GIVEN** relative paths that resolve within the configuration directory or other allowed roots
+- **WHEN** path resolution functions are called during config loading
+- **THEN** these paths SHALL be accepted and normalized correctly
+- **AND** no security errors SHALL be raised for legitimate paths
+
+##### Scenario: Path traversal rejection
+- **GIVEN** relative paths that attempt to escape allowed roots using `..` segments or platform-specific traversal patterns
+- **WHEN** path resolution functions are called during config loading
+- **THEN** these paths SHALL cause configuration errors
+- **AND** the error messages SHALL be informative and indicate the problematic path
+- **AND** the system SHALL NOT perform unauthorized file system access
+
+##### Scenario: Cross-platform path security
+- **GIVEN** different path formats across Unix and Windows systems (mixed separators, drive letters, UNC paths)
+- **WHEN** path security validation is performed
+- **THEN** the security checks SHALL handle all supported path formats correctly
+- **AND** platform-specific traversal attempts SHALL be detected and rejected
+

@@ -199,3 +199,65 @@ The system MUST provide canonical functions for SQL construction that serve as t
 - **AND** attachment aliases, database names, table names, and view names MUST be passed through `quote_ident`
 - **AND** file paths, connection strings, secret values, and other string literals MUST be passed through `quote_literal`
 
+### Security Regression Tests
+
+The catalog build process MUST include comprehensive regression tests to ensure that security vulnerabilities cannot be re-introduced through future changes to SQL generation and path resolution logic.
+
+#### Requirement: SQL Security During Catalog Build
+Catalog build operations MUST generate SQL that is resilient to injection attacks and maintains security boundaries throughout the build process.
+
+##### Scenario: Dry-run SQL generation security
+- **GIVEN** configurations with views and secrets containing potentially malicious values
+- **WHEN** `generate_all_views_sql()` is called with `include_secrets=True`
+- **THEN** the generated SQL SHALL be syntactically valid and secure
+- **AND** malicious content SHALL remain safely quoted within identifiers and literals
+- **AND** the SQL SHALL be identical to what would be executed in a live catalog build
+
+##### Scenario: View creation SQL injection prevention
+- **GIVEN** view configurations with table or database names containing SQL injection attempts
+- **WHEN** catalog build creates views using these configurations
+- **THEN** the generated `CREATE OR REPLACE VIEW` statements SHALL not be vulnerable to injection
+- **AND** all identifiers SHALL be properly quoted
+- **AND** no additional statements SHALL be created through injection attempts
+
+##### Scenario: Secret creation during catalog build
+- **GIVEN** catalog builds that create DuckDB secrets
+- **WHEN** secrets are created using `CREATE SECRET` statements
+- **THEN** all secret values SHALL be safely quoted as SQL literals
+- **AND** secret options SHALL be validated for type safety
+- **AND** errors in secret creation SHALL cause the build to fail with clear error messages
+
+#### Requirement: Path Security During Catalog Build
+Catalog build operations MUST enforce path security boundaries to prevent unauthorized file system access during the build process.
+
+##### Scenario: Local file access during builds
+- **GIVEN** catalog builds that access local files (parquet, delta, attachments, etc.)
+- **WHEN** file paths are resolved and accessed during the build
+- **THEN** all file access SHALL be restricted to allowed roots
+- **AND** any attempts to access files outside allowed roots SHALL cause build failure
+- **AND** the build error SHALL clearly indicate the security violation
+
+##### Scenario: Attachment path validation during builds
+- **GIVEN** catalog builds with database attachments using relative paths
+- **WHEN** attachment paths are resolved and used to attach external databases
+- **THEN** all resolved attachment paths SHALL be validated against allowed roots
+- **AND** attachments with paths outside allowed roots SHALL cause build failure
+- **AND** the security check SHALL occur before any database connection attempts
+
+#### Requirement: Security Test Coverage Requirements
+The project MUST maintain specific regression tests that cover the security behaviors defined in this and related specifications.
+
+##### Scenario: Mandatory security test coverage
+- **GIVEN** future changes to SQL generation, path resolution, or security-related functionality
+- **WHEN** contributors modify security-sensitive code
+- **THEN** the existing security regression tests MUST remain green
+- **AND** new security-sensitive functionality MUST include appropriate regression tests
+- **AND** the security test suite MUST be documented in contributor guidelines
+
+##### Scenario: Security test isolation
+- **GIVEN** security regression tests that use hostile inputs
+- **WHEN** these tests are executed
+- **THEN** they MUST NOT affect the test environment or other tests
+- **AND** they MUST use temporary directories or sandboxed environments
+- **AND** they MUST clean up any created files or resources after execution
+
