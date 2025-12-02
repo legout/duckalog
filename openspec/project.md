@@ -27,6 +27,10 @@ duckalog is a Python library and CLI for building DuckDB catalogs (views) from d
 - Use Pydantic models as the single source of truth for config schemas.
 - Keep I/O (file/DB access, environment lookups) at module boundaries; keep core logic pure and testable.
 - Use descriptive, domain-aligned names (e.g. `AttachmentConfig`, `ViewConfig`, `IcebergCatalogConfig`).
+- Use **PEP 604 unions**: `str | int` instead of `Union[str, int]` or `Optional[str]` (write `str | None`).
+- Use **built-in generics**: `list[int]`, `dict[str, Any]`, `tuple[int, ...]`, `set[str]` instead of `List`, `Dict`, `Tuple`, `Set`.
+- Prefer `collections.abc` for callables and iterables:  
+  `from collections.abc import Callable, Iterable` and write `Callable[[int], str]`, not `typing.Callable`.
 
 ### Architecture Patterns
 - Separate responsibilities:
