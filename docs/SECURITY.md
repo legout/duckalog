@@ -161,21 +161,80 @@ quoted = quote_literal(malicious_secret)
 assert "OR 1=1" not in quoted  # Injection blocked
 ```
 
-## 🔒 Path Resolution Security
+## 🔒 Root-Based Path Resolution Security
 
-Duckalog's path resolution feature includes robust security validation to prevent malicious file access while allowing legitimate use cases.
+Duckalog implements a robust root-based path security model that replaces heuristic-based traversal protection with clear, enforceable boundaries.
 
-### Directory Traversal Protection
+### Root-Based Security Model
+
+#### Core Security Principle
+
+The new security model enforces a simple but powerful invariant:
+
+> **Any local file path resolved from configuration MUST result in an absolute path that is located under at least one allowed root.**
+
+**Default Allowed Roots:**
+- The directory containing the main configuration file
+- Any additional roots specified in configuration options
 
 #### Security Threats Mitigated
 
-**Excessive Parent Directory Traversal:**
+**All Forms of Path Traversal:**
 ```yaml
-# ❌ BLOCKED - Attempts to access system files
+# ❌ BLOCKED - Any traversal attempt is rejected
 views:
-  - name: malicious
+  - name: malicious1
     source: parquet
-    uri: ../../../../etc/passwd
+    uri: ../../../../../../etc/passwd
+    
+  - name: malicious2  
+    source: parquet
+    uri: ..\\..\\..\\windows\\system32\\config\\sam
+    
+  - name: malicious3
+    source: parquet
+    uri: ../..//../etc/passwd
+```
+
+**System Directory Access:**
+```yaml
+# ❌ BLOCKED - All system directories are outside allowed roots
+views:
+  - name: system_config
+    source: parquet
+    uri: /etc/config.parquet
+    
+  - name: usr_access
+    source: parquet
+    uri: /usr/local/data/parquet
+```
+
+**Invalid Path Encodings:**
+```python
+# ❌ BLOCKED - All path encoding bypass attempts
+"..%2F..%2F..%2Fetc%2Fpasswd"     # URL encoded
+"..\..\..\windows\system32\config" # Mixed separators  
+"../../../etc/passwd"              # Standard traversal
+```
+
+#### Allowed Usage Patterns
+
+The security model allows legitimate file access within project boundaries:
+
+```yaml
+# ✅ ALLOWED - Files within configuration directory tree
+views:
+  - name: local_data
+    source: parquet
+    uri: ./data/processed/events.parquet      # Same directory
+    
+  - name: subdirectory
+    source: parquet
+    uri: data/raw/customers.parquet           # Subdirectory
+    
+  - name: sibling_project
+    source: parquet
+    uri: ../shared/common-data/users.parquet # Parent sibling (within bounds)
 ```
 
 **System Directory Access:**
@@ -214,16 +273,38 @@ views:
     uri: ../../../enterprise/data.parquet  # 3 levels up - allowed
 ```
 
-### Path Type Detection
+### Technical Implementation
 
-Duckalog automatically detects and handles different path types:
+#### Robust Cross-Platform Validation
 
-| Path Type | Security Considerations |
-|-----------|------------------------|
-| **Relative Paths** | Validated against traversal limits and system directories |
-| **Absolute Paths** | Validated to ensure they don't point to dangerous locations |
-| **Remote URIs** | Considered safe (S3, HTTP, etc.) - not subject to local file validation |
-| **Windows Paths** | Cross-platform validation for Windows-specific patterns |
+The security model uses platform-independent primitives for maximum reliability:
+
+```python
+from duckalog.path_resolution import is_within_allowed_roots
+from pathlib import Path
+
+# Uses Path.resolve() and os.path.commonpath() for validation
+config_dir = Path("/project/config")
+allowed_roots = [config_dir]
+
+result = is_within_allowed_roots("/project/config/data/file.parquet", allowed_roots)
+# Returns: True (safe)
+```
+
+**Key Technical Features:**
+- **`Path.resolve()`**: Follows symlinks and resolves to canonical absolute paths
+- **`os.path.commonpath()`**: Finds common path prefix robustly across platforms  
+- **Cross-platform support**: Handles Windows drive letters, UNC paths, Unix absolute paths
+- **No magic numbers**: Eliminates heuristic thresholds and pattern matching
+
+#### Path Type Handling
+
+| Path Type | Security Treatment |
+|-----------|-------------------|
+| **Local Relative Paths** | Resolved and validated against allowed roots |
+| **Local Absolute Paths** | Validated to ensure they're within allowed roots |
+| **Remote URIs (s3://, https://, etc.)** | Not subject to local path validation |
+| **Windows Paths** | Full support for drive letters and UNC paths |
 
 ### Security Validation Process
 

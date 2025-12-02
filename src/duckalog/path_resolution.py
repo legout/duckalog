@@ -12,6 +12,7 @@ The main functions are:
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -106,11 +107,12 @@ def resolve_relative_path(path: str, config_dir: Path) -> str:
             config_dir=str(config_dir),
         )
 
-        # Validate that the resolved path is safe (allow reasonable parent traversal, block excessive)
-        if not _is_reasonable_parent_traversal(path, str(resolved_path), config_dir):
+        # Validate that the resolved path is within allowed roots
+        if not is_within_allowed_roots(str(resolved_path), [config_dir]):
             raise ValueError(
                 f"Path resolution violates security rules: '{path}' resolves to '{resolved_path}' "
-                f"which is outside reasonable bounds"
+                f"which is outside the allowed root '{config_dir}'. "
+                f"All paths must remain within the configuration directory or its subdirectories."
             )
 
         return str(resolved_path)
@@ -163,14 +165,21 @@ def validate_path_security(path: str, config_dir: Path) -> bool:
 
         config_dir_resolved = config_dir.resolve()
 
-        # Check if resolved path is within config directory
+        # Check if resolved path is within allowed roots using the new root-based validation
         try:
-            resolved_path.relative_to(config_dir_resolved)
-            return True
-        except ValueError:
-            # Path is outside config directory
+            if is_within_allowed_roots(str(resolved_path), [config_dir_resolved]):
+                return True
+            else:
+                log_debug(
+                    f"Path resolution security violation: {resolved_path} is outside allowed root {config_dir_resolved}"
+                )
+                return False
+        except ValueError as exc:
+            # Path resolution failed (invalid path)
             log_debug(
-                f"Path resolution security violation: {resolved_path} is outside {config_dir_resolved}"
+                f"Path resolution validation failed: {exc}",
+                path=path,
+                resolved_path=str(resolved_path),
             )
             return False
 
@@ -236,13 +245,60 @@ def normalize_path_for_sql(path: str) -> str:
     return quote_literal(normalized)
 
 
+def is_within_allowed_roots(candidate_path: str, allowed_roots: list[Path]) -> bool:
+    """Check if a resolved path is within any of the allowed root directories.
+
+    This function implements the root-based path security model that replaces
+    heuristic-based traversal checks. It uses Path.resolve() and os.path.commonpath
+    for robust cross-platform validation.
+
+    Args:
+        candidate_path: The path to check (will be resolved to absolute)
+        allowed_roots: List of Path objects representing allowed root directories
+
+    Returns:
+        True if the candidate path is within at least one allowed root, False otherwise
+
+    Raises:
+        ValueError: If the candidate path cannot be resolved (invalid path)
+    """
+    try:
+        # Resolve the candidate path to absolute, following symlinks
+        resolved_candidate = Path(candidate_path).resolve()
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise ValueError(f"Cannot resolve path '{candidate_path}': {exc}") from exc
+
+    # Resolve all allowed roots to absolute paths
+    try:
+        resolved_roots = [root.resolve() for root in allowed_roots]
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise ValueError(f"Cannot resolve allowed root: {exc}") from exc
+
+    # Check if candidate is within any allowed root
+    for root in resolved_roots:
+        try:
+            # Use commonpath to find the common prefix
+            common = Path(os.path.commonpath([resolved_candidate, root]))
+
+            # If the common path equals the root, then candidate is within this root
+            if common == root:
+                return True
+
+        except ValueError:
+            # os.path.commonpath raises ValueError when paths are on different
+            # drives (Windows) or have no common prefix - treat as not within root
+            continue
+
+    return False
+
+
 def _is_reasonable_parent_traversal(
     original_path: str, resolved_path: str, config_dir: Path
 ) -> bool:
-    """Check if parent directory traversal is reasonable and not excessive.
+    """DEPRECATED: Use is_within_allowed_roots() instead.
 
-    This function allows limited parent directory traversal (e.g., ../data/)
-    while blocking excessive traversal that could be dangerous.
+    This function is kept for backward compatibility but is replaced by
+    the more robust root-based validation approach in is_within_allowed_roots().
 
     Args:
         original_path: The original relative path string
@@ -252,6 +308,14 @@ def _is_reasonable_parent_traversal(
     Returns:
         True if the traversal is reasonable, False if excessive/dangerous
     """
+    import warnings
+
+    warnings.warn(
+        "_is_reasonable_parent_traversal is deprecated and will be removed in a future version. "
+        "Use is_within_allowed_roots() instead for more robust root-based path validation.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
     # Count the number of parent directory traversals (../)
     parent_traversal_count = original_path.count("../")

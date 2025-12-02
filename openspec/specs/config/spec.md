@@ -226,6 +226,43 @@ The CLI SHALL accept remote config URIs anywhere a config path is currently allo
 - **WHEN** running `duckalog build|validate|ui` with a remote URI
 - **THEN** the command SHALL behave the same as with a local file, after fetching and validating the remote content.
 
+### Requirement: Path Resolution Security
+The system MUST enforce strict path security boundaries to prevent unauthorized file system access through path traversal attacks.
+
+#### Scenario: Allowed roots model
+- **GIVEN** a configuration file located at `/project/config/catalog.yaml`
+- **WHEN** paths in the configuration are resolved to absolute paths
+- **THEN** all resolved local file paths MUST be within the allowed roots
+- **AND** the default allowed root set SHALL include the configuration directory (`/project/config/`)
+- **AND** any resolved path outside these roots SHALL cause a configuration error
+
+#### Scenario: Root-based path validation
+- **GIVEN** a relative path `"../data/file.parquet"` in a configuration
+- **WHEN** the path is resolved to `/project/data/file.parquet`
+- **THEN** if `/project/data/` is under the configuration directory, the path SHALL be allowed
+- **AND** if `/project/data/` is outside the configuration directory, the path SHALL be rejected
+- **AND** the validation SHALL use `Path.resolve()` and `os.path.commonpath` for robust cross-platform checking
+
+#### Scenario: Path traversal prevention
+- **GIVEN** malicious paths attempting to escape the configuration directory
+- **WHEN** paths like `"../../../etc/passwd"` or `"..\\..\\..\\windows\\system32\\config\\sam"` are resolved
+- **THEN** the system SHALL reject these paths with a clear security error
+- **AND** the error SHALL indicate the original path, resolved path, and allowed roots
+- **AND** the system SHALL NOT attempt to "fix up" or modify the path to make it valid
+
+#### Scenario: Cross-platform path handling
+- **GIVEN** different path formats across Unix and Windows systems
+- **WHEN** paths with mixed separators (`/` vs `\`), drive letters (`C:\\`), or UNC paths (`\\\\server\\share`) are processed
+- **THEN** the root validation SHALL handle all these formats correctly
+- **AND** Windows drive letter differences SHALL be treated as separate root contexts
+- **AND** invalid or undecodable paths SHALL be rejected with descriptive errors
+
+#### Scenario: Symlink resolution
+- **GIVEN** file system paths that involve symbolic links
+- **WHEN** paths are resolved using `Path.resolve()` which follows symlinks
+- **THEN** the security check SHALL validate the final resolved path, not the intermediate path
+- **AND** symlinks that point outside allowed roots SHALL be blocked
+
 ### Requirement: Safe Secret Configuration
 Secret configurations MUST enforce strict typing for options and use safe SQL quoting for all string values.
 

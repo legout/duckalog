@@ -173,6 +173,46 @@ sql_path = normalize_path_for_sql("/path/file's_data.parquet")
 **Returns:**
 - `str`: SQL-safe quoted path
 
+### Root-Based Path Security Functions
+
+#### is_within_allowed_roots()
+
+Check if a resolved path is within any of the allowed root directories using robust cross-platform validation.
+
+```python
+from duckalog.path_resolution import is_within_allowed_roots
+from pathlib import Path
+
+config_dir = Path("/project/config")
+allowed_roots = [config_dir]
+
+# Check if a path is within allowed roots
+is_safe = is_within_allowed_roots("/project/config/data/file.parquet", allowed_roots)
+# Returns: True
+
+is_unsafe = is_within_allowed_roots("/etc/passwd", allowed_roots)  
+# Returns: False
+
+is_traversal_blocked = is_within_allowed_roots("../../../etc/passwd", allowed_roots)
+# Returns: False (path traversal blocked)
+```
+
+**Parameters:**
+- `candidate_path` (str): The path to check (will be resolved to absolute)
+- `allowed_roots` (list[Path]): List of Path objects representing allowed root directories
+
+**Returns:**
+- `bool`: True if the candidate path is within at least one allowed root, False otherwise
+
+**Raises:**
+- `ValueError`: If the candidate path cannot be resolved (invalid path)
+
+**Security Features:**
+- Uses `Path.resolve()` to follow symlinks and get canonical paths
+- Uses `os.path.commonpath()` for robust cross-platform path comparison  
+- Prevents all forms of path traversal attacks regardless of encoding or separators
+- Handles Windows drive letters and UNC paths correctly
+
 ## SQL Generation API
 
 ### SQL Quoting Functions

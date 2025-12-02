@@ -132,6 +132,33 @@ The CLI SHALL accept remote output URIs anywhere a catalog output path is allowe
 - **WHEN** running `duckalog build ... --output s3://bucket/path/catalog.duckdb`
 - **THEN** the command SHALL behave the same as with local output, producing the uploaded file on success.
 
+### Requirement: Path Security During Catalog Operations
+All file paths used during catalog build operations MUST be validated against allowed roots to prevent unauthorized file system access.
+
+#### Scenario: Local data file access validation
+- **GIVEN** a catalog build that references local data files through view URIs
+- **WHEN** relative paths like `"data/events.parquet"` or `"../shared/data/users.parquet"` are resolved
+- **THEN** all resolved paths SHALL be validated to ensure they remain within allowed roots
+- **AND** paths that resolve outside allowed roots SHALL cause the build to fail with a clear security error
+
+#### Scenario: SQL file path validation
+- **GIVEN** view definitions that reference external SQL files via `sql_file` field
+- **WHEN** relative SQL file paths are resolved during configuration loading
+- **THEN** the resolved SQL file paths SHALL be validated against allowed roots
+- **AND** SQL files outside allowed roots SHALL not be accessible to the catalog build
+
+#### Scenario: Attachment path validation
+- **GIVEN** database attachments (DuckDB, SQLite) with relative paths
+- **WHEN** attachment paths like `"./databases/reference.duckdb"` or `"../legacy/system.db"` are resolved
+- **THEN** all resolved attachment paths SHALL be validated against allowed roots
+- **AND** attachments with paths outside allowed roots SHALL cause build failure
+
+#### Scenario: Export path validation
+- **GIVEN** catalog export operations to local file paths
+- **WHEN** export paths are specified as relative paths
+- **THEN** the resolved export paths SHALL be validated to ensure they remain within allowed roots
+- **AND** export paths outside allowed roots SHALL be rejected to prevent unauthorized file system writes
+
 ### Requirement: Safe SQL Generation for Views and Secrets
 SQL generated from configuration for catalog builds MUST safely quote all configuration‑derived identifiers and string literals and MUST avoid interpolating unsupported secret option types.
 

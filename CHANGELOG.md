@@ -1,6 +1,33 @@
 # Changelog
 
-## [Unreleased] - Security Improvements
+## [Unreleased] - Path Security Hardening
+
+### Added
+- Security: Implemented root-based path security model to replace heuristic-based traversal protection
+- Security: Added `is_within_allowed_roots()` function for robust cross-platform path validation
+- Security: Enhanced path resolution to use `Path.resolve()` and `os.path.commonpath()` for reliable security checks
+- Security: Added comprehensive test coverage for path traversal attack prevention across Unix and Windows systems
+
+### Changed
+- Security: Replaced `_is_reasonable_parent_traversal()` heuristic checks with definitive root-based validation
+- Security: Updated `resolve_relative_path()` to enforce strict root boundaries for all resolved paths
+- Security: Modified `validate_path_security()` to use the new root-based security model
+- Security: Path security now prevents ALL path traversal attacks regardless of encoding or separator patterns
+
+### Deprecated
+- Security: `_is_reasonable_parent_traversal()` function deprecated in favor of `is_within_allowed_roots()`
+- Security: Old heuristic-based security approach will be removed in a future version
+
+### Fixed
+- Security: Eliminated bypass vectors in path traversal protection (encoding tricks, mixed separators, symlinks)
+- Security: Fixed cross-platform inconsistencies in path security validation
+- Security: Improved error messages for path security violations to be more descriptive and actionable
+
+### Breaking Changes
+- Security: Some paths that previously "worked" by escaping the configuration directory may now be rejected for safety
+- Security: More restrictive path validation may affect existing configurations that relied on excessive parent directory traversal
+
+## [Unreleased] - SQL Security Improvements
 
 ### Added
 - Security: Implemented canonical SQL quoting helpers (`quote_ident`, `quote_literal`) to prevent SQL injection attacks
