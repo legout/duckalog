@@ -19,7 +19,13 @@ from .sql_generation import (
     quote_ident,
     render_options,
 )
-from .python_api import generate_sql, validate_config
+from .python_api import (
+    generate_sql,
+    validate_config,
+    connect_to_catalog,
+    connect_to_catalog_cm,
+    connect_and_build_catalog,
+)
 from .config_init import create_config_template, validate_generated_config, ConfigFormat
 
 __all__ = [
@@ -37,6 +43,9 @@ __all__ = [
     "EngineError",
     "generate_sql",
     "validate_config",
+    "connect_to_catalog",
+    "connect_to_catalog_cm",
+    "connect_and_build_catalog",
     "quote_ident",
     "render_options",
     "generate_view_sql",
