@@ -12,6 +12,22 @@ from typing import Any
 import duckdb
 
 from .config import Config, load_config
+from .secret_types import (
+    S3SecretConfig,
+    AzureSecretConfig,
+    GCSSecretConfig,
+    HTTPSecretConfig,
+    PostgresSecretConfig,
+    MySQLSecretConfig,
+)
+from .secret_types import (
+    S3SecretConfig,
+    AzureSecretConfig,
+    GCSSecretConfig,
+    HTTPSecretConfig,
+    PostgresSecretConfig,
+    MySQLSecretConfig,
+)
 from .logging_utils import get_logger, log_debug, log_info
 from .path_resolution import is_relative_path, resolve_relative_path
 from .sql_generation import generate_all_views_sql, generate_view_sql
@@ -43,6 +59,7 @@ REMOTE_EXPORT_SCHEMES = {
 @dataclass
 class BuildResult:
     """Result of building a Duckalog config."""
+
     database_path: str
     config_path: str
     was_built: bool  # True if newly built, False if cached
@@ -61,7 +78,7 @@ class ConfigDependencyGraph:
         config_path: str,
         dry_run: bool = False,
         parent_alias: str | None = None,
-        database_override: str | None = None
+        database_override: str | None = None,
     ) -> BuildResult:
         """Build config with all its dependencies recursively."""
         config_path = str(Path(config_path).resolve())
@@ -110,7 +127,7 @@ class ConfigDependencyGraph:
                     "Using database override for child config",
                     config_path=config_path,
                     original_path=child_db_path,
-                    override_path=effective_db_path
+                    override_path=effective_db_path,
                 )
             else:
                 # Resolve child's database path relative to child config directory
@@ -121,7 +138,7 @@ class ConfigDependencyGraph:
                         "Resolved child database path",
                         config_path=config_path,
                         original_db=child_db_path,
-                        resolved_db=effective_db_path
+                        resolved_db=effective_db_path,
                     )
 
             # Recursively build nested Duckalog attachments
@@ -146,7 +163,7 @@ class ConfigDependencyGraph:
                 result = BuildResult(
                     database_path=effective_db_path,
                     config_path=config_path,
-                    was_built=True
+                    was_built=True,
                 )
             else:
                 # Actually build the database (for both parent and child configs)
@@ -171,7 +188,9 @@ class ConfigDependencyGraph:
                         if duckalog_attachment.alias in nested_results:
                             nested_result = nested_results[duckalog_attachment.alias]
 
-                            clause = " (READ_ONLY)" if duckalog_attachment.read_only else ""
+                            clause = (
+                                " (READ_ONLY)" if duckalog_attachment.read_only else ""
+                            )
                             log_info(
                                 "Attaching built DuckDB child catalog",
                                 alias=duckalog_attachment.alias,
@@ -180,7 +199,7 @@ class ConfigDependencyGraph:
                             )
                             child_conn.execute(
                                 f"ATTACH DATABASE '{_quote_literal(nested_result.database_path)}' "
-                                f"AS \"{duckalog_attachment.alias}\"{clause}"
+                                f'AS "{duckalog_attachment.alias}"{clause}'
                             )
 
                     _setup_iceberg_catalogs(child_conn, child_config, False)
@@ -191,7 +210,7 @@ class ConfigDependencyGraph:
                 result = BuildResult(
                     database_path=effective_db_path,
                     config_path=config_path,
-                    was_built=True
+                    was_built=True,
                 )
 
             self.build_cache[config_path] = result
@@ -217,6 +236,7 @@ def build_catalog(
     dry_run: bool = False,
     verbose: bool = False,
     filesystem: Any | None = None,
+    include_secrets: bool = True,
 ) -> str | None:
     """Build or update a DuckDB catalog from a configuration file.
 
@@ -281,7 +301,7 @@ def build_catalog(
                         f"'{duckalog_attachment.alias}': {exc}"
                     ) from exc
 
-        sql = generate_all_views_sql(config)
+        sql = generate_all_views_sql(config, include_secrets=not dry_run)
         log_info("Dry run SQL generation complete", views=len(config.views))
         return sql
 
@@ -298,10 +318,14 @@ def build_catalog(
             )
         remote_uri = target_db
         # Create temporary file for local database creation
-        temp_file = tempfile.NamedTemporaryFile(suffix='.duckdb', delete=False)
+        temp_file = tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False)
         temp_file.close()
         target_db = temp_file.name
-        log_info("Building catalog locally for remote export", temp_file=target_db, remote_uri=remote_uri)
+        log_info(
+            "Building catalog locally for remote export",
+            temp_file=target_db,
+            remote_uri=remote_uri,
+        )
 
     # Handle Duckalog attachments separately from regular attachments
     dependency_graph = ConfigDependencyGraph()
@@ -310,7 +334,7 @@ def build_catalog(
     if config.attachments.duckalog:
         log_info(
             "Building Duckalog attachment dependencies",
-            count=len(config.attachments.duckalog)
+            count=len(config.attachments.duckalog),
         )
 
         for duckalog_attachment in config.attachments.duckalog:
@@ -323,7 +347,9 @@ def build_catalog(
                         # Resolve override path relative to parent config directory
                         parent_config_dir = Path(config_path).parent
                         try:
-                            database_override = resolve_relative_path(database_override, parent_config_dir)
+                            database_override = resolve_relative_path(
+                                database_override, parent_config_dir
+                            )
                         except Exception as exc:
                             raise EngineError(
                                 f"Failed to resolve database override '{duckalog_attachment.database}' "
@@ -331,7 +357,10 @@ def build_catalog(
                             ) from exc
 
                 result = dependency_graph.build_config_with_dependencies(
-                    duckalog_attachment.config_path, dry_run, duckalog_attachment.alias, database_override
+                    duckalog_attachment.config_path,
+                    dry_run,
+                    duckalog_attachment.alias,
+                    database_override,
                 )
                 duckalog_results[duckalog_attachment.alias] = result
 
@@ -358,7 +387,11 @@ def build_catalog(
         _apply_duckdb_settings(conn, config, verbose)
 
         # Setup regular attachments (DuckDB, SQLite, Postgres)
-        if config.attachments.duckdb or config.attachments.sqlite or config.attachments.postgres:
+        if (
+            config.attachments.duckdb
+            or config.attachments.sqlite
+            or config.attachments.postgres
+        ):
             _setup_attachments(conn, config, verbose)
 
         # Setup built Duckalog attachments
@@ -376,7 +409,7 @@ def build_catalog(
                     )
                     attach_command = (
                         f"ATTACH DATABASE '{_quote_literal(result.database_path)}' "
-                        f"AS \"{duckalog_attachment.alias}\"{clause}"
+                        f'AS "{duckalog_attachment.alias}"{clause}'
                     )
                     log_debug("Executing attach command", command=attach_command)
                     conn.execute(attach_command)
@@ -390,7 +423,11 @@ def build_catalog(
                             f"Failed to attach Duckalog catalog '{duckalog_attachment.alias}'. "
                             f"Expected alias not found in attached databases: {attached_aliases}"
                         )
-                    log_debug("Attachment verified", alias=duckalog_attachment.alias, attached_databases=attached_aliases)
+                    log_debug(
+                        "Attachment verified",
+                        alias=duckalog_attachment.alias,
+                        attached_databases=attached_aliases,
+                    )
 
         _setup_iceberg_catalogs(conn, config, verbose)
         _create_views(conn, config, verbose)
@@ -476,8 +513,8 @@ def _upload_to_remote(local_file: Path, remote_uri: str, filesystem=None) -> Non
         log_info("Uploading catalog to remote storage", remote_uri=remote_uri)
 
         # Stream upload to minimize memory usage
-        with open(local_file, 'rb') as local_f:
-            with filesystem.open(remote_uri, 'wb') as remote_f:
+        with open(local_file, "rb") as local_f:
+            with filesystem.open(remote_uri, "wb") as remote_f:
                 shutil.copyfileobj(local_f, remote_f)
 
         log_info("Upload complete", remote_uri=remote_uri)
@@ -506,16 +543,23 @@ def _create_secrets(
     for index, secret in enumerate(db_conf.secrets, start=1):
         log_debug("Creating secret", index=index, type=secret.type, name=secret.name)
 
-        # For now, we'll log the secret configuration but not actually create it
-        # since CREATE SECRET syntax varies by DuckDB version and may not be available
-        # This allows the configuration to be validated and documented
-        log_info(
-            "Secret configuration parsed",
-            name=secret.name or secret.type,
-            type=secret.type,
-            provider=secret.provider,
-            persistent=secret.persistent,
-        )
+        # Generate and execute CREATE SECRET statements
+        from .sql_generation import generate_secret_sql
+
+        for index, secret in enumerate(db_conf.secrets, start=1):
+            sql = generate_secret_sql(secret)
+            log_debug("Executing secret SQL", index=index, sql=sql)
+
+            try:
+                conn.execute(sql)
+                log_info(
+                    "Secret created successfully", name=secret.name, type=secret.type
+                )
+            except Exception as e:
+                log_error("Failed to create secret", name=secret.name, error=str(e))
+                raise EngineError(
+                    f"Failed to create secret '{secret.name}': {e}"
+                ) from e
 
         # TODO: Implement actual CREATE SECRET when syntax is stable
         # For now, we'll just log that we would create the secret
