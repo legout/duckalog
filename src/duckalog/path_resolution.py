@@ -202,7 +202,8 @@ def normalize_path_for_sql(path: str) -> str:
     """Normalize a path for use in SQL statements.
 
     This function ensures that paths are properly formatted for DuckDB SQL,
-    handling quoting and path separator normalization.
+    handling path separator normalization and delegating quoting to the
+    canonical quote_literal function.
 
     Args:
         path: The absolute path to normalize
@@ -229,9 +230,10 @@ def normalize_path_for_sql(path: str) -> str:
         # If pathlib can't handle it, use as-is
         normalized = path
 
-    # Escape single quotes for SQL and return quoted path
-    escaped = normalized.replace("'", "''")
-    return f"'{escaped}'"
+    # Import quote_literal from sql_generation to avoid circular imports
+    from .sql_generation import quote_literal
+
+    return quote_literal(normalized)
 
 
 def _is_reasonable_parent_traversal(

@@ -19,6 +19,7 @@ from .sql_generation import (
     generate_view_sql,
     generate_secret_sql,
     quote_ident,
+    quote_literal,
     render_options,
 )
 from .python_api import (
@@ -50,6 +51,7 @@ __all__ = [
     "connect_to_catalog_cm",
     "connect_and_build_catalog",
     "quote_ident",
+    "quote_literal",
     "render_options",
     "generate_view_sql",
     "generate_all_views_sql",

@@ -36,9 +36,31 @@ def quote_ident(value: str) -> str:
     return f'"{escaped}"'
 
 
-def _quote_literal(value: str) -> str:
+def quote_literal(value: str) -> str:
+    """Quote a SQL string literal using single quotes.
+
+    This helper wraps a string in single quotes and escapes any embedded
+    single quotes according to SQL rules.
+
+    Args:
+        value: String literal to quote (for example, a file path, secret, or connection string).
+
+    Returns:
+        The string wrapped in single quotes with proper escaping.
+
+    Example:
+        >>> quote_literal("path/to/file.parquet")
+        "'path/to/file.parquet'"
+        >>> quote_literal("user's data")
+        "'user''s data'"
+    """
     escaped = value.replace("'", "''")
     return f"'{escaped}'"
+
+
+def _quote_literal(value: str) -> str:
+    """Deprecated: Use quote_literal instead."""
+    return quote_literal(value)
 
 
 def render_options(options: dict[str, Any]) -> str:
@@ -124,7 +146,7 @@ def _render_view_body(view: ViewConfig) -> str:
 
     if source in {"duckdb", "sqlite", "postgres"}:
         assert view.database and view.table  # enforced by schema
-        return f"SELECT * FROM {view.database}.{view.table}"
+        return f"SELECT * FROM {quote_ident(view.database)}.{quote_ident(view.table)}"
 
     raise ValueError(f"Unsupported view source '{source}'")
 
@@ -186,112 +208,121 @@ def generate_secret_sql(secret: SecretConfig) -> str:
     if secret.type == "s3":
         if secret.provider == "credential_chain":
             if secret.region:
-                params.append(f"REGION '{secret.region}'")
+                params.append(f"REGION {quote_literal(secret.region)}")
         else:  # config provider
             if secret.key_id:
-                params.append(f"KEY_ID '{secret.key_id}'")
+                params.append(f"KEY_ID {quote_literal(secret.key_id)}")
             if secret.secret:
-                params.append(f"SECRET '{secret.secret}'")
+                params.append(f"SECRET {quote_literal(secret.secret)}")
             if secret.region:
-                params.append(f"REGION '{secret.region}'")
+                params.append(f"REGION {quote_literal(secret.region)}")
             if secret.endpoint:
-                params.append(f"ENDPOINT '{secret.endpoint}'")
+                params.append(f"ENDPOINT {quote_literal(secret.endpoint)}")
 
     elif secret.type == "azure":
         if secret.connection_string:
-            params.append(f"CONNECTION_STRING '{secret.connection_string}'")
+            params.append(
+                f"CONNECTION_STRING {quote_literal(secret.connection_string)}"
+            )
         else:
             if secret.tenant_id:
-                params.append(f"TENANT_ID '{secret.tenant_id}'")
+                params.append(f"TENANT_ID {quote_literal(secret.tenant_id)}")
             client_id = getattr(secret, "client_id", None)
             if client_id:
-                params.append(f"CLIENT_ID '{client_id}'")
+                params.append(f"CLIENT_ID {quote_literal(client_id)}")
             client_secret = getattr(secret, "client_secret", None) or getattr(
                 secret, "secret", None
             )
             if client_secret:
-                params.append(f"SECRET '{client_secret}'")
+                params.append(f"SECRET {quote_literal(client_secret)}")
             if secret.account_name:
-                params.append(f"ACCOUNT_NAME '{secret.account_name}'")
+                params.append(f"ACCOUNT_NAME {quote_literal(secret.account_name)}")
 
     elif secret.type == "gcs":
         # For GCS, check common field names
         service_account_key = getattr(secret, "service_account_key", None)
         if service_account_key:
-            params.append(f"SERVICE_ACCOUNT_KEY '{service_account_key}'")
+            params.append(f"SERVICE_ACCOUNT_KEY {quote_literal(service_account_key)}")
         else:
             json_key = getattr(secret, "json_key", None)
             if json_key:
-                params.append(f"JSON_KEY '{json_key}'")
+                params.append(f"JSON_KEY {quote_literal(json_key)}")
             # Fallback to key_id/secret for basic auth
             elif secret.key_id and secret.secret:
-                params.append(f"KEY_ID '{secret.key_id}'")
-                params.append(f"SECRET '{secret.secret}'")
+                params.append(f"KEY_ID {quote_literal(secret.key_id)}")
+                params.append(f"SECRET {quote_literal(secret.secret)}")
 
     elif secret.type == "http":
         bearer_token = getattr(secret, "bearer_token", None)
         if bearer_token:
-            params.append(f"BEARER_TOKEN '{bearer_token}'")
+            params.append(f"BEARER_TOKEN {quote_literal(bearer_token)}")
         else:
             header = getattr(secret, "header", None)
             if header:
-                params.append(f"HEADER '{header}'")
+                params.append(f"HEADER {quote_literal(header)}")
             else:
                 # Fallback for basic auth
                 if secret.key_id:
-                    params.append(f"USERNAME '{secret.key_id}'")
+                    params.append(f"USERNAME {quote_literal(secret.key_id)}")
                 if secret.secret:
-                    params.append(f"PASSWORD '{secret.secret}'")
+                    params.append(f"PASSWORD {quote_literal(secret.secret)}")
 
     elif secret.type == "postgres":
         if secret.connection_string:
-            params.append(f"CONNECTION_STRING '{secret.connection_string}'")
+            params.append(
+                f"CONNECTION_STRING {quote_literal(secret.connection_string)}"
+            )
         else:
             if secret.host:
-                params.append(f"HOST '{secret.host}'")
+                params.append(f"HOST {quote_literal(secret.host)}")
             if secret.port:
                 params.append(f"PORT {secret.port}")
             if secret.database:
-                params.append(f"DATABASE '{secret.database}'")
+                params.append(f"DATABASE {quote_literal(secret.database)}")
             # Check both user and key_id (for compatibility)
             user_field = getattr(secret, "user", None) or secret.key_id
             if user_field:
-                params.append(f"USER '{user_field}'")
+                params.append(f"USER {quote_literal(user_field)}")
             # Check both password and secret (for compatibility)
             password_field = getattr(secret, "password", None) or secret.secret
             if password_field:
-                params.append(f"PASSWORD '{password_field}'")
+                params.append(f"PASSWORD {quote_literal(password_field)}")
 
     elif secret.type == "mysql":
         if secret.connection_string:
-            params.append(f"CONNECTION_STRING '{secret.connection_string}'")
+            params.append(
+                f"CONNECTION_STRING {quote_literal(secret.connection_string)}"
+            )
         else:
             if secret.host:
-                params.append(f"HOST '{secret.host}'")
+                params.append(f"HOST {quote_literal(secret.host)}")
             if secret.port:
                 params.append(f"PORT {secret.port}")
             if secret.database:
-                params.append(f"DATABASE '{secret.database}'")
+                params.append(f"DATABASE {quote_literal(secret.database)}")
             # Check both user and key_id (for compatibility)
             user_field = getattr(secret, "user", None) or secret.key_id
             if user_field:
-                params.append(f"USER '{user_field}'")
+                params.append(f"USER {quote_literal(user_field)}")
             # Check both password and secret (for compatibility)
             password_field = getattr(secret, "password", None) or secret.secret
             if password_field:
-                params.append(f"PASSWORD '{password_field}'")
+                params.append(f"PASSWORD {quote_literal(password_field)}")
 
     # Add options if provided
     if secret.options:
         for key, value in sorted(secret.options.items()):
             if isinstance(value, bool):
                 rendered = "TRUE" if value else "FALSE"
-            elif isinstance(value, (int, float)):
+            elif isinstance(value, (int, float)) and not isinstance(value, bool):
                 rendered = str(value)
             elif isinstance(value, str):
-                rendered = _quote_literal(value)
+                rendered = quote_literal(value)
             else:
-                rendered = f"'{value}'"
+                raise TypeError(
+                    f"Unsupported option value for '{key}': {value!r}. "
+                    f"Expected str, bool, int, or float."
+                )
             params.append(f"{key.upper()} {rendered}")
 
     # Build the full SQL statement
@@ -299,13 +330,14 @@ def generate_secret_sql(secret: SecretConfig) -> str:
 
     # Add scope if provided
     if secret.scope:
-        secret_sql += f"; SCOPE '{secret.scope}'"
+        secret_sql += f"; SCOPE {quote_literal(secret.scope)}"
 
     return secret_sql
 
 
 __all__ = [
     "quote_ident",
+    "quote_literal",
     "render_options",
     "generate_view_sql",
     "generate_all_views_sql",

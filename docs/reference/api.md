@@ -173,6 +173,110 @@ sql_path = normalize_path_for_sql("/path/file's_data.parquet")
 **Returns:**
 - `str`: SQL-safe quoted path
 
+## SQL Generation API
+
+### SQL Quoting Functions
+
+#### quote_ident()
+
+Quote a SQL identifier using double quotes with proper escaping.
+
+```python
+from duckalog import quote_ident
+
+# Quote simple identifiers
+assert quote_ident("events") == '"events"'
+
+# Quote identifiers with spaces
+assert quote_ident("daily users") == '"daily users"'
+
+# Quote identifiers with quotes (escapes embedded quotes)
+assert quote_ident('user "events"') == '"user ""events"""'
+```
+
+**Parameters:**
+- `identifier` (str): Identifier to quote
+
+**Returns:**
+- `str`: Identifier wrapped in double quotes with proper escaping
+
+#### quote_literal()
+
+Quote a SQL string literal using single quotes with proper escaping.
+
+```python
+from duckalog import quote_literal
+
+# Quote simple strings
+assert quote_literal("user's data") == "'user''s data'"
+
+# Quote file paths
+assert quote_literal("path/to/file.parquet") == "'path/to/file.parquet'"
+
+# Quote SQL statements
+assert quote_literal("SELECT * FROM table") == "'SELECT * FROM table'"
+
+# Quote empty strings
+assert quote_literal("") == "''"
+```
+
+**Parameters:**
+- `value` (str): String literal to quote
+
+**Returns:**
+- `str`: String wrapped in single quotes with proper escaping
+
+#### generate_view_sql()
+
+Generate a `CREATE OR REPLACE VIEW` statement for a view configuration.
+
+```python
+from duckalog import ViewConfig, generate_view_sql
+
+view = ViewConfig(
+    name="test_view",
+    source="duckdb",
+    database="my_db",
+    table="users"
+)
+
+sql = generate_view_sql(view)
+# Returns: CREATE OR REPLACE VIEW "test_view" AS SELECT * FROM "my_db"."users";
+```
+
+**Parameters:**
+- `view` (ViewConfig): View configuration to generate SQL for
+
+**Returns:**
+- `str`: SQL statement creating the view with proper quoting
+
+#### generate_secret_sql()
+
+Generate `CREATE SECRET` statement for a secret configuration with proper escaping.
+
+```python
+from duckalog import SecretConfig, generate_secret_sql
+
+secret = SecretConfig(
+    type="s3",
+    name="prod_s3",
+    provider="config",
+    key_id="user's key",  # Contains single quote
+    secret="secret'with'quotes"
+)
+
+sql = generate_secret_sql(secret)
+# Returns: CREATE SECRET prod_s3 (TYPE S3, KEY_ID 'user''s key', SECRET 'secret''with''quotes')
+```
+
+**Parameters:**
+- `secret` (SecretConfig): Secret configuration to generate SQL for
+
+**Returns:**
+- `str`: SQL statement creating the secret with proper escaping
+
+**Note:** This function enforces strict type checking for secret options and will raise `TypeError` for unsupported types (non-bool, int, float, or str values).
+
 ## Configuration Models
 
 ### Config

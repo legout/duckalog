@@ -1,4 +1,24 @@
 # Changelog
+
+## [Unreleased] - Security Improvements
+
+### Added
+- Security: Implemented canonical SQL quoting helpers (`quote_ident`, `quote_literal`) to prevent SQL injection attacks
+- Security: Added strict type checking for `SecretConfig.options` (only `bool`, `int`, `float`, `str` allowed)
+- Security: Enhanced SQL injection protection for view generation with database/table names
+- Security: Hardened secret SQL generation against quote injection and unsafe interpolation
+
+### Changed
+- Security: All SQL generation now uses safe quoting helpers instead of ad-hoc string manipulation
+- Security: `generate_view_sql` now properly quotes identifiers for `duckdb`, `sqlite`, and `postgres` sources
+- Security: Attachment and catalog SQL in `engine.py` now uses proper identifier and literal quoting
+- Security: `generate_secret_sql` now enforces strict type validation for option values
+
+### Fixed
+- Security: Eliminated SQL injection vectors through configuration-derived database/table names
+- Security: Fixed quote escaping in secret generation to prevent SQL injection through secret values
+- Security: Removed unsafe string interpolation fallback for unsupported option types
+
 ## [2025-11-27] - 0.2.4
 
 ### Changed

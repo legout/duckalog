@@ -132,3 +132,43 @@ The CLI SHALL accept remote output URIs anywhere a catalog output path is allowe
 - **WHEN** running `duckalog build ... --output s3://bucket/path/catalog.duckdb`
 - **THEN** the command SHALL behave the same as with local output, producing the uploaded file on success.
 
+### Requirement: Safe SQL Generation for Views and Secrets
+SQL generated from configuration for catalog builds MUST safely quote all configuration‑derived identifiers and string literals and MUST avoid interpolating unsupported secret option types.
+
+#### Scenario: View SQL uses quoted identifiers
+- **GIVEN** a config with views that reference attached databases or tables whose names contain spaces, reserved words, or other special characters
+- **WHEN** SQL is generated for those views
+- **THEN** database, schema, and table names are emitted as properly quoted identifiers
+- **AND** attempts to inject additional SQL via these fields do not change the structure of the generated statement.
+
+#### Scenario: Secret SQL uses safe literals and strict option types
+- **GIVEN** a config with DuckDB secrets whose fields and options contain quotes or other special characters
+- **WHEN** `CREATE SECRET` statements are generated for catalog builds or dry‑run SQL output
+- **THEN** all string values are emitted as safely quoted literals
+- **AND** numeric and boolean option values are rendered without quotes according to their type
+- **AND** any secret option whose value type is not `bool`, `int`, `float`, or `str` causes validation or SQL generation to fail with a clear error instead of interpolating an unsafe representation.
+
+### Requirement: Canonical SQL Quoting Helpers
+The system MUST provide canonical functions for SQL construction that serve as the single source of truth for safe SQL generation.
+
+#### Scenario: Canonical quoting API
+- **GIVEN** a need to construct SQL from configuration-derived values
+- **WHEN** developers need to quote identifiers or string literals for SQL
+- **THEN** they MUST use the canonical `quote_ident(identifier: str) -> str` and `quote_literal(value: str) -> str` functions
+- **AND** callers MUST pass raw strings and MUST NOT add their own surrounding quotes
+- **AND** `quote_ident` MUST double any embedded `"` characters for identifier escaping
+- **AND** `quote_literal` MUST double any embedded `'` characters for literal escaping
+
+#### Scenario: Path normalization composes with quoting
+- **GIVEN** a need to convert file paths to SQL literals
+- **WHEN** `normalize_path_for_sql` is called
+- **THEN** it MUST compose with the canonical quoting helpers rather than implementing its own quoting logic
+- **AND** the function MUST focus on path normalization (via `pathlib.Path`) and delegate to `quote_literal` for quoting
+
+#### Scenario: Consistent quoting across SQL generation
+- **GIVEN** SQL generation code in `sql_generation.py`, `engine.py`, and related modules
+- **WHEN** constructing SQL that includes configuration-derived identifiers or string literals
+- **THEN** all code MUST use the canonical quoting helpers instead of ad-hoc string manipulation
+- **AND** attachment aliases, database names, table names, and view names MUST be passed through `quote_ident`
+- **AND** file paths, connection strings, secret values, and other string literals MUST be passed through `quote_literal`
+

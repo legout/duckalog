@@ -18,14 +18,28 @@ from .sql_generation import generate_all_views_sql, generate_view_sql
 
 # Optional imports for remote export functionality
 try:
-    import fsspec
-    from urllib.parse import urlparse
+    import fsspec  # type: ignore
+    from urllib.parse import urlparse  # type: ignore
 
     FSSPEC_AVAILABLE = True
 except ImportError:
-    fsspec = None  # type: ignore
-    urlparse = None  # type: ignore
+    fsspec = None
+    urlparse = None
     FSSPEC_AVAILABLE = False
+
+# Import quoting functions after other imports to avoid circular imports
+try:
+    from .sql_generation import quote_ident, quote_literal
+except ImportError:
+    # Fallback for circular import issues
+    def quote_ident(value: str) -> str:
+        escaped = value.replace('"', '""')
+        return f'"{escaped}"'
+
+    def quote_literal(value: str) -> str:
+        escaped = value.replace("'", "''")
+        return f"'{escaped}'"
+
 
 logger = get_logger()
 
@@ -182,8 +196,8 @@ class ConfigDependencyGraph:
                                 read_only=duckalog_attachment.read_only,
                             )
                             child_conn.execute(
-                                f"ATTACH DATABASE '{_quote_literal(nested_result.database_path)}' "
-                                f'AS "{duckalog_attachment.alias}"{clause}'
+                                f"ATTACH DATABASE {quote_literal(nested_result.database_path)} "
+                                f"AS {quote_ident(duckalog_attachment.alias)}{clause}"
                             )
 
                     _setup_iceberg_catalogs(child_conn, child_config, False)
@@ -392,8 +406,8 @@ def build_catalog(
                         read_only=duckalog_attachment.read_only,
                     )
                     attach_command = (
-                        f"ATTACH DATABASE '{_quote_literal(result.database_path)}' "
-                        f'AS "{duckalog_attachment.alias}"{clause}'
+                        f"ATTACH DATABASE {quote_literal(result.database_path)} "
+                        f"AS {quote_ident(duckalog_attachment.alias)}{clause}"
                     )
                     log_debug("Executing attach command", command=attach_command)
                     conn.execute(attach_command)
@@ -439,12 +453,14 @@ def build_catalog(
     # Upload to remote storage if needed
     if remote_uri:
         try:
-            _upload_to_remote(Path(temp_file.name), remote_uri, filesystem)
-            log_info("Remote export complete", remote_uri=remote_uri)
+            if temp_file is not None and temp_file.name:
+                _upload_to_remote(Path(temp_file.name), remote_uri, filesystem)
+                log_info("Remote export complete", remote_uri=remote_uri)
         finally:
             # Always clean up temp file
             try:
-                Path(temp_file.name).unlink()
+                if temp_file is not None and temp_file.name:
+                    Path(temp_file.name).unlink()
             except Exception:
                 pass  # Best effort cleanup
     else:
@@ -488,10 +504,14 @@ def _upload_to_remote(local_file: Path, remote_uri: str, filesystem=None) -> Non
         # Use provided filesystem or create one from the URI
         if filesystem is None:
             # Extract protocol from URI for filesystem creation
+            if urlparse is None:
+                raise EngineError("Remote export requires urlparse from urllib.parse")
             parsed = urlparse(remote_uri)
             protocol = parsed.scheme
 
             # Create filesystem with default authentication
+            if fsspec is None:
+                raise EngineError("Remote export requires fsspec")
             filesystem = fsspec.filesystem(protocol)
 
         log_info("Uploading catalog to remote storage", remote_uri=remote_uri)
@@ -600,7 +620,7 @@ def _setup_attachments(
             read_only=duckdb_attachment.read_only,
         )
         conn.execute(
-            f"ATTACH DATABASE '{_quote_literal(duckdb_attachment.path)}' AS \"{duckdb_attachment.alias}\"{clause}"
+            f"ATTACH DATABASE {quote_literal(duckdb_attachment.path)} AS {quote_ident(duckdb_attachment.alias)}{clause}"
         )
 
     for sqlite_attachment in config.attachments.sqlite:
@@ -610,7 +630,7 @@ def _setup_attachments(
             path=sqlite_attachment.path,
         )
         conn.execute(
-            f"ATTACH DATABASE '{_quote_literal(sqlite_attachment.path)}' AS \"{sqlite_attachment.alias}\" (TYPE SQLITE)"
+            f"ATTACH DATABASE {quote_literal(sqlite_attachment.path)} AS {quote_ident(sqlite_attachment.alias)} (TYPE SQLITE)"
         )
 
     for pg_attachment in config.attachments.postgres:
@@ -630,19 +650,19 @@ def _setup_attachments(
         )
         clauses = [
             "TYPE POSTGRES",
-            f"HOST '{_quote_literal(pg_attachment.host)}'",
+            f"HOST {quote_literal(pg_attachment.host)}",
             f"PORT {pg_attachment.port}",
-            f"USER '{_quote_literal(pg_attachment.user)}'",
-            f"PASSWORD '{_quote_literal(pg_attachment.password)}'",
-            f"DATABASE '{_quote_literal(pg_attachment.database)}'",
+            f"USER {quote_literal(pg_attachment.user)}",
+            f"PASSWORD {quote_literal(pg_attachment.password)}",
+            f"DATABASE {quote_literal(pg_attachment.database)}",
         ]
         if pg_attachment.sslmode:
-            clauses.append(f"SSLMODE '{_quote_literal(pg_attachment.sslmode)}'")
+            clauses.append(f"SSLMODE {quote_literal(pg_attachment.sslmode)}")
         for key, value in pg_attachment.options.items():
-            clauses.append(f"{key.upper()} '{_quote_literal(str(value))}'")
+            clauses.append(f"{key.upper()} {quote_literal(str(value))}")
         clause_sql = ", ".join(clauses)
         conn.execute(
-            f"ATTACH DATABASE '{_quote_literal(pg_attachment.database)}' AS \"{pg_attachment.alias}\" ({clause_sql})"
+            f"ATTACH DATABASE {quote_literal(pg_attachment.database)} AS {quote_ident(pg_attachment.alias)} ({clause_sql})"
         )
 
 
@@ -658,16 +678,16 @@ def _setup_iceberg_catalogs(
         log_debug("Iceberg catalog options", name=catalog.name, options=catalog.options)
         options = []
         if catalog.uri:
-            options.append(f"uri => '{_quote_literal(catalog.uri)}'")
+            options.append(f"uri => {quote_literal(catalog.uri)}")
         if catalog.warehouse:
-            options.append(f"warehouse => '{_quote_literal(catalog.warehouse)}'")
+            options.append(f"warehouse => {quote_literal(catalog.warehouse)}")
         for key, value in catalog.options.items():
-            options.append(f"{key} => '{_quote_literal(str(value))}'")
+            options.append(f"{key} => {quote_literal(str(value))}")
         options_sql = ", ".join(options)
         query = (
             "CALL iceberg_attach("
-            f"'{_quote_literal(catalog.name)}', "
-            f"'{_quote_literal(catalog.catalog_type)}'"
+            f"{quote_literal(catalog.name)}, "
+            f"{quote_literal(catalog.catalog_type)}"
             f"{', ' + options_sql if options_sql else ''})"
         )
         conn.execute(query)
@@ -683,7 +703,3 @@ def _create_views(
 
 
 __all__ = ["build_catalog", "EngineError", "is_remote_export_uri"]
-
-
-def _quote_literal(value: str) -> str:
-    return value.replace("'", "''")

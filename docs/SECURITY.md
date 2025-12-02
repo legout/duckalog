@@ -10,6 +10,157 @@ Duckalog includes comprehensive security hardening across multiple components:
 - **Path Resolution Security**: Validation against directory traversal and system access
 - **Configuration Security**: Secure handling of credentials and file operations
 
+## 🛡️ SQL Injection Protection
+
+Duckalog implements comprehensive SQL injection protection through canonical quoting helpers and strict input validation.
+
+### SQL Quoting Strategy
+
+Duckalog uses two canonical functions for safe SQL construction:
+
+#### **quote_ident()** - For Database Identifiers
+- **Purpose**: Quote database, table, column, and view names
+- **Protection**: Prevents identifier injection through proper escaping
+- **Usage**: `view.database`, `view.table`, attachment aliases, catalog names
+
+```python
+from duckalog import quote_ident
+
+# Safe identifier quoting
+quote_ident("my_table")         # Returns: "my_table"
+quote_ident("table; DROP...")   # Returns: "table; DROP..." (escaped, not executed)
+quote_ident('user "events"')    # Returns: "user ""events""" (quotes escaped)
+```
+
+#### **quote_literal()** - For String Values
+- **Purpose**: Quote string literals in SQL (paths, secrets, connection strings)
+- **Protection**: Prevents SQL injection through proper string escaping
+- **Usage**: File paths, secret values, connection strings, scope values
+
+```python
+from duckalog import quote_literal
+
+# Safe literal quoting
+quote_literal("user's data")      # Returns: "'user''s data'"
+quote_literal("path/to/file")     # Returns: "'path/to/file'"
+quote_literal("SELECT * FROM...") # Returns: "'SELECT * FROM...'" (not executed)
+```
+
+### Injection Attack Prevention
+
+#### **View SQL Injection Protection**
+```yaml
+# ❌ MALICIOUS INPUT - BLOCKED
+views:
+  - name: evil
+    source: duckdb
+    database: '"; DROP TABLE users; --'
+    table: 'bad_table'
+    # Generated SQL: SELECT * FROM ""; DROP TABLE users; --"."bad_table"
+    # The malicious SQL is safely quoted as identifiers, not executed
+
+# ✅ LEGITIMATE INPUT - ALLOWED  
+views:
+  - name: sales_data
+    source: duckdb
+    database: my_database
+    table: orders_2024
+    # Generated SQL: SELECT * FROM "my_database"."orders_2024"
+```
+
+#### **Secret SQL Injection Protection**
+```yaml
+# ❌ MALICIOUS SECRET VALUE - BLOCKED
+secrets:
+  - type: s3
+    name: evil_secret
+    key_id: 'user'' OR 1=1 --'
+    secret: 'malicious_value'
+    # Generated SQL safely escapes quotes:
+    # KEY_ID 'user'' OR 1=1 --' (not executed as SQL)
+    # SECRET 'malicious_value' (safe)
+
+# ✅ LEGITIMATE SECRET - ALLOWED
+secrets:
+  - type: s3
+    name: prod_s3
+    key_id: AKIA123456789
+    secret: secret_key_abc123
+    # Generated SQL: KEY_ID 'AKIA123456789', SECRET 'secret_key_abc123'
+```
+
+#### **Path SQL Injection Protection**
+```python
+# ❌ MALICIOUS PATH - BLOCKED
+path = "../../../etc/passwd"
+sql_path = normalize_path_for_sql(path)
+# Returns: "'../../../etc/passwd'" (safe string literal)
+
+# ✅ LEGITIMATE PATH - ALLOWED
+path = "data/file.parquet"  
+sql_path = normalize_path_for_sql(path)
+# Returns: "'data/file.parquet'" (safe)
+```
+
+### Strict Type Enforcement
+
+Duckalog enforces strict type checking for secret options to prevent unsafe object serialization:
+
+```python
+from duckalog import SecretConfig, generate_secret_sql
+
+# ✅ ALLOWED TYPES
+secret = SecretConfig(
+    type="s3",
+    options={
+        "use_ssl": True,        # bool
+        "timeout": 30,          # int  
+        "rate_limit": 0.5,      # float
+        "region": "us-west-2"   # str
+    }
+)
+# This works fine
+
+# ❌ BLOCKED TYPES
+secret = SecretConfig(
+    type="s3", 
+    options={
+        "bad_option": [1, 2, 3],      # list - BLOCKED
+        "worse_option": {"key": "val"} # dict - BLOCKED
+    }
+)
+generate_secret_sql(secret)  # Raises TypeError
+```
+
+### Security Guarantees
+
+1. **Canonical API**: All SQL construction uses safe quoting helpers
+2. **No Ad-hoc Quoting**: Prevents inconsistent or unsafe quoting patterns
+3. **Type Safety**: Strict validation prevents unsafe object serialization
+4. **Consistent Behavior**: Same quoting rules across all SQL generation
+5. **Clear Error Messages**: Detailed TypeError messages for violations
+
+### Security Testing
+
+Test SQL injection protection:
+
+```python
+# Test malicious inputs are safely quoted
+from duckalog import quote_ident, quote_literal, generate_view_sql, ViewConfig
+
+# Test identifier injection
+malicious_db = '"; DROP TABLE users; --'
+sql = generate_view_sql(ViewConfig(
+    name="test", source="duckdb", database=malicious_db, table="test_table"
+))
+assert "DROP TABLE" not in sql  # Injection blocked
+
+# Test literal injection  
+malicious_secret = "user' OR 1=1 --"
+quoted = quote_literal(malicious_secret)
+assert "OR 1=1" not in quoted  # Injection blocked
+```
+
 ## 🔒 Path Resolution Security
 
 Duckalog's path resolution feature includes robust security validation to prevent malicious file access while allowing legitimate use cases.

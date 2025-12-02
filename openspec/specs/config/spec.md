@@ -226,3 +226,32 @@ The CLI SHALL accept remote config URIs anywhere a config path is currently allo
 - **WHEN** running `duckalog build|validate|ui` with a remote URI
 - **THEN** the command SHALL behave the same as with a local file, after fetching and validating the remote content.
 
+### Requirement: Safe Secret Configuration
+Secret configurations MUST enforce strict typing for options and use safe SQL quoting for all string values.
+
+#### Scenario: Secret options type enforcement
+- **GIVEN** a DuckDB secret configuration with `options` field
+- **WHEN** the options contain values of types `bool`, `int`, `float`, or `str`
+- **THEN** the secret configuration SHALL be accepted and the values SHALL be rendered according to their type
+- **AND** boolean values SHALL be rendered as `TRUE` or `FALSE` without quotes
+- **AND** numeric values SHALL be rendered as-is without quotes
+- **AND** string values SHALL be rendered using safe SQL literal quoting
+
+#### Scenario: Secret options type rejection
+- **GIVEN** a DuckDB secret configuration with `options` field containing unsupported types
+- **WHEN** the configuration is validated or SQL is generated
+- **THEN** the system SHALL raise a `TypeError` with a clear message indicating the unsupported option type
+- **AND** the error message SHALL include the option key and the actual type that was rejected
+- **AND** the system SHALL NOT attempt to interpolate an unsafe string representation
+
+#### Scenario: Secret name and scope validation
+- **GIVEN** a DuckDB secret configuration with `name` or `scope` fields
+- **WHEN** SQL is generated for secret creation
+- **THEN** these fields SHALL be treated as identifiers and passed through proper identifier quoting
+- **AND** the system SHALL NOT allow untrusted input to bypass identifier quoting in these contexts
+
+#### Scenario: Secret string field quoting
+- **GIVEN** a DuckDB secret configuration with string fields (e.g., `key_id`, `secret`, `connection_string`, `host`, `database`, `user`, `password`, `scope`, `endpoint`, `region`)
+- **WHEN** `CREATE SECRET` SQL statements are generated
+- **THEN** all string values SHALL be emitted using safe SQL literal quoting that doubles embedded single quotes
+

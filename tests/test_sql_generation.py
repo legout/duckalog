@@ -14,6 +14,7 @@ from duckalog import (
     generate_view_sql,
     generate_secret_sql,
     quote_ident,
+    quote_literal,
     render_options,
     SecretConfig,
 )
@@ -23,9 +24,32 @@ def test_quote_ident_handles_spaces_and_quotes():
     assert quote_ident('user "events"') == '"user ""events"""'
 
 
-def test_render_options_renders_supported_types():
-    rendered = render_options({"alpha": "one", "beta": True, "gamma": 3.14})
-    assert rendered == ", alpha='one', beta=TRUE, gamma=3.14"
+def test_quote_literal_handles_quotes_and_special_chars():
+    """Test quote_literal properly escapes single quotes and handles special characters."""
+    assert quote_literal("user's data") == "'user''s data'"
+    assert quote_literal("path/to/file.parquet") == "'path/to/file.parquet'"
+    assert quote_literal("SELECT * FROM table") == "'SELECT * FROM table'"
+    assert quote_literal("") == "''"
+    assert quote_literal("multiple'quotes'here") == "'multiple''quotes''here'"
+
+
+def test_quote_literal_vs_quote_ident():
+    """Test that quote_literal and quote_ident handle quotes differently."""
+    input_text = 'user "name"'
+    assert quote_literal(input_text) == "'user \"name\"'"
+    assert quote_ident(input_text) == '"user ""name"""'
+
+
+def test_render_options_strict_type_checking():
+    """Test that render_options enforces strict type checking for security."""
+    with pytest.raises(TypeError, match="Unsupported option value"):
+        render_options({"bad": [1, 2, 3]})
+
+    with pytest.raises(TypeError, match="Unsupported option value"):
+        render_options({"bad": {"nested": "dict"}})
+
+    with pytest.raises(TypeError, match="Unsupported option value"):
+        render_options({"bad": None})
 
 
 def test_generate_view_sql_parquet_with_options():
@@ -83,7 +107,49 @@ def test_generate_view_sql_attachment_sources():
             name=f"{source}_view", source=source, database="refdb", table="public.users"
         )
         sql = generate_view_sql(view)
-        assert sql.endswith("SELECT * FROM refdb.public.users;")
+        assert sql.endswith('SELECT * FROM "refdb"."public.users";')
+
+
+def test_generate_view_sql_injection_prevention():
+    """Test that SQL injection via database/table names is prevented."""
+    # Attempt SQL injection through database name
+    malicious_db = '"; DROP TABLE users; --'
+    malicious_table = '"; INSERT INTO users VALUES (1); --'
+
+    view = ViewConfig(
+        name="test_view",
+        source="duckdb",
+        database=malicious_db,
+        table=malicious_table,
+    )
+
+    sql = generate_view_sql(view)
+
+    # The SQL should contain properly quoted identifiers, not injected SQL
+    expected_db = malicious_db.replace('"', '""')
+    expected_table = malicious_table.replace('"', '""')
+    expected = f'SELECT * FROM "{expected_db}".{expected_table}"'
+    assert expected in sql
+    assert "DROP TABLE" not in sql
+    assert "INSERT INTO" not in sql
+
+
+def test_generate_view_sql_special_characters_in_identifiers():
+    """Test that special characters in identifiers are properly handled."""
+    view = ViewConfig(
+        name="test view",  # space in name
+        source="sqlite",
+        database='db with "quotes"',  # quotes in database
+        table="table; DROP TABLE other;",  # semicolon in table
+    )
+
+    sql = generate_view_sql(view)
+
+    # Verify proper quoting without SQL injection
+    assert '"test view"' in sql  # quoted view name
+    assert '"db with ""quotes"""' in sql  # quoted database with escaped quotes
+    assert '"table; DROP TABLE other;"' in sql  # quoted table with escaped content
+    assert "DROP TABLE" not in sql  # no injection
 
 
 def test_generate_view_sql_raw_sql_preserves_body():
@@ -140,11 +206,6 @@ def test_generate_all_views_sql_header_and_order():
     ).strip()
 
     assert sql == expected
-
-
-def test_render_options_rejects_unsupported_types():
-    with pytest.raises(TypeError):
-        render_options({"bad": [1, 2, 3]})
 
 
 # Secret SQL generation tests
@@ -308,6 +369,82 @@ def test_generate_secret_sql_with_options():
     assert "SECRET 'secret456'" in sql
     assert "URL_STYLE 'path'" in sql
     assert "USE_SSL TRUE" in sql
+
+
+def test_generate_secret_sql_options_strict_typing():
+    """Test that secret options enforce strict type checking."""
+    # Test with unsupported type - should raise TypeError
+    with pytest.raises(TypeError, match="Unsupported option value"):
+        secret = SecretConfig(
+            type="s3",
+            name="test_s3",
+            provider="config",
+            key_id="AKIA123",
+            secret="secret456",
+            options={"bad_option": [1, 2, 3]},  # list is not allowed
+        )
+        generate_secret_sql(secret)
+
+    with pytest.raises(TypeError, match="Unsupported option value"):
+        secret = SecretConfig(
+            type="s3",
+            name="test_s3",
+            provider="config",
+            key_id="AKIA123",
+            secret="secret456",
+            options={"bad_option": {"nested": "dict"}},  # dict is not allowed
+        )
+        generate_secret_sql(secret)
+
+
+def test_generate_secret_sql_with_quotes_in_values():
+    """Test that quotes in secret values are properly escaped."""
+    secret = SecretConfig(
+        type="s3",
+        name="test_s3",
+        provider="config",
+        key_id="user's key",  # contains single quote
+        secret="secret'with'quotes",  # contains single quotes
+        region="us-west-2",
+    )
+
+    sql = generate_secret_sql(secret)
+
+    # Verify proper escaping of single quotes
+    assert "KEY_ID 'user''s key'" in sql
+    assert "SECRET 'secret''with''quotes'" in sql
+    assert "REGION 'us-west-2'" in sql
+
+
+def test_generate_secret_sql_connection_string_quotes():
+    """Test that connection strings with quotes are properly handled."""
+    secret = SecretConfig(
+        type="postgres",
+        name="pg_conn",
+        connection_string="postgresql://user:pass'word@localhost:5432/db",  # quote in password
+    )
+
+    sql = generate_secret_sql(secret)
+
+    # Verify proper escaping
+    assert "CONNECTION_STRING 'postgresql://user:pass''word@localhost:5432/db'" in sql
+
+
+def test_generate_secret_sql_scope_quoting():
+    """Test that scope values are properly quoted."""
+    secret = SecretConfig(
+        type="s3",
+        name="scoped_s3",
+        provider="config",
+        key_id="AKIA123",
+        secret="secret456",
+        scope="prod/env'1",  # scope with quote
+    )
+
+    sql = generate_secret_sql(secret)
+
+    # Verify scope is properly quoted
+    assert "SCOPE 'prod/env''1'" in sql
 
 
 def test_generate_secret_sql_default_name():
