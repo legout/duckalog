@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .config import Config, ViewConfig
+from .config import Config, ViewConfig, SecretConfig
 from .secret_types import (
     S3SecretConfig,
     AzureSecretConfig,
@@ -163,7 +163,7 @@ def generate_all_views_sql(config: Config, include_secrets: bool = False) -> str
     return "\n".join(lines)
 
 
-def generate_secret_sql(secret: "SecretConfig") -> str:
+def generate_secret_sql(secret: SecretConfig) -> str:
     """Generate CREATE SECRET statement for a DuckDB secret.
 
     Args:
@@ -172,113 +172,136 @@ def generate_secret_sql(secret: "SecretConfig") -> str:
     Returns:
         SQL CREATE SECRET statement.
     """
-    from .config import (
-        S3SecretConfig,
-        AzureSecretConfig,
-        GCSSecretConfig,
-        HTTPSecretConfig,
-        PostgresSecretConfig,
-        MySQLSecretConfig,
-    )
+    # Get the secret name
+    secret_name = secret.name or secret.type
 
-    # Handle different secret types
-    if isinstance(secret, S3SecretConfig):
-        if secret.key_id and secret.secret:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.key_id} "
-                f"(ID '{secret.key_id}', SECRET '{secret.secret}', "
-                f"SCOPE 's3');"
-            )
-        elif secret.key_id:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.key_id} "
-                f"(ID '{secret.key_id}', SECRET '{secret.secret}', "
-                f"SCOPE 's3');"
-            )
-        else:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.name} "
-                f"(TYPE S3, KEY_ID '{secret.key_id}', SECRET '{secret.secret}', "
-                f"SCOPE 's3');"
-            )
+    # Build the secret type and parameters
+    params = [f"TYPE {secret.type.upper()}"]
 
-    elif isinstance(secret, AzureSecretConfig):
+    # Add provider if not 'config'
+    if secret.provider == "credential_chain":
+        params.append("PROVIDER credential_chain")
+
+    # Add parameters based on secret type
+    if secret.type == "s3":
+        if secret.provider == "credential_chain":
+            if secret.region:
+                params.append(f"REGION '{secret.region}'")
+        else:  # config provider
+            if secret.key_id:
+                params.append(f"KEY_ID '{secret.key_id}'")
+            if secret.secret:
+                params.append(f"SECRET '{secret.secret}'")
+            if secret.region:
+                params.append(f"REGION '{secret.region}'")
+            if secret.endpoint:
+                params.append(f"ENDPOINT '{secret.endpoint}'")
+
+    elif secret.type == "azure":
         if secret.connection_string:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.name} "
-                f"(TYPE AZURE, CONNECTION_STRING '{secret.connection_string}');"
-            )
+            params.append(f"CONNECTION_STRING '{secret.connection_string}'")
         else:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.name} "
-                f"(TYPE AZURE, TENANT_ID '{secret.tenant_id}', "
-                f"CLIENT_ID '{secret.client_id}', "
-                f"CLIENT_SECRET '{secret.client_secret}');"
+            if secret.tenant_id:
+                params.append(f"TENANT_ID '{secret.tenant_id}'")
+            client_id = getattr(secret, "client_id", None)
+            if client_id:
+                params.append(f"CLIENT_ID '{client_id}'")
+            client_secret = getattr(secret, "client_secret", None) or getattr(
+                secret, "secret", None
             )
+            if client_secret:
+                params.append(f"SECRET '{client_secret}'")
+            if secret.account_name:
+                params.append(f"ACCOUNT_NAME '{secret.account_name}'")
 
-    elif isinstance(secret, GCSSecretConfig):
-        if secret.service_account_key:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.name} "
-                f"(TYPE GCS, SERVICE_ACCOUNT_KEY '{secret.service_account_key}');"
-            )
-        elif secret.json_key:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.name} "
-                f"(TYPE GCS, JSON_KEY '{secret.json_key}');"
-            )
+    elif secret.type == "gcs":
+        # For GCS, check common field names
+        service_account_key = getattr(secret, "service_account_key", None)
+        if service_account_key:
+            params.append(f"SERVICE_ACCOUNT_KEY '{service_account_key}'")
         else:
-            return f"CREATE OR REPLACE SECRET {secret.name} (TYPE GCS);"
+            json_key = getattr(secret, "json_key", None)
+            if json_key:
+                params.append(f"JSON_KEY '{json_key}'")
+            # Fallback to key_id/secret for basic auth
+            elif secret.key_id and secret.secret:
+                params.append(f"KEY_ID '{secret.key_id}'")
+                params.append(f"SECRET '{secret.secret}'")
 
-    elif isinstance(secret, HTTPSecretConfig):
-        if secret.bearer_token:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.name} "
-                f"(TYPE HTTP, BEARER_TOKEN '{secret.bearer_token}');"
-            )
-        elif secret.header:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.name} "
-                f"(TYPE HTTP, HEADER '{secret.header}');"
-            )
+    elif secret.type == "http":
+        bearer_token = getattr(secret, "bearer_token", None)
+        if bearer_token:
+            params.append(f"BEARER_TOKEN '{bearer_token}'")
         else:
-            return f"CREATE OR REPLACE SECRET {secret.name} (TYPE HTTP);"
+            header = getattr(secret, "header", None)
+            if header:
+                params.append(f"HEADER '{header}'")
+            else:
+                # Fallback for basic auth
+                if secret.key_id:
+                    params.append(f"USERNAME '{secret.key_id}'")
+                if secret.secret:
+                    params.append(f"PASSWORD '{secret.secret}'")
 
-    elif isinstance(secret, PostgresSecretConfig):
+    elif secret.type == "postgres":
         if secret.connection_string:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.name} "
-                f"(TYPE POSTGRES, CONNECTION_STRING '{secret.connection_string}');"
-            )
+            params.append(f"CONNECTION_STRING '{secret.connection_string}'")
         else:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.name} "
-                f"(TYPE POSTGRES, HOST '{secret.host}', "
-                f"PORT '{secret.port}', "
-                f"DATABASE '{secret.database}', "
-                f"USER '{secret.user}', "
-                f"PASSWORD '{secret.password}');"
-            )
+            if secret.host:
+                params.append(f"HOST '{secret.host}'")
+            if secret.port:
+                params.append(f"PORT {secret.port}")
+            if secret.database:
+                params.append(f"DATABASE '{secret.database}'")
+            # Check both user and key_id (for compatibility)
+            user_field = getattr(secret, "user", None) or secret.key_id
+            if user_field:
+                params.append(f"USER '{user_field}'")
+            # Check both password and secret (for compatibility)
+            password_field = getattr(secret, "password", None) or secret.secret
+            if password_field:
+                params.append(f"PASSWORD '{password_field}'")
 
-    elif isinstance(secret, MySQLSecretConfig):
+    elif secret.type == "mysql":
         if secret.connection_string:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.name} "
-                f"(TYPE MYSQL, CONNECTION_STRING '{secret.connection_string}');"
-            )
+            params.append(f"CONNECTION_STRING '{secret.connection_string}'")
         else:
-            return (
-                f"CREATE OR REPLACE SECRET {secret.name} "
-                f"(TYPE MYSQL, HOST '{secret.host}', "
-                f"PORT '{secret.port}', "
-                f"DATABASE '{secret.database}', "
-                f"USER '{secret.user}', "
-                f"PASSWORD '{secret.password}');"
-            )
+            if secret.host:
+                params.append(f"HOST '{secret.host}'")
+            if secret.port:
+                params.append(f"PORT {secret.port}")
+            if secret.database:
+                params.append(f"DATABASE '{secret.database}'")
+            # Check both user and key_id (for compatibility)
+            user_field = getattr(secret, "user", None) or secret.key_id
+            if user_field:
+                params.append(f"USER '{user_field}'")
+            # Check both password and secret (for compatibility)
+            password_field = getattr(secret, "password", None) or secret.secret
+            if password_field:
+                params.append(f"PASSWORD '{password_field}'")
 
-    else:
-        # Fallback for unknown secret types
-        return f"CREATE OR REPLACE SECRET {secret.name} (TYPE {secret.type.upper()});"
+    # Add options if provided
+    if secret.options:
+        for key, value in sorted(secret.options.items()):
+            if isinstance(value, bool):
+                rendered = "TRUE" if value else "FALSE"
+            elif isinstance(value, (int, float)):
+                rendered = str(value)
+            elif isinstance(value, str):
+                rendered = _quote_literal(value)
+            else:
+                rendered = f"'{value}'"
+            params.append(f"{key.upper()} {rendered}")
+
+    # Build the full SQL statement
+    secret_sql = f"CREATE {'PERSISTENT ' if secret.persistent else ''}SECRET {secret_name} ({', '.join(params)})"
+
+    # Add scope if provided
+    if secret.scope:
+        secret_sql += f"; SCOPE '{secret.scope}'"
+
+    return secret_sql
 
 
 __all__ = [

@@ -12,8 +12,10 @@ from duckalog import (
     ViewConfig,
     generate_all_views_sql,
     generate_view_sql,
+    generate_secret_sql,
     quote_ident,
     render_options,
+    SecretConfig,
 )
 
 
@@ -143,3 +145,178 @@ def test_generate_all_views_sql_header_and_order():
 def test_render_options_rejects_unsupported_types():
     with pytest.raises(TypeError):
         render_options({"bad": [1, 2, 3]})
+
+
+# Secret SQL generation tests
+
+
+def test_generate_secret_sql_s3_with_config_provider():
+    """Test S3 secret with config provider generates correct SQL."""
+    secret = SecretConfig(
+        type="s3",
+        name="prod_s3",
+        provider="config",
+        key_id="AKIA123",
+        secret="secret456",
+        region="us-west-2",
+    )
+
+    sql = generate_secret_sql(secret)
+
+    expected = "CREATE SECRET prod_s3 (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456', REGION 'us-west-2')"
+    assert sql == expected
+
+
+def test_generate_secret_sql_s3_persistent():
+    """Test persistent S3 secret generates correct SQL."""
+    secret = SecretConfig(
+        type="s3",
+        name="prod_s3",
+        provider="config",
+        key_id="AKIA123",
+        secret="secret456",
+        persistent=True,
+    )
+
+    sql = generate_secret_sql(secret)
+
+    expected = "CREATE PERSISTENT SECRET prod_s3 (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456')"
+    assert sql == expected
+
+
+def test_generate_secret_sql_s3_with_scope():
+    """Test S3 secret with scope generates correct SQL."""
+    secret = SecretConfig(
+        type="s3",
+        name="scoped_s3",
+        provider="config",
+        key_id="AKIA123",
+        secret="secret456",
+        scope="prod/",
+    )
+
+    sql = generate_secret_sql(secret)
+
+    expected = "CREATE SECRET scoped_s3 (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456'); SCOPE 'prod/'"
+    assert sql == expected
+
+
+def test_generate_secret_sql_s3_credential_chain():
+    """Test S3 secret with credential_chain provider generates correct SQL."""
+    secret = SecretConfig(
+        type="s3", name="auto_s3", provider="credential_chain", region="us-east-1"
+    )
+
+    sql = generate_secret_sql(secret)
+
+    expected = (
+        "CREATE SECRET auto_s3 (TYPE S3, PROVIDER credential_chain, REGION 'us-east-1')"
+    )
+    assert sql == expected
+
+
+def test_generate_secret_sql_azure_connection_string():
+    """Test Azure secret with connection string generates correct SQL."""
+    secret = SecretConfig(
+        type="azure",
+        name="azure_prod",
+        connection_string="DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test",
+    )
+
+    sql = generate_secret_sql(secret)
+
+    expected = "CREATE SECRET azure_prod (TYPE AZURE, CONNECTION_STRING 'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test')"
+    assert sql == expected
+
+
+def test_generate_secret_sql_azure_individual_params():
+    """Test Azure secret with individual parameters generates correct SQL."""
+    secret = SecretConfig(
+        type="azure",
+        name="azure_prod",
+        tenant_id="tenant123",
+        account_name="myaccount",
+        secret="mysecret",
+    )
+
+    sql = generate_secret_sql(secret)
+
+    expected = "CREATE SECRET azure_prod (TYPE AZURE, TENANT_ID 'tenant123', SECRET 'mysecret', ACCOUNT_NAME 'myaccount')"
+    assert sql == expected
+
+
+def test_generate_secret_sql_postgres_connection_string():
+    """Test PostgreSQL secret with connection string generates correct SQL."""
+    secret = SecretConfig(
+        type="postgres",
+        name="pg_prod",
+        connection_string="postgresql://user:password@localhost:5432/mydb",
+    )
+
+    sql = generate_secret_sql(secret)
+
+    expected = "CREATE SECRET pg_prod (TYPE POSTGRES, CONNECTION_STRING 'postgresql://user:password@localhost:5432/mydb')"
+    assert sql == expected
+
+
+def test_generate_secret_sql_postgres_individual_params():
+    """Test PostgreSQL secret with individual parameters generates correct SQL."""
+    secret = SecretConfig(
+        type="postgres",
+        name="pg_prod",
+        host="localhost",
+        port=5432,
+        database="analytics",
+        key_id="user",
+        secret="password",
+    )
+
+    sql = generate_secret_sql(secret)
+
+    expected = "CREATE SECRET pg_prod (TYPE POSTGRES, HOST 'localhost', PORT 5432, DATABASE 'analytics', USER 'user', PASSWORD 'password')"
+    assert sql == expected
+
+
+def test_generate_secret_sql_http_basic_auth():
+    """Test HTTP secret for basic auth generates correct SQL."""
+    secret = SecretConfig(
+        type="http", name="api_auth", key_id="myusername", secret="mypassword"
+    )
+
+    sql = generate_secret_sql(secret)
+
+    expected = "CREATE SECRET api_auth (TYPE HTTP, USERNAME 'myusername', PASSWORD 'mypassword')"
+    assert sql == expected
+
+
+def test_generate_secret_sql_with_options():
+    """Test secret with options generates correct SQL."""
+    secret = SecretConfig(
+        type="s3",
+        name="test_s3",
+        provider="config",
+        key_id="AKIA123",
+        secret="secret456",
+        options={"url_style": "path", "use_ssl": True},
+    )
+
+    sql = generate_secret_sql(secret)
+
+    assert "CREATE SECRET test_s3" in sql
+    assert "TYPE S3" in sql
+    assert "KEY_ID 'AKIA123'" in sql
+    assert "SECRET 'secret456'" in sql
+    assert "URL_STYLE 'path'" in sql
+    assert "USE_SSL TRUE" in sql
+
+
+def test_generate_secret_sql_default_name():
+    """Test secret with no name uses type as name."""
+    secret = SecretConfig(
+        type="s3", provider="config", key_id="AKIA123", secret="secret456"
+    )
+
+    sql = generate_secret_sql(secret)
+
+    expected = "CREATE SECRET s3 (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456')"
+    assert sql == expected

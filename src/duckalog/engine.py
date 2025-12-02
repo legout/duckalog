@@ -12,23 +12,7 @@ from typing import Any
 import duckdb
 
 from .config import Config, load_config
-from .secret_types import (
-    S3SecretConfig,
-    AzureSecretConfig,
-    GCSSecretConfig,
-    HTTPSecretConfig,
-    PostgresSecretConfig,
-    MySQLSecretConfig,
-)
-from .secret_types import (
-    S3SecretConfig,
-    AzureSecretConfig,
-    GCSSecretConfig,
-    HTTPSecretConfig,
-    PostgresSecretConfig,
-    MySQLSecretConfig,
-)
-from .logging_utils import get_logger, log_debug, log_info
+from .logging_utils import get_logger, log_debug, log_info, log_error
 from .path_resolution import is_relative_path, resolve_relative_path
 from .sql_generation import generate_all_views_sql, generate_view_sql
 
@@ -301,7 +285,7 @@ def build_catalog(
                         f"'{duckalog_attachment.alias}': {exc}"
                     ) from exc
 
-        sql = generate_all_views_sql(config, include_secrets=not dry_run)
+        sql = generate_all_views_sql(config, include_secrets=True)
         log_info("Dry run SQL generation complete", views=len(config.views))
         return sql
 
@@ -540,63 +524,35 @@ def _create_secrets(
         return
 
     log_info("Creating DuckDB secrets", count=len(db_conf.secrets))
+
+    # Import the SQL generation function
+    from .sql_generation import generate_secret_sql
+
     for index, secret in enumerate(db_conf.secrets, start=1):
-        log_debug("Creating secret", index=index, type=secret.type, name=secret.name)
+        log_debug(
+            "Creating secret",
+            index=index,
+            type=secret.type,
+            name=secret.name or secret.type,
+        )
 
-        # Generate and execute CREATE SECRET statements
-        from .sql_generation import generate_secret_sql
+        sql = generate_secret_sql(secret)
+        log_debug("Executing secret SQL", index=index, sql=sql)
 
-        for index, secret in enumerate(db_conf.secrets, start=1):
-            sql = generate_secret_sql(secret)
-            log_debug("Executing secret SQL", index=index, sql=sql)
-
-            try:
-                conn.execute(sql)
-                log_info(
-                    "Secret created successfully", name=secret.name, type=secret.type
-                )
-            except Exception as e:
-                log_error("Failed to create secret", name=secret.name, error=str(e))
-                raise EngineError(
-                    f"Failed to create secret '{secret.name}': {e}"
-                ) from e
-
-        # TODO: Implement actual CREATE SECRET when syntax is stable
-        # For now, we'll just log that we would create the secret
-        secret_config = {
-            "name": secret.name or secret.type,
-            "type": secret.type,
-            "provider": secret.provider,
-            "persistent": secret.persistent,
-        }
-
-        if secret.provider == "config":
-            if secret.type == "s3":
-                if secret.key_id:
-                    secret_config["key_id"] = secret.key_id
-                if secret.secret:
-                    secret_config["secret"] = "***REDACTED***"
-                if secret.region:
-                    secret_config["region"] = secret.region
-                if secret.endpoint:
-                    secret_config["endpoint"] = secret.endpoint
-            elif secret.type == "azure":
-                if secret.connection_string:
-                    secret_config["connection_string"] = "***REDACTED***"
-                else:
-                    if secret.tenant_id:
-                        secret_config["tenant_id"] = secret.tenant_id
-                    if secret.account_name:
-                        secret_config["account_name"] = secret.account_name
-                    if secret.secret:
-                        secret_config["secret"] = "***REDACTED***"
-            elif secret.type == "http":
-                if secret.key_id:
-                    secret_config["key_id"] = secret.key_id
-                if secret.secret:
-                    secret_config["secret"] = "***REDACTED***"
-
-        log_debug("Secret would be created", config=secret_config)
+        try:
+            conn.execute(sql)
+            log_info(
+                "Secret created successfully",
+                name=secret.name or secret.type,
+                type=secret.type,
+            )
+        except Exception as e:
+            log_error(
+                "Failed to create secret", name=secret.name or secret.type, error=str(e)
+            )
+            raise EngineError(
+                f"Failed to create secret '{secret.name or secret.type}': {e}"
+            ) from e
 
 
 def _apply_duckdb_settings(
@@ -669,7 +625,7 @@ def _setup_attachments(
             "Postgres attachment details",
             alias=pg_attachment.alias,
             user=pg_attachment.user,
-            password=pg_attachment.password,
+            password="<REDACTED>",
             options=pg_attachment.options,
         )
         clauses = [

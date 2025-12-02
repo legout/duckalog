@@ -10,12 +10,14 @@ from .config import (
     PostgresAttachment,
     SQLiteAttachment,
     ViewConfig,
+    SecretConfig,
     load_config,
 )
 from .engine import EngineError, build_catalog
 from .sql_generation import (
     generate_all_views_sql,
     generate_view_sql,
+    generate_secret_sql,
     quote_ident,
     render_options,
 )
@@ -38,6 +40,7 @@ __all__ = [
     "PostgresAttachment",
     "IcebergCatalogConfig",
     "ViewConfig",
+    "SecretConfig",
     "load_config",
     "build_catalog",
     "EngineError",
@@ -50,6 +53,7 @@ __all__ = [
     "render_options",
     "generate_view_sql",
     "generate_all_views_sql",
+    "generate_secret_sql",
     "create_config_template",
     "validate_generated_config",
     "ConfigFormat",

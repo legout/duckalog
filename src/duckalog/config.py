@@ -24,7 +24,6 @@ from .path_resolution import (
     PathResolutionError,
     is_relative_path,
     resolve_relative_path,
-    validate_path_security,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - used for type checking only
@@ -153,14 +152,14 @@ class DuckDBConfig(BaseModel):
     install_extensions: list[str] = Field(default_factory=list)
     load_extensions: list[str] = Field(default_factory=list)
     pragmas: list[str] = Field(default_factory=list)
-    settings: Union[str, list[str], None] = None
+    settings: str | list[str] | None = None
     secrets: list[SecretConfig] = Field(default_factory=list)
 
     @field_validator("settings")
     @classmethod
     def _validate_settings(
-        cls, value: Union[str, list[str], None]
-    ) -> Union[str, list[str], None]:
+        cls, value: str | list[str] | None
+    ) -> str | list[str] | None:
         if value is None:
             return None
 
@@ -1176,8 +1175,6 @@ def _resolve_paths_in_config(config: Config, config_path: Path) -> Config:
     Raises:
         ConfigError: If path resolution fails due to security or access issues
     """
-    from copy import deepcopy
-
     try:
         config_dict = config.model_dump(mode="python")
         config_dir = config_path.parent

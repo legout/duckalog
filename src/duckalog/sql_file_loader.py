@@ -7,7 +7,7 @@ including support for templates with variable substitution.
 import os
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .config import ConfigError
 
@@ -57,12 +57,10 @@ class TemplateProcessor:
     - ${config:config_path} - Configuration value substitution
     """
 
-    def __init__(self, variables: Optional[dict[str, Any]] = None):
+    def __init__(self, variables: dict[str, Any] | None = None):
         self.variables = variables or {}
 
-    def process(
-        self, template: str, config_vars: Optional[dict[str, Any]] = None
-    ) -> str:
+    def process(self, template: str, config_vars: dict[str, Any] | None = None) -> str:
         """Process a SQL template with variable substitution.
 
         Args:
@@ -89,7 +87,7 @@ class TemplateProcessor:
         return result
 
     def _substitute_variables(
-        self, template: str, config_vars: Optional[dict[str, Any]]
+        self, template: str, config_vars: dict[str, Any] | None
     ) -> str:
         """Substitute {{ variable }} placeholders."""
 
@@ -136,7 +134,7 @@ class TemplateProcessor:
         return re.sub(pattern, replace_env, template)
 
     def _substitute_config_vars(
-        self, template: str, config_vars: Optional[dict[str, Any]]
+        self, template: str, config_vars: dict[str, Any] | None
     ) -> str:
         """Substitute ${config:config_path} placeholders."""
         if not config_vars:
@@ -165,7 +163,7 @@ class PathResolver:
     # Set of allowed file extensions
     ALLOWED_EXTENSIONS = {".sql"}
 
-    def __init__(self, allowed_base_paths: Optional[set[str]] = None):
+    def __init__(self, allowed_base_paths: set[str] | None = None):
         """Initialize path resolver.
 
         Args:
@@ -175,7 +173,7 @@ class PathResolver:
         self.allowed_base_paths = allowed_base_paths or set()
 
     def resolve_path(
-        self, sql_file_path: str, config_file_path: Optional[str] = None
+        self, sql_file_path: str, config_file_path: str | None = None
     ) -> Path:
         """Resolve a SQL file path with security checks.
 
@@ -264,7 +262,7 @@ class SQLFileLoader:
     def __init__(
         self,
         max_size_bytes: int = DEFAULT_MAX_SIZE_BYTES,
-        allowed_base_paths: Optional[set[str]] = None,
+        allowed_base_paths: set[str] | None = None,
         cache_enabled: bool = True,
     ):
         """Initialize SQL file loader.
@@ -283,8 +281,8 @@ class SQLFileLoader:
     def load_sql_file(
         self,
         file_path: str,
-        config_file_path: Optional[str] = None,
-        variables: Optional[dict[str, Any]] = None,
+        config_file_path: str | None = None,
+        variables: dict[str, Any] | None = None,
         as_template: bool = False,
     ) -> str:
         """Load SQL content from a file.
@@ -414,8 +412,8 @@ class SQLFileLoader:
 # Convenience function for backward compatibility
 def load_sql_from_file(
     file_path: str,
-    config_file_path: Optional[str] = None,
-    variables: Optional[dict[str, Any]] = None,
+    config_file_path: str | None = None,
+    variables: dict[str, Any] | None = None,
     max_size_bytes: int = SQLFileLoader.DEFAULT_MAX_SIZE_BYTES,
 ) -> str:
     """Convenience function to load SQL from a file.
