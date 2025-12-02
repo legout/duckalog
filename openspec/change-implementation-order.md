@@ -28,6 +28,7 @@ These changes are effectively in place or mostly realized in the current codebas
    - Ensure secrets are actually created in DuckDB with `CREATE [PERSISTENT] SECRET` using `generate_secret_sql`.
    - Dependencies: `refactor-secret-models-and-usage` + `update-sql-quoting-and-secrets-safety` (to avoid implementing on top of a moving schema/SQL surface).
 
+## PROCEED HERE ###
 6. `add-security-regression-tests`
    - Add focused tests for SQL injection and path traversal based on the hardened behavior above.
    - Dependencies: `update-sql-quoting-and-secrets-safety`, `update-path-security-boundaries`, `refactor-secret-models-and-usage`, `implement-secrets-creation` (so tests target the final behavior).

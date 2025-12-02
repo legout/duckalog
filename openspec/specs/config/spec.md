@@ -81,14 +81,20 @@ Attachments and Iceberg catalogs MUST follow the shapes defined by their configu
 - **AND** invalid field types (e.g. non-object `options`) are rejected.
 
 ### Requirement: DuckDB Secrets Configuration
-The system SHALL allow users to define DuckDB secrets in the catalog configuration file for accessing external services and databases.
+The system SHALL allow users to define DuckDB secrets in the catalog configuration file for accessing external services and databases using a unified `SecretConfig` model.
+
+#### Scenario: SecretConfig unified model
+- **WHEN** a user provides secret configurations using the `SecretConfig` model
+- **THEN** the system SHALL use a single canonical model that supports all secret types (s3, azure, gcs, http, postgres, mysql)
+- **AND** the `SecretConfig.type` field SHALL discriminate between different backend types
+- **AND** backend-specific helper models SHALL be internal implementation details only
 
 #### Scenario: S3 secret with CONFIG provider
-- **WHEN** a user provides an S3 secret configuration in YAML
-- **THEN** the system SHALL execute `CREATE SECRET` with the specified KEY_ID, SECRET, REGION, and other parameters
+- **WHEN** a user provides an S3 secret configuration with `type: s3`, `key_id`, `secret`, and optional `region`, `endpoint`
+- **THEN** the system SHALL execute `CREATE SECRET` with the mapped parameters (KEY_ID, SECRET, REGION, ENDPOINT)
 
 #### Scenario: Persistent secret with scope
-- **WHEN** a user provides a persistent secret with a scope prefix
+- **WHEN** a user provides a persistent secret with `persistent: true` and optional `scope`
 - **THEN** the system SHALL execute `CREATE PERSISTENT SECRET ... SCOPE 'prefix'` to create a scoped persistent secret
 
 #### Scenario: Multiple secrets for same service type
@@ -96,16 +102,36 @@ The system SHALL allow users to define DuckDB secrets in the catalog configurati
 - **THEN** the system SHALL create all secrets and allow DuckDB to automatically select the appropriate one based on path matching
 
 #### Scenario: Secret with credential_chain provider
-- **WHEN** a user provides a secret using the credential_chain provider
-- **THEN** the system SHALL execute `CREATE SECRET ... USING credential_chain` to let DuckDB auto-fetch credentials
+- **WHEN** a user provides a secret using `provider: credential_chain`
+- **THEN** the system SHALL execute `CREATE SECRET ... PROVIDER credential_chain` to let DuckDB auto-fetch credentials
 
-#### Scenario: Azure secret configuration
-- **WHEN** a user provides an Azure secret with connection string or tenant ID
-- **THEN** the system SHALL create the appropriate Azure secret type with the specified parameters
+#### Scenario: Azure secret configuration with client credentials
+- **WHEN** a user provides an Azure secret with `type: azure`, `tenant_id`, `client_id`, and `client_secret`
+- **THEN** the system SHALL create the Azure secret type with the specified parameters (TENANT_ID, CLIENT_ID, SECRET)
 
-#### Scenario: Database secret for PostgreSQL
-- **WHEN** a user provides a PostgreSQL secret with connection parameters
-- **THEN** the system SHALL create a postgres secret type for use with PostgreSQL attachments
+#### Scenario: Azure secret configuration with connection string
+- **WHEN** a user provides an Azure secret with `type: azure` and `connection_string`
+- **THEN** the system SHALL create the Azure secret type using CONNECTION_STRING parameter
+
+#### Scenario: Database secret for PostgreSQL with individual parameters
+- **WHEN** a user provides a PostgreSQL secret with `type: postgres`, `host`, `database`, `user`, and `password`
+- **THEN** the system SHALL create a postgres secret type with mapped parameters (HOST, DATABASE, USER, PASSWORD)
+
+#### Scenario: Database secret with connection string
+- **WHEN** a user provides a database secret with `connection_string` instead of individual parameters
+- **THEN** the system SHALL use the CONNECTION_STRING parameter for the secret
+
+#### Scenario: HTTP secret with bearer token
+- **WHEN** a user provides an HTTP secret with `type: http` and `bearer_token`
+- **THEN** the system SHALL create an http secret type with BEARER_TOKEN parameter
+
+#### Scenario: HTTP secret with basic authentication
+- **WHEN** a user provides an HTTP secret with `type: http`, `key_id` (username), and `secret` (password)
+- **THEN** the system SHALL create an http secret type with USERNAME and PASSWORD parameters
+
+#### Scenario: GCS secret with service account key
+- **WHEN** a user provides a GCS secret with `type: gcs` and `service_account_key`
+- **THEN** the system SHALL create a GCS secret type with SERVICE_ACCOUNT_KEY parameter
 
 #### Scenario: Secret validation
 - **WHEN** a user provides an invalid secret configuration (missing required fields for type)
@@ -118,10 +144,6 @@ The system SHALL allow users to define DuckDB secrets in the catalog configurati
 #### Scenario: Secrets with environment variables
 - **WHEN** a user provides secret values using `${env:VAR_NAME}` syntax
 - **THEN** the system SHALL interpolate environment variables before creating the secret
-
-#### Scenario: HTTP secret for basic auth
-- **WHEN** a user provides an HTTP secret with username and password
-- **THEN** the system SHALL create an http secret type for HTTP basic authentication
 
 ### Requirement: DuckDB Settings Configuration
 The system SHALL allow users to define DuckDB session settings in the catalog configuration file.

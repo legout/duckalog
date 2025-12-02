@@ -227,45 +227,37 @@ def generate_secret_sql(secret: SecretConfig) -> str:
         else:
             if secret.tenant_id:
                 params.append(f"TENANT_ID {quote_literal(secret.tenant_id)}")
-            client_id = getattr(secret, "client_id", None)
-            if client_id:
-                params.append(f"CLIENT_ID {quote_literal(client_id)}")
-            client_secret = getattr(secret, "client_secret", None) or getattr(
-                secret, "secret", None
-            )
+            if secret.client_id:
+                params.append(f"CLIENT_ID {quote_literal(secret.client_id)}")
+            client_secret = secret.client_secret or secret.secret
             if client_secret:
                 params.append(f"SECRET {quote_literal(client_secret)}")
             if secret.account_name:
                 params.append(f"ACCOUNT_NAME {quote_literal(secret.account_name)}")
 
     elif secret.type == "gcs":
-        # For GCS, check common field names
-        service_account_key = getattr(secret, "service_account_key", None)
-        if service_account_key:
-            params.append(f"SERVICE_ACCOUNT_KEY {quote_literal(service_account_key)}")
-        else:
-            json_key = getattr(secret, "json_key", None)
-            if json_key:
-                params.append(f"JSON_KEY {quote_literal(json_key)}")
+        if secret.service_account_key:
+            params.append(
+                f"SERVICE_ACCOUNT_KEY {quote_literal(secret.service_account_key)}"
+            )
+        elif secret.json_key:
+            params.append(f"JSON_KEY {quote_literal(secret.json_key)}")
+        elif secret.key_id and secret.secret:
             # Fallback to key_id/secret for basic auth
-            elif secret.key_id and secret.secret:
-                params.append(f"KEY_ID {quote_literal(secret.key_id)}")
-                params.append(f"SECRET {quote_literal(secret.secret)}")
+            params.append(f"KEY_ID {quote_literal(secret.key_id)}")
+            params.append(f"SECRET {quote_literal(secret.secret)}")
 
     elif secret.type == "http":
-        bearer_token = getattr(secret, "bearer_token", None)
-        if bearer_token:
-            params.append(f"BEARER_TOKEN {quote_literal(bearer_token)}")
+        if secret.bearer_token:
+            params.append(f"BEARER_TOKEN {quote_literal(secret.bearer_token)}")
+        elif secret.header:
+            params.append(f"HEADER {quote_literal(secret.header)}")
         else:
-            header = getattr(secret, "header", None)
-            if header:
-                params.append(f"HEADER {quote_literal(header)}")
-            else:
-                # Fallback for basic auth
-                if secret.key_id:
-                    params.append(f"USERNAME {quote_literal(secret.key_id)}")
-                if secret.secret:
-                    params.append(f"PASSWORD {quote_literal(secret.secret)}")
+            # Fallback for basic auth
+            if secret.key_id:
+                params.append(f"USERNAME {quote_literal(secret.key_id)}")
+            if secret.secret:
+                params.append(f"PASSWORD {quote_literal(secret.secret)}")
 
     elif secret.type == "postgres":
         if secret.connection_string:
@@ -280,11 +272,11 @@ def generate_secret_sql(secret: SecretConfig) -> str:
             if secret.database:
                 params.append(f"DATABASE {quote_literal(secret.database)}")
             # Check both user and key_id (for compatibility)
-            user_field = getattr(secret, "user", None) or secret.key_id
+            user_field = secret.user or secret.key_id
             if user_field:
                 params.append(f"USER {quote_literal(user_field)}")
             # Check both password and secret (for compatibility)
-            password_field = getattr(secret, "password", None) or secret.secret
+            password_field = secret.password or secret.secret
             if password_field:
                 params.append(f"PASSWORD {quote_literal(password_field)}")
 
@@ -301,11 +293,11 @@ def generate_secret_sql(secret: SecretConfig) -> str:
             if secret.database:
                 params.append(f"DATABASE {quote_literal(secret.database)}")
             # Check both user and key_id (for compatibility)
-            user_field = getattr(secret, "user", None) or secret.key_id
+            user_field = secret.user or secret.key_id
             if user_field:
                 params.append(f"USER {quote_literal(user_field)}")
             # Check both password and secret (for compatibility)
-            password_field = getattr(secret, "password", None) or secret.secret
+            password_field = secret.password or secret.secret
             if password_field:
                 params.append(f"PASSWORD {quote_literal(password_field)}")
 

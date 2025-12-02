@@ -6,7 +6,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Union, Optional
 
 import yaml
 from pydantic import (
@@ -67,34 +67,50 @@ class SecretConfig(BaseModel):
         connection_string: Full connection string for databases.
         tenant_id: Azure tenant ID for authentication.
         account_name: Azure storage account name.
+        client_id: Azure client ID for authentication.
+        client_secret: Azure client secret for authentication.
+        service_account_key: GCS service account key.
+        json_key: GCS JSON key.
+        bearer_token: HTTP bearer token for authentication.
+        header: HTTP header for authentication.
         database: Database name for database secrets.
         host: Database host for database secrets.
         port: Database port for database secrets.
+        user: Database username (alternative to key_id for database types).
+        password: Database password (alternative to secret for database types).
         options: Additional key-value options for the secret.
     """
 
     type: SecretType
-    name: str | None = None
+    name: Optional[str] = None
     provider: SecretProvider = "config"
     persistent: bool = False
-    scope: str | None = None
-    key_id: str | None = None
-    secret: str | None = None
-    region: str | None = None
-    endpoint: str | None = None
-    connection_string: str | None = None
-    tenant_id: str | None = None
-    account_name: str | None = None
-    database: str | None = None
-    host: str | None = None
-    port: int | None = None
+    scope: Optional[str] = None
+    key_id: Optional[str] = None
+    secret: Optional[str] = None
+    region: Optional[str] = None
+    endpoint: Optional[str] = None
+    connection_string: Optional[str] = None
+    tenant_id: Optional[str] = None
+    account_name: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    service_account_key: Optional[str] = None
+    json_key: Optional[str] = None
+    bearer_token: Optional[str] = None
+    header: Optional[str] = None
+    database: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    user: Optional[str] = None
+    password: Optional[str] = None
     options: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
     @classmethod
-    def _validate_name(cls, value: str | None) -> str | None:
+    def _validate_name(cls, value: Optional[str]) -> Optional[str]:
         if value is not None:
             value = value.strip()
             if not value:
@@ -111,25 +127,38 @@ class SecretConfig(BaseModel):
             # credential_chain provider doesn't require explicit credentials
         elif self.type == "azure":
             if self.provider == "config":
-                if not self.connection_string and not (
-                    self.tenant_id and self.account_name
+                if (
+                    not self.connection_string
+                    and not (self.tenant_id and self.account_name)
+                    and not (self.tenant_id and self.client_id and self.client_secret)
                 ):
                     raise ValueError(
-                        "Azure config provider requires connection_string or (tenant_id and account_name)"
+                        "Azure config provider requires connection_string, (tenant_id and account_name), or (tenant_id, client_id, and client_secret)"
                     )
         elif self.type == "gcs":
             if self.provider == "config":
-                if not self.key_id or not self.secret:
-                    raise ValueError("GCS config provider requires key_id and secret")
+                if not (
+                    self.service_account_key
+                    or self.json_key
+                    or (self.key_id and self.secret)
+                ):
+                    raise ValueError(
+                        "GCS config provider requires service_account_key, json_key, or (key_id and secret)"
+                    )
         elif self.type == "http":
-            if not self.key_id or not self.secret:
+            if not (self.bearer_token or self.header or (self.key_id and self.secret)):
                 raise ValueError(
-                    "HTTP secret requires key_id (username) and secret (password)"
+                    "HTTP secret requires bearer_token, header, or (key_id and secret)"
                 )
         elif self.type in {"postgres", "mysql"}:
-            if not self.connection_string and not (self.host and self.database):
+            if not self.connection_string and not (
+                self.host
+                and self.database
+                and (self.user or self.key_id)
+                and (self.password or self.secret)
+            ):
                 raise ValueError(
-                    f"{self.type.upper()} secret requires connection_string or (host and database)"
+                    f"{self.type.upper()} secret requires connection_string or (host, database, user/key_id, and password/secret)"
                 )
         return self
 
@@ -152,14 +181,14 @@ class DuckDBConfig(BaseModel):
     install_extensions: list[str] = Field(default_factory=list)
     load_extensions: list[str] = Field(default_factory=list)
     pragmas: list[str] = Field(default_factory=list)
-    settings: str | list[str] | None = None
+    settings: Optional[Union[str, list[str]]] = None
     secrets: list[SecretConfig] = Field(default_factory=list)
 
     @field_validator("settings")
     @classmethod
     def _validate_settings(
-        cls, value: str | list[str] | None
-    ) -> str | list[str] | None:
+        cls, value: Optional[Union[str, list[str]]]
+    ) -> Optional[Union[str, list[str]]]:
         if value is None:
             return None
 
@@ -243,7 +272,7 @@ class PostgresAttachment(BaseModel):
     database: str
     user: str
     password: str
-    sslmode: str | None = None
+    sslmode: Optional[str] = None
     options: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid")
@@ -262,7 +291,7 @@ class DuckalogAttachment(BaseModel):
 
     alias: str
     config_path: str
-    database: str | None = None
+    database: Optional[str] = None
     read_only: bool = True
 
     @field_validator("alias")
@@ -313,8 +342,8 @@ class IcebergCatalogConfig(BaseModel):
 
     name: str
     catalog_type: str
-    uri: str | None = None
-    warehouse: str | None = None
+    uri: Optional[str] = None
+    warehouse: Optional[str] = None
     options: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid")
@@ -337,7 +366,7 @@ class SQLFileReference(BaseModel):
     """
 
     path: str = Field(..., description="Path to the SQL file")
-    variables: dict[str, Any | None] = Field(
+    variables: Optional[dict[str, Any]] = Field(
         default=None, description="Variables for template substitution"
     )
     as_template: bool = Field(
@@ -382,16 +411,16 @@ class ViewConfig(BaseModel):
     """
 
     name: str
-    sql: str | None = None
-    sql_file: SQLFileReference | None = None
-    sql_template: SQLFileReference | None = None
-    source: EnvSource | None = None
-    uri: str | None = None
-    database: str | None = None
-    table: str | None = None
-    catalog: str | None = None
+    sql: Optional[str] = None
+    sql_file: Optional[SQLFileReference] = None
+    sql_template: Optional[SQLFileReference] = None
+    source: Optional[EnvSource] = None
+    uri: Optional[str] = None
+    database: Optional[str] = None
+    table: Optional[str] = None
+    catalog: Optional[str] = None
     options: dict[str, Any] = Field(default_factory=dict)
-    description: str | None = None
+    description: Optional[str] = None
     tags: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
@@ -482,9 +511,9 @@ class SemanticDimensionConfig(BaseModel):
 
     name: str
     expression: str
-    label: str | None = None
-    description: str | None = None
-    type: str | None = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    type: Optional[str] = None
     time_grains: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
@@ -507,7 +536,7 @@ class SemanticDimensionConfig(BaseModel):
 
     @field_validator("type")
     @classmethod
-    def _validate_type(cls, value: str | None) -> str | None:
+    def _validate_type(cls, value: Optional[str]) -> Optional[str]:
         if value is not None:
             value = value.strip().lower()
             valid_types = {"time", "number", "string", "boolean", "date"}
@@ -565,9 +594,9 @@ class SemanticMeasureConfig(BaseModel):
 
     name: str
     expression: str
-    label: str | None = None
-    description: str | None = None
-    type: str | None = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    type: Optional[str] = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -646,15 +675,15 @@ class SemanticDefaultsConfig(BaseModel):
         default_filters: Optional list of default filters.
     """
 
-    time_dimension: str | None = None
-    primary_measure: str | None = None
+    time_dimension: Optional[str] = None
+    primary_measure: Optional[str] = None
     default_filters: list[dict[str, Any]] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("time_dimension")
     @classmethod
-    def _validate_time_dimension(cls, value: str | None) -> str | None:
+    def _validate_time_dimension(cls, value: Optional[str]) -> Optional[str]:
         if value is not None:
             value = value.strip()
             if not value:
@@ -663,7 +692,7 @@ class SemanticDefaultsConfig(BaseModel):
 
     @field_validator("primary_measure")
     @classmethod
-    def _validate_primary_measure(cls, value: str | None) -> str | None:
+    def _validate_primary_measure(cls, value: Optional[str]) -> Optional[str]:
         if value is not None:
             value = value.strip()
             if not value:
@@ -694,9 +723,9 @@ class SemanticModelConfig(BaseModel):
     dimensions: list[SemanticDimensionConfig] = Field(default_factory=list)
     measures: list[SemanticMeasureConfig] = Field(default_factory=list)
     joins: list[SemanticJoinConfig] = Field(default_factory=list)
-    defaults: SemanticDefaultsConfig | None = None
-    label: str | None = None
-    description: str | None = None
+    defaults: Optional[SemanticDefaultsConfig] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
     tags: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
@@ -904,7 +933,7 @@ class Config(BaseModel):
 def load_config(
     path: str,
     load_sql_files: bool = True,
-    sql_file_loader: "SQLFileLoader" | None = None,
+    sql_file_loader: Optional["SQLFileLoader"] = None,
     resolve_paths: bool = True,
     filesystem: Any | None = None,
 ) -> Config:
@@ -1022,7 +1051,7 @@ def load_config(
 def _load_sql_files_from_config(
     config: Config,
     config_path: Path,
-    sql_file_loader: "SQLFileLoader" | None = None,
+    sql_file_loader: Optional["SQLFileLoader"] = None,
 ) -> Config:
     """Load SQL content from external files referenced in the config.
 
@@ -1348,59 +1377,3 @@ __all__ = [
     "SemanticMeasureConfig",
     "load_config",
 ]
-
-
-# Specific secret type configurations
-class S3SecretConfig(BaseModel):
-    """S3 secret configuration."""
-
-    key_id: str | None = None
-    secret: str
-    region: str | None = None
-    endpoint: str | None = None
-
-
-class AzureSecretConfig(BaseModel):
-    """Azure secret configuration."""
-
-    connection_string: str | None = None
-    tenant_id: str | None = None
-    client_id: str | None = None
-    client_secret: str
-    account_name: str | None = None
-
-
-class GCSSecretConfig(BaseModel):
-    """GCS secret configuration."""
-
-    service_account_key: str
-    json_key: str | None = None
-
-
-class HTTPSecretConfig(BaseModel):
-    """HTTP secret configuration."""
-
-    bearer_token: str
-    header: str | None = None
-
-
-class PostgresSecretConfig(BaseModel):
-    """PostgreSQL secret configuration."""
-
-    connection_string: str | None = None
-    host: str | None = None
-    port: int | None = None
-    database: str | None = None
-    user: str | None = None
-    password: str
-
-
-class MySQLSecretConfig(BaseModel):
-    """MySQL secret configuration."""
-
-    connection_string: str | None = None
-    host: str | None = None
-    port: int | None = None
-    database: str | None = None
-    user: str | None = None
-    password: str

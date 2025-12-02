@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased] - Secret Models Refactoring
+
+### Added
+- Refactor: Implemented unified `SecretConfig` model as the single canonical configuration interface for all DuckDB secret types
+- Refactor: Added comprehensive field coverage for all secret backends (S3, Azure, GCS, HTTP, PostgreSQL, MySQL)
+- Refactor: Enhanced validation logic to support multiple credential formats per backend type
+- Refactor: Added detailed field mapping documentation between `SecretConfig` and DuckDB `CREATE SECRET` parameters
+
+### Changed
+- Refactor: Removed duplicated backend-specific secret classes (`S3SecretConfig`, `AzureSecretConfig`, etc.) from `config.py`
+- Refactor: Updated `generate_secret_sql()` to use only fields defined on `SecretConfig` for improved maintainability
+- Refactor: Consolidated secret model definitions with `SecretConfig` as the single source of truth
+- Refactor: Updated validation rules to support all supported credential combinations per backend type
+
+### Breaking Changes
+- Refactor: Backend-specific secret models are now internal implementation details only; users must use `SecretConfig`
+- Refactor: Some validation errors may change to reflect the stricter canonical model approach
+- Refactor: Configuration examples should now use `SecretConfig` field names exclusively
+
+### Deprecated
+- Refactor: Direct use of backend-specific secret models from `secret_types.py` is discouraged (use `SecretConfig` instead)
+
 ## [Unreleased] - Path Security Hardening
 
 ### Added

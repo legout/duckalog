@@ -3,58 +3,59 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
+from typing import Optional
 
 
 class S3SecretConfig(BaseModel):
     """S3 secret configuration."""
 
-    key_id: str | None = None
+    key_id: Optional[str] = None
     secret: str
-    region: str | None = None
-    endpoint: str | None = None
+    region: Optional[str] = None
+    endpoint: Optional[str] = None
 
 
 class AzureSecretConfig(BaseModel):
     """Azure secret configuration."""
 
-    connection_string: str | None = None
-    tenant_id: str | None = None
-    client_id: str | None = None
+    connection_string: Optional[str] = None
+    tenant_id: Optional[str] = None
+    client_id: Optional[str] = None
     client_secret: str
-    account_name: str | None = None
+    account_name: Optional[str] = None
 
 
 class GCSSecretConfig(BaseModel):
     """GCS secret configuration."""
 
     service_account_key: str
-    json_key: str | None = None
+    json_key: Optional[str] = None
 
 
 class HTTPSecretConfig(BaseModel):
     """HTTP secret configuration."""
 
     bearer_token: str
-    header: str | None = None
+    header: Optional[str] = None
 
 
 class PostgresSecretConfig(BaseModel):
     """PostgreSQL secret configuration."""
 
-    connection_string: str | None = None
-    host: str | None = None
-    port: int | None = None
-    database: str | None = None
-    user: str | None = None
+    connection_string: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    database: Optional[str] = None
+    user: Optional[str] = None
     password: str
 
 
 class MySQLSecretConfig(BaseModel):
     """MySQL secret configuration."""
 
-    connection_string: str | None = None
-    host: str | None = None
-    port: int | None = None
-    database: str | None = None
-    user: str | None = None
+    connection_string: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    database: Optional[str] = None
+    user: Optional[str] = None
     password: str
