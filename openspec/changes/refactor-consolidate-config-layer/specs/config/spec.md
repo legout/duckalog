@@ -40,3 +40,4 @@ Simplified logging utilities MUST be available without external dependencies.
 - **WHEN** messages are logged
 - **THEN** redaction works correctly
 - **AND** only stdlib logging is used (no loguru dependency)
+
