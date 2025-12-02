@@ -505,7 +505,7 @@ To extend Duckalog with a new data source type:
        name: str
        source: Literal["new_source"]
        uri: str
-       options: Dict[str, Any] = Field(default_factory=dict)
+       options: dict[str, Any] = Field(default_factory=dict)
    ```
 
 2. **SQL Generation**:

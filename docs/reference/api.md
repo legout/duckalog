@@ -149,7 +149,7 @@ else:
 - `path` (str): File path to validate
 
 **Returns:**
-- `tuple[bool, Optional[str]]`: (is_accessible, error_message)
+- `tuple[bool, str | None]`: (is_accessible, error_message)
 
 ### Path Normalization Functions
 
