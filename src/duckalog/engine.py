@@ -7,7 +7,7 @@ import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 import duckdb
 
@@ -52,16 +52,16 @@ class ConfigDependencyGraph:
     """Manages Duckalog config dependencies and detects cycles."""
 
     def __init__(self):
-        self.visiting: Set[str] = set()
-        self.visited: Set[str] = set()
-        self.build_cache: Dict[str, BuildResult] = {}
+        self.visiting: set[str] = set()
+        self.visited: set[str] = set()
+        self.build_cache: dict[str, BuildResult] = {}
 
     def build_config_with_dependencies(
         self,
         config_path: str,
         dry_run: bool = False,
-        parent_alias: Optional[str] = None,
-        database_override: Optional[str] = None
+        parent_alias: str | None = None,
+        database_override: str | None = None
     ) -> BuildResult:
         """Build config with all its dependencies recursively."""
         config_path = str(Path(config_path).resolve())
@@ -213,11 +213,11 @@ class EngineError(Exception):
 
 def build_catalog(
     config_path: str,
-    db_path: Optional[str] = None,
+    db_path: str | None = None,
     dry_run: bool = False,
     verbose: bool = False,
-    filesystem: Optional[Any] = None,
-) -> Optional[str]:
+    filesystem: Any | None = None,
+) -> str | None:
     """Build or update a DuckDB catalog from a configuration file.
 
     This function is the high-level entry point used by both the CLI and
@@ -486,7 +486,7 @@ def _upload_to_remote(local_file: Path, remote_uri: str, filesystem=None) -> Non
         raise EngineError(f"Failed to upload catalog to {remote_uri}: {exc}") from exc
 
 
-def _resolve_db_path(config: Config, override: Optional[str]) -> str:
+def _resolve_db_path(config: Config, override: str | None) -> str:
     if override:
         return override
     if config.duckdb.database:

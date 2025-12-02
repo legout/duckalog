@@ -7,12 +7,11 @@ Azure Blob Storage, SFTP, and HTTPS.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import Any
 from urllib.parse import urlparse
 
-from .config import Config, ConfigError, load_config
+from .config import Config, ConfigError
 from .logging_utils import log_debug, log_info
 
 # Optional imports for remote functionality
@@ -100,8 +99,8 @@ def validate_filesystem(filesystem: Any) -> None:
     # Check if filesystem has the required methods
     if not hasattr(filesystem, "open"):
         raise RemoteConfigError(
-            f"Invalid filesystem: missing 'open' method. "
-            f"Expected fsspec-compatible filesystem object."
+            "Invalid filesystem: missing 'open' method. "
+            "Expected fsspec-compatible filesystem object."
         )
 
     # Basic type check - should be fsspec compatible
@@ -118,7 +117,7 @@ def validate_filesystem(filesystem: Any) -> None:
         pass
 
 
-def validate_remote_uri(uri: str, filesystem: Optional[Any] = None) -> None:
+def validate_remote_uri(uri: str, filesystem: Any | None = None) -> None:
     """Validate that a remote URI is supported and dependencies are available.
 
     Args:
@@ -183,7 +182,7 @@ def validate_remote_uri(uri: str, filesystem: Optional[Any] = None) -> None:
 
 
 def fetch_remote_content(
-    uri: str, timeout: int = 30, filesystem: Optional[Any] = None
+    uri: str, timeout: int = 30, filesystem: Any | None = None
 ) -> str:
     """Fetch content from a remote URI.
 
@@ -239,7 +238,7 @@ def _fetch_http_content(uri: str, timeout: int) -> str:
 
 
 def _fetch_fsspec_content(
-    uri: str, timeout: int, filesystem: Optional[Any] = None
+    uri: str, timeout: int, filesystem: Any | None = None
 ) -> str:
     """Fetch content using fsspec for other remote URIs."""
     if not FSSPEC_AVAILABLE or fsspec is None:
@@ -290,10 +289,10 @@ def _fetch_fsspec_content(
 def load_config_from_uri(
     uri: str,
     load_sql_files: bool = True,
-    sql_file_loader: Optional[Any] = None,
+    sql_file_loader: Any | None = None,
     resolve_paths: bool = False,  # Default to False for remote configs
     timeout: int = 30,
-    filesystem: Optional[Any] = None,
+    filesystem: Any | None = None,
 ) -> Config:
     """Load a Duckalog configuration from a remote URI.
 
@@ -439,8 +438,8 @@ def load_config_from_uri(
 def _load_sql_files_from_remote_config(
     config: Config,
     config_uri: str,
-    sql_file_loader: Optional[Any] = None,
-    filesystem: Optional[Any] = None,
+    sql_file_loader: Any | None = None,
+    filesystem: Any | None = None,
 ) -> Config:
     """Load SQL content from external files referenced in a remote config.
 

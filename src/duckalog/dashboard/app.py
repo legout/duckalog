@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Optional
 
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, RedirectResponse, Response
+from starlette.responses import RedirectResponse, Response
 from starlette.routing import Route
 
 from .state import DashboardContext

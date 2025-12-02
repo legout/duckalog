@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
 import yaml
 
@@ -16,7 +16,7 @@ ConfigFormat = Literal["yaml", "json"]
 
 def create_config_template(
     format: ConfigFormat = "yaml",
-    output_path: Optional[str] = None,
+    output_path: str | None = None,
     database_name: str = "analytics_catalog.duckdb",
     project_name: str = "my_analytics_project",
 ) -> str:
@@ -77,7 +77,7 @@ def create_config_template(
     return content
 
 
-def _generate_template_data(project_name: str, database_name: str) -> Dict[str, Any]:
+def _generate_template_data(project_name: str, database_name: str) -> dict[str, Any]:
     """Generate the dictionary structure for the config template."""
     return {
         "version": 1,
@@ -96,11 +96,11 @@ def _generate_template_data(project_name: str, database_name: str) -> Dict[str, 
                 "name": "example_parquet_data",
                 "source": "parquet",
                 "uri": "./data/sample_data.parquet",
-                "description": f"Example view reading from Parquet files - replace with your actual data path",
+                "description": "Example view reading from Parquet files - replace with your actual data path",
             },
             {
                 "name": "example_derived_view",
-                "sql": f"""
+                "sql": """
 -- Example derived view - demonstrates SQL transformations
 SELECT 
     DATE(event_timestamp) as event_date,
@@ -111,7 +111,7 @@ WHERE event_timestamp >= CURRENT_DATE - INTERVAL '30 days'
 GROUP BY DATE(event_timestamp)
 ORDER BY event_date DESC
 """.strip(),
-                "description": f"Example derived view showing analytics - customize for your use case",
+                "description": "Example derived view showing analytics - customize for your use case",
             },
             {
                 "name": "example_daily_summary",
@@ -131,7 +131,7 @@ WHERE event_date >= CURRENT_DATE - INTERVAL '7 days'
     }
 
 
-def _validate_template(template_data: Dict[str, Any]) -> None:
+def _validate_template(template_data: dict[str, Any]) -> None:
     """Validate that the generated template is a valid Duckalog configuration."""
     try:
         # Use the existing Config model to validate
@@ -142,13 +142,13 @@ def _validate_template(template_data: Dict[str, Any]) -> None:
         raise ConfigError(f"Generated template is invalid: {exc}") from exc
 
 
-def _format_as_yaml(template_data: Dict[str, Any]) -> str:
+def _format_as_yaml(template_data: dict[str, Any]) -> str:
     """Format template data as YAML with helpful comments."""
     # Create a YAML document with comments
     yaml_content = yaml.dump(template_data, default_flow_style=False, sort_keys=False)
 
     # Add educational header comments
-    header_comments = f"""# Duckalog Configuration for Analytics Project
+    header_comments = """# Duckalog Configuration for Analytics Project
 # This is a generated configuration template for Duckalog.
 # 
 # Key sections:
@@ -174,7 +174,7 @@ def _format_as_yaml(template_data: Dict[str, Any]) -> str:
     return header_comments + yaml_content
 
 
-def _format_as_json(template_data: Dict[str, Any]) -> str:
+def _format_as_json(template_data: dict[str, Any]) -> str:
     """Format template data as JSON with proper formatting."""
     return json.dumps(template_data, indent=2)
 

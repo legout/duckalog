@@ -12,10 +12,8 @@ The main functions are:
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
-from typing import Optional
 
 from .logging_utils import log_debug
 
@@ -252,7 +250,6 @@ def _is_reasonable_parent_traversal(
     Returns:
         True if the traversal is reasonable, False if excessive/dangerous
     """
-    import os
 
     # Count the number of parent directory traversals (../)
     parent_traversal_count = original_path.count("../")
@@ -317,7 +314,7 @@ def detect_path_type(path: str) -> str:
     return "relative"
 
 
-def validate_file_accessibility(path: str) -> tuple[bool, Optional[str]]:
+def validate_file_accessibility(path: str) -> tuple[bool, str | None]:
     """Validate that a file path is accessible.
 
     Args:
@@ -361,8 +358,8 @@ class PathResolutionError(Exception):
     def __init__(
         self,
         message: str,
-        original_path: Optional[str] = None,
-        resolved_path: Optional[str] = None,
+        original_path: str | None = None,
+        resolved_path: str | None = None,
     ):
         super().__init__(message)
         self.original_path = original_path

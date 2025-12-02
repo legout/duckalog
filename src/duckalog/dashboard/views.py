@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable, List, Optional
+from collections.abc import Iterable
 
 from starlette.responses import HTMLResponse
 
@@ -190,7 +190,7 @@ def home_page(ctx: DashboardContext) -> HTMLResponse:
     )
 
 
-def views_page(ctx: DashboardContext, q: Optional[str]) -> HTMLResponse:
+def views_page(ctx: DashboardContext, q: str | None) -> HTMLResponse:
     rows = ctx.view_list()
     if q:
         q_lower = q.lower()
@@ -225,7 +225,7 @@ def view_detail_page(ctx: DashboardContext, name: str) -> HTMLResponse:
 
     semantic_models = ctx.semantic_for_view(name)
 
-    definition_parts: List[str] = []
+    definition_parts: list[str] = []
     if view.sql:
         definition_parts.append(view.sql)
     else:
@@ -237,7 +237,7 @@ def view_detail_page(ctx: DashboardContext, name: str) -> HTMLResponse:
         if view.table:
             definition_parts.append(f"table={view.table}")
 
-    semantics_block: List = []
+    semantics_block: list = []
     if semantic_models:
         for sm in semantic_models:
             semantics_block.append(sh.h3(f"Semantic model: {sm.name}"))
@@ -258,8 +258,8 @@ def view_detail_page(ctx: DashboardContext, name: str) -> HTMLResponse:
     )
 
 
-def query_page(result: Optional[QueryResult] = None, sql_text: str = "") -> HTMLResponse:
-    table_part: List = []
+def query_page(result: QueryResult | None = None, sql_text: str = "") -> HTMLResponse:
+    table_part: list = []
     if result:
         if result.error:
             table_part.append(sh.p(f"Error: {result.error}"))

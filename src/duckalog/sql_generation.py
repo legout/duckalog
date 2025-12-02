@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from .config import Config, ViewConfig
 
@@ -33,7 +33,7 @@ def _quote_literal(value: str) -> str:
     return f"'{escaped}'"
 
 
-def render_options(options: Dict[str, Any]) -> str:
+def render_options(options: dict[str, Any]) -> str:
     """Render a mapping of options into scan-function arguments.
 
     The resulting string is suitable for appending to a ``*_scan`` function

@@ -7,7 +7,6 @@ import logging
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -31,18 +30,18 @@ app = typer.Typer(help="Duckalog CLI for building and inspecting DuckDB catalogs
 
 
 def _create_filesystem_from_options(
-    protocol: Optional[str] = None,
-    key: Optional[str] = None,
-    secret: Optional[str] = None,
-    token: Optional[str] = None,
-    anon: Optional[bool] = False,
-    timeout: Optional[int] = 30,
-    aws_profile: Optional[str] = None,
-    gcs_credentials_file: Optional[str] = None,
-    azure_connection_string: Optional[str] = None,
-    sftp_host: Optional[str] = None,
-    sftp_port: Optional[int] = 22,
-    sftp_key_file: Optional[str] = None,
+    protocol: str | None = None,
+    key: str | None = None,
+    secret: str | None = None,
+    token: str | None = None,
+    anon: bool | None = False,
+    timeout: int | None = 30,
+    aws_profile: str | None = None,
+    gcs_credentials_file: str | None = None,
+    azure_connection_string: str | None = None,
+    sftp_host: str | None = None,
+    sftp_port: int | None = 22,
+    sftp_key_file: str | None = None,
 ):
     """Create a fsspec filesystem from CLI options.
 
@@ -116,7 +115,7 @@ def _create_filesystem_from_options(
     # Validate required options for specific protocols
     if protocol in ["s3"] and not any([aws_profile, key, secret, anon]):
         typer.echo(
-            f"For S3 protocol, provide either --aws-profile, --fs-key/--fs-secret, or use --fs-anon",
+            "For S3 protocol, provide either --aws-profile, --fs-key/--fs-secret, or use --fs-anon",
             err=True,
         )
         raise typer.Exit(4)
@@ -125,7 +124,7 @@ def _create_filesystem_from_options(
         [azure_connection_string, key, secret]
     ):
         typer.echo(
-            f"For Azure protocol, provide either --azure-connection-string or --fs-key/--fs-secret",
+            "For Azure protocol, provide either --azure-connection-string or --fs-key/--fs-secret",
             err=True,
         )
         raise typer.Exit(4)
@@ -275,7 +274,7 @@ def build(
         ...,
         help="Path to configuration file or remote URI (e.g., s3://bucket/config.yaml)",
     ),
-    db_path: Optional[str] = typer.Option(
+    db_path: str | None = typer.Option(
         None,
         "--db-path",
         help="Override DuckDB database path. Supports local paths and remote URIs (s3://, gs://, gcs://, abfs://, adl://, sftp://).",
@@ -287,22 +286,22 @@ def build(
         False, "--verbose", "-v", help="Enable verbose logging output."
     ),
     # Filesystem options for remote configuration access
-    fs_protocol: Optional[str] = typer.Option(
+    fs_protocol: str | None = typer.Option(
         None,
         "--fs-protocol",
         help="Remote filesystem protocol: s3 (AWS), gcs (Google), abfs (Azure), sftp, github. Protocol can be inferred from other options.",
     ),
-    fs_key: Optional[str] = typer.Option(
+    fs_key: str | None = typer.Option(
         None,
         "--fs-key",
         help="API key, access key, or username for authentication (protocol-specific)",
     ),
-    fs_secret: Optional[str] = typer.Option(
+    fs_secret: str | None = typer.Option(
         None,
         "--fs-secret",
         help="Secret key, password, or token for authentication (protocol-specific)",
     ),
-    fs_token: Optional[str] = typer.Option(
+    fs_token: str | None = typer.Option(
         None,
         "--fs-token",
         help="Authentication token for services like GitHub personal access tokens",
@@ -312,29 +311,29 @@ def build(
         "--fs-anon",
         help="Use anonymous access (no authentication required). Useful for public S3 buckets.",
     ),
-    fs_timeout: Optional[int] = typer.Option(
+    fs_timeout: int | None = typer.Option(
         None,
         "--fs-timeout",
         help="Connection timeout in seconds (default: 30)",
     ),
     # Cloud-specific authentication options
-    aws_profile: Optional[str] = typer.Option(
+    aws_profile: str | None = typer.Option(
         None,
         "--aws-profile",
         help="AWS profile name for S3 authentication (overrides --fs-key/--fs-secret)",
     ),
-    gcs_credentials_file: Optional[str] = typer.Option(
+    gcs_credentials_file: str | None = typer.Option(
         None,
         "--gcs-credentials-file",
         help="Path to Google Cloud service account credentials JSON file",
     ),
-    azure_connection_string: Optional[str] = typer.Option(
+    azure_connection_string: str | None = typer.Option(
         None,
         "--azure-connection-string",
         help="Azure storage connection string (overrides --fs-key/--fs-secret for Azure)",
     ),
     # SFTP-specific options
-    sftp_host: Optional[str] = typer.Option(
+    sftp_host: str | None = typer.Option(
         None,
         "--sftp-host",
         help="SFTP server hostname (required for SFTP protocol)",
@@ -344,7 +343,7 @@ def build(
         "--sftp-port",
         help="SFTP server port (default: 22)",
     ),
-    sftp_key_file: Optional[str] = typer.Option(
+    sftp_key_file: str | None = typer.Option(
         None,
         "--sftp-key-file",
         help="Path to SSH private key file for SFTP authentication",
@@ -478,45 +477,45 @@ def generate_sql(
     config_path: str = typer.Argument(
         ..., help="Path to configuration file or remote URI"
     ),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None, "--output", "-o", help="Write SQL output to file instead of stdout."
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose logging output."
     ),
     # Filesystem options
-    fs_protocol: Optional[str] = typer.Option(
+    fs_protocol: str | None = typer.Option(
         None, "--fs-protocol", help="Filesystem protocol (s3, gcs, abfs, sftp, github)"
     ),
-    fs_key: Optional[str] = typer.Option(
+    fs_key: str | None = typer.Option(
         None, "--fs-key", help="API key or access key for authentication"
     ),
-    fs_secret: Optional[str] = typer.Option(
+    fs_secret: str | None = typer.Option(
         None, "--fs-secret", help="Secret key or password for authentication"
     ),
-    fs_token: Optional[str] = typer.Option(
+    fs_token: str | None = typer.Option(
         None, "--fs-token", help="Authentication token (GitHub, personal access tokens)"
     ),
     fs_anon: bool = typer.Option(
         False, "--fs-anon", help="Use anonymous access (true/false)"
     ),
-    fs_timeout: Optional[int] = typer.Option(
+    fs_timeout: int | None = typer.Option(
         None, "--fs-timeout", help="Connection timeout in seconds"
     ),
-    aws_profile: Optional[str] = typer.Option(
+    aws_profile: str | None = typer.Option(
         None, "--aws-profile", help="Use AWS profile for authentication"
     ),
-    gcs_credentials_file: Optional[str] = typer.Option(
+    gcs_credentials_file: str | None = typer.Option(
         None, "--gcs-credentials-file", help="Path to Google Cloud credentials file"
     ),
-    azure_connection_string: Optional[str] = typer.Option(
+    azure_connection_string: str | None = typer.Option(
         None, "--azure-connection-string", help="Azure storage connection string"
     ),
-    sftp_host: Optional[str] = typer.Option(
+    sftp_host: str | None = typer.Option(
         None, "--sftp-host", help="SFTP server hostname"
     ),
     sftp_port: int = typer.Option(22, "--sftp-port", help="SFTP server port"),
-    sftp_key_file: Optional[str] = typer.Option(
+    sftp_key_file: str | None = typer.Option(
         None, "--sftp-key-file", help="Path to SFTP private key file"
     ),
 ) -> None:
@@ -592,38 +591,38 @@ def validate(
         False, "--verbose", "-v", help="Enable verbose logging output."
     ),
     # Filesystem options
-    fs_protocol: Optional[str] = typer.Option(
+    fs_protocol: str | None = typer.Option(
         None, "--fs-protocol", help="Filesystem protocol (s3, gcs, abfs, sftp, github)"
     ),
-    fs_key: Optional[str] = typer.Option(
+    fs_key: str | None = typer.Option(
         None, "--fs-key", help="API key or access key for authentication"
     ),
-    fs_secret: Optional[str] = typer.Option(
+    fs_secret: str | None = typer.Option(
         None, "--fs-secret", help="Secret key or password for authentication"
     ),
-    fs_token: Optional[str] = typer.Option(
+    fs_token: str | None = typer.Option(
         None, "--fs-token", help="Authentication token (GitHub, personal access tokens)"
     ),
     fs_anon: bool = typer.Option(
         False, "--fs-anon", help="Use anonymous access (true/false)"
     ),
-    fs_timeout: Optional[int] = typer.Option(
+    fs_timeout: int | None = typer.Option(
         None, "--fs-timeout", help="Connection timeout in seconds"
     ),
-    aws_profile: Optional[str] = typer.Option(
+    aws_profile: str | None = typer.Option(
         None, "--aws-profile", help="Use AWS profile for authentication"
     ),
-    gcs_credentials_file: Optional[str] = typer.Option(
+    gcs_credentials_file: str | None = typer.Option(
         None, "--gcs-credentials-file", help="Path to Google Cloud credentials file"
     ),
-    azure_connection_string: Optional[str] = typer.Option(
+    azure_connection_string: str | None = typer.Option(
         None, "--azure-connection-string", help="Azure storage connection string"
     ),
-    sftp_host: Optional[str] = typer.Option(
+    sftp_host: str | None = typer.Option(
         None, "--sftp-host", help="SFTP server hostname"
     ),
     sftp_port: int = typer.Option(22, "--sftp-port", help="SFTP server port"),
-    sftp_key_file: Optional[str] = typer.Option(
+    sftp_key_file: str | None = typer.Option(
         None, "--sftp-key-file", help="Path to SFTP private key file"
     ),
 ) -> None:
@@ -737,7 +736,7 @@ def show_paths(
                     if check_accessibility:
                         is_accessible, error_msg = validate_file_accessibility(resolved)
                         if is_accessible:
-                            typer.echo(f"  Status: ✅ Accessible")
+                            typer.echo("  Status: ✅ Accessible")
                         else:
                             typer.echo(f"  Status: ❌ {error_msg}")
                 typer.echo("")
@@ -866,7 +865,7 @@ def _fail(message: str, code: int) -> None:
 
 @app.command(help="Initialize a new Duckalog configuration file.")
 def init(
-    output: Optional[str] = typer.Option(
+    output: str | None = typer.Option(
         None,
         "--output",
         "-o",

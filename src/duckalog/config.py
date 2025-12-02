@@ -6,7 +6,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 import yaml
 from pydantic import (
@@ -75,27 +75,27 @@ class SecretConfig(BaseModel):
     """
 
     type: SecretType
-    name: Optional[str] = None
+    name: str | None = None
     provider: SecretProvider = "config"
     persistent: bool = False
-    scope: Optional[str] = None
-    key_id: Optional[str] = None
-    secret: Optional[str] = None
-    region: Optional[str] = None
-    endpoint: Optional[str] = None
-    connection_string: Optional[str] = None
-    tenant_id: Optional[str] = None
-    account_name: Optional[str] = None
-    database: Optional[str] = None
-    host: Optional[str] = None
-    port: Optional[int] = None
-    options: Dict[str, Any] = Field(default_factory=dict)
+    scope: str | None = None
+    key_id: str | None = None
+    secret: str | None = None
+    region: str | None = None
+    endpoint: str | None = None
+    connection_string: str | None = None
+    tenant_id: str | None = None
+    account_name: str | None = None
+    database: str | None = None
+    host: str | None = None
+    port: int | None = None
+    options: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
     @classmethod
-    def _validate_name(cls, value: Optional[str]) -> Optional[str]:
+    def _validate_name(cls, value: str | None) -> str | None:
         if value is not None:
             value = value.strip()
             if not value:
@@ -150,17 +150,17 @@ class DuckDBConfig(BaseModel):
     """
 
     database: str = ":memory:"
-    install_extensions: List[str] = Field(default_factory=list)
-    load_extensions: List[str] = Field(default_factory=list)
-    pragmas: List[str] = Field(default_factory=list)
-    settings: Union[str, List[str], None] = None
-    secrets: List[SecretConfig] = Field(default_factory=list)
+    install_extensions: list[str] = Field(default_factory=list)
+    load_extensions: list[str] = Field(default_factory=list)
+    pragmas: list[str] = Field(default_factory=list)
+    settings: Union[str, list[str], None] = None
+    secrets: list[SecretConfig] = Field(default_factory=list)
 
     @field_validator("settings")
     @classmethod
     def _validate_settings(
-        cls, value: Union[str, List[str], None]
-    ) -> Union[str, List[str], None]:
+        cls, value: Union[str, list[str], None]
+    ) -> Union[str, list[str], None]:
         if value is None:
             return None
 
@@ -244,8 +244,8 @@ class PostgresAttachment(BaseModel):
     database: str
     user: str
     password: str
-    sslmode: Optional[str] = None
-    options: Dict[str, Any] = Field(default_factory=dict)
+    sslmode: str | None = None
+    options: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -263,7 +263,7 @@ class DuckalogAttachment(BaseModel):
 
     alias: str
     config_path: str
-    database: Optional[str] = None
+    database: str | None = None
     read_only: bool = True
 
     @field_validator("alias")
@@ -293,10 +293,10 @@ class AttachmentsConfig(BaseModel):
         duckalog: Duckalog config attachment entries.
     """
 
-    duckdb: List[DuckDBAttachment] = Field(default_factory=list)
-    sqlite: List[SQLiteAttachment] = Field(default_factory=list)
-    postgres: List[PostgresAttachment] = Field(default_factory=list)
-    duckalog: List[DuckalogAttachment] = Field(default_factory=list)
+    duckdb: list[DuckDBAttachment] = Field(default_factory=list)
+    sqlite: list[SQLiteAttachment] = Field(default_factory=list)
+    postgres: list[PostgresAttachment] = Field(default_factory=list)
+    duckalog: list[DuckalogAttachment] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -314,9 +314,9 @@ class IcebergCatalogConfig(BaseModel):
 
     name: str
     catalog_type: str
-    uri: Optional[str] = None
-    warehouse: Optional[str] = None
-    options: Dict[str, Any] = Field(default_factory=dict)
+    uri: str | None = None
+    warehouse: str | None = None
+    options: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -338,7 +338,7 @@ class SQLFileReference(BaseModel):
     """
 
     path: str = Field(..., description="Path to the SQL file")
-    variables: Optional[Dict[str, Any]] = Field(
+    variables: dict[str, Any | None] = Field(
         default=None, description="Variables for template substitution"
     )
     as_template: bool = Field(
@@ -383,17 +383,17 @@ class ViewConfig(BaseModel):
     """
 
     name: str
-    sql: Optional[str] = None
-    sql_file: Optional[SQLFileReference] = None
-    sql_template: Optional[SQLFileReference] = None
-    source: Optional[EnvSource] = None
-    uri: Optional[str] = None
-    database: Optional[str] = None
-    table: Optional[str] = None
-    catalog: Optional[str] = None
-    options: Dict[str, Any] = Field(default_factory=dict)
-    description: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    sql: str | None = None
+    sql_file: SQLFileReference | None = None
+    sql_template: SQLFileReference | None = None
+    source: EnvSource | None = None
+    uri: str | None = None
+    database: str | None = None
+    table: str | None = None
+    catalog: str | None = None
+    options: dict[str, Any] = Field(default_factory=dict)
+    description: str | None = None
+    tags: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -483,10 +483,10 @@ class SemanticDimensionConfig(BaseModel):
 
     name: str
     expression: str
-    label: Optional[str] = None
-    description: Optional[str] = None
-    type: Optional[str] = None
-    time_grains: List[str] = Field(default_factory=list)
+    label: str | None = None
+    description: str | None = None
+    type: str | None = None
+    time_grains: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -508,7 +508,7 @@ class SemanticDimensionConfig(BaseModel):
 
     @field_validator("type")
     @classmethod
-    def _validate_type(cls, value: Optional[str]) -> Optional[str]:
+    def _validate_type(cls, value: str | None) -> str | None:
         if value is not None:
             value = value.strip().lower()
             valid_types = {"time", "number", "string", "boolean", "date"}
@@ -520,7 +520,7 @@ class SemanticDimensionConfig(BaseModel):
 
     @field_validator("time_grains")
     @classmethod
-    def _validate_time_grains(cls, value: List[str], info: ValidationInfo) -> List[str]:
+    def _validate_time_grains(cls, value: list[str], info: ValidationInfo) -> list[str]:
         if value:
             # Only allow time_grains for time dimensions
             if info.data.get("type") != "time":
@@ -566,9 +566,9 @@ class SemanticMeasureConfig(BaseModel):
 
     name: str
     expression: str
-    label: Optional[str] = None
-    description: Optional[str] = None
-    type: Optional[str] = None
+    label: str | None = None
+    description: str | None = None
+    type: str | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -647,15 +647,15 @@ class SemanticDefaultsConfig(BaseModel):
         default_filters: Optional list of default filters.
     """
 
-    time_dimension: Optional[str] = None
-    primary_measure: Optional[str] = None
-    default_filters: List[Dict[str, Any]] = Field(default_factory=list)
+    time_dimension: str | None = None
+    primary_measure: str | None = None
+    default_filters: list[dict[str, Any]] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("time_dimension")
     @classmethod
-    def _validate_time_dimension(cls, value: Optional[str]) -> Optional[str]:
+    def _validate_time_dimension(cls, value: str | None) -> str | None:
         if value is not None:
             value = value.strip()
             if not value:
@@ -664,7 +664,7 @@ class SemanticDefaultsConfig(BaseModel):
 
     @field_validator("primary_measure")
     @classmethod
-    def _validate_primary_measure(cls, value: Optional[str]) -> Optional[str]:
+    def _validate_primary_measure(cls, value: str | None) -> str | None:
         if value is not None:
             value = value.strip()
             if not value:
@@ -692,13 +692,13 @@ class SemanticModelConfig(BaseModel):
 
     name: str
     base_view: str
-    dimensions: List[SemanticDimensionConfig] = Field(default_factory=list)
-    measures: List[SemanticMeasureConfig] = Field(default_factory=list)
-    joins: List[SemanticJoinConfig] = Field(default_factory=list)
-    defaults: Optional[SemanticDefaultsConfig] = None
-    label: Optional[str] = None
-    description: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    dimensions: list[SemanticDimensionConfig] = Field(default_factory=list)
+    measures: list[SemanticMeasureConfig] = Field(default_factory=list)
+    joins: list[SemanticJoinConfig] = Field(default_factory=list)
+    defaults: SemanticDefaultsConfig | None = None
+    label: str | None = None
+    description: str | None = None
+    tags: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -805,10 +805,10 @@ class Config(BaseModel):
 
     version: int
     duckdb: DuckDBConfig
-    views: List[ViewConfig]
+    views: list[ViewConfig]
     attachments: AttachmentsConfig = Field(default_factory=AttachmentsConfig)
-    iceberg_catalogs: List[IcebergCatalogConfig] = Field(default_factory=list)
-    semantic_models: List[SemanticModelConfig] = Field(default_factory=list)
+    iceberg_catalogs: list[IcebergCatalogConfig] = Field(default_factory=list)
+    semantic_models: list[SemanticModelConfig] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -821,8 +821,8 @@ class Config(BaseModel):
 
     @model_validator(mode="after")
     def _validate_uniqueness(self) -> "Config":
-        seen: Dict[str, int] = {}
-        duplicates: List[str] = []
+        seen: dict[str, int] = {}
+        duplicates: list[str] = []
         for index, view in enumerate(self.views):
             if view.name in seen:
                 duplicates.append(view.name)
@@ -832,7 +832,7 @@ class Config(BaseModel):
             dup_list = ", ".join(sorted(set(duplicates)))
             raise ValueError(f"Duplicate view name(s) found: {dup_list}")
 
-        catalog_names: Dict[str, int] = {}
+        catalog_names: dict[str, int] = {}
         duplicates = []
         for catalog in self.iceberg_catalogs:
             if catalog.name in catalog_names:
@@ -843,7 +843,7 @@ class Config(BaseModel):
             dup_list = ", ".join(sorted(set(duplicates)))
             raise ValueError(f"Duplicate Iceberg catalog name(s) found: {dup_list}")
 
-        missing_catalog_views: List[str] = []
+        missing_catalog_views: list[str] = []
         defined_catalogs = set(catalog_names.keys())
         for view in self.views:
             if (
@@ -860,7 +860,7 @@ class Config(BaseModel):
             )
 
         # Validate semantic models
-        semantic_model_names: Dict[str, int] = {}
+        semantic_model_names: dict[str, int] = {}
         duplicates = []
         for semantic_model in self.semantic_models:
             if semantic_model.name in semantic_model_names:
@@ -873,7 +873,7 @@ class Config(BaseModel):
 
         # Validate that semantic model base views exist
         view_names = {view.name for view in self.views}
-        missing_base_views: List[str] = []
+        missing_base_views: list[str] = []
         for semantic_model in self.semantic_models:
             if semantic_model.base_view not in view_names:
                 missing_base_views.append(
@@ -887,7 +887,7 @@ class Config(BaseModel):
             )
 
         # Validate that semantic model joins reference existing views
-        missing_join_views: List[str] = []
+        missing_join_views: list[str] = []
         for semantic_model in self.semantic_models:
             for join in semantic_model.joins:
                 if join.to_view not in view_names:
@@ -905,9 +905,9 @@ class Config(BaseModel):
 def load_config(
     path: str,
     load_sql_files: bool = True,
-    sql_file_loader: Optional["SQLFileLoader"] = None,
+    sql_file_loader: "SQLFileLoader" | None = None,
     resolve_paths: bool = True,
-    filesystem: Optional[Any] = None,
+    filesystem: Any | None = None,
 ) -> Config:
     """Load, interpolate, and validate a Duckalog configuration file.
 
@@ -1023,7 +1023,7 @@ def load_config(
 def _load_sql_files_from_config(
     config: Config,
     config_path: Path,
-    sql_file_loader: Optional["SQLFileLoader"] = None,
+    sql_file_loader: "SQLFileLoader" | None = None,
 ) -> Config:
     """Load SQL content from external files referenced in the config.
 

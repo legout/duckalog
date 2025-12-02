@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import datetime as _dt
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 import duckdb
 
 from ..config import Config, ViewConfig, load_config
 from ..engine import EngineError, build_catalog
-from ..logging_utils import log_error, log_info
+from ..logging_utils import log_error
 
 
 def _now() -> _dt.datetime:
@@ -21,13 +19,13 @@ def _now() -> _dt.datetime:
 @dataclass
 class BuildStatus:
     started_at: _dt.datetime
-    completed_at: Optional[_dt.datetime] = None
-    success: Optional[bool] = None
-    message: Optional[str] = None
-    summary: Optional[str] = None
+    completed_at: _dt.datetime | None = None
+    success: bool | None = None
+    message: str | None = None
+    summary: str | None = None
 
     @property
-    def duration_seconds(self) -> Optional[float]:
+    def duration_seconds(self) -> float | None:
         if self.completed_at is None:
             return None
         return (self.completed_at - self.started_at).total_seconds()
@@ -35,32 +33,32 @@ class BuildStatus:
 
 @dataclass
 class QueryResult:
-    columns: List[str]
-    rows: List[Tuple]
+    columns: list[str]
+    rows: list[tuple]
     truncated: bool
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class DashboardContext:
     """Holds catalog context for the dashboard instance."""
 
-    def __init__(self, config: Config, config_path: Optional[str] = None, row_limit: int = 500):
+    def __init__(self, config: Config, config_path: str | None = None, row_limit: int = 500):
         self.config = config
         self.config_path = str(config_path) if config_path else None
         self.row_limit = row_limit
-        self.last_build: Optional[BuildStatus] = None
+        self.last_build: BuildStatus | None = None
 
         # Resolve database path from config
         self.db_path = config.duckdb.database
 
     @classmethod
-    def from_path(cls, config_path: str, *, row_limit: int = 500) -> "DashboardContext":
+    def from_path(cls, config_path: str, *, row_limit: int = 500) -> DashboardContext:
         cfg = load_config(config_path)
         return cls(cfg, config_path=config_path, row_limit=row_limit)
 
     # --- Catalog metadata helpers -------------------------------------------------
-    def view_list(self) -> List[Dict[str, str]]:
-        results: List[Dict[str, str]] = []
+    def view_list(self) -> list[dict[str, str]]:
+        results: list[dict[str, str]] = []
         for view in self.config.views:
             results.append(
                 {
@@ -76,7 +74,7 @@ class DashboardContext:
             )
         return results
 
-    def get_view(self, name: str) -> Optional[ViewConfig]:
+    def get_view(self, name: str) -> ViewConfig | None:
         for view in self.config.views:
             if view.name == name:
                 return view
@@ -125,7 +123,7 @@ class DashboardContext:
         return status
 
 
-def summarize_config(context: DashboardContext) -> Dict[str, str]:
+def summarize_config(context: DashboardContext) -> dict[str, str]:
     cfg = context.config
     db = cfg.duckdb.database
     attachments = (

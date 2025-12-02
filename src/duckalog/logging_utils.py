@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 _LOGURU_LOGGER: Any
 
@@ -55,7 +55,7 @@ def _redact_value(value: Any, key_hint: str = "") -> Any:
     return value
 
 
-def _emit_std_logger(level: int, message: str, safe_details: Dict[str, Any]) -> None:
+def _emit_std_logger(level: int, message: str, safe_details: dict[str, Any]) -> None:
     logger = logging.getLogger(LOGGER_NAME)
     if safe_details:
         logger.log(level, "%s %s", message, safe_details)
@@ -64,7 +64,7 @@ def _emit_std_logger(level: int, message: str, safe_details: Dict[str, Any]) -> 
 
 
 def _log(level: int, message: str, **details: Any) -> None:
-    safe_details: Dict[str, Any] = {}
+    safe_details: dict[str, Any] = {}
     if details:
         safe_details = {k: _redact_value(v, k) for k, v in details.items()}
 
