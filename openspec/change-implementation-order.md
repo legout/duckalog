@@ -12,7 +12,7 @@ These changes are effectively in place or mostly realized in the current codebas
 
 ## Phase 1 – Security and Correctness Hardening (Highest Priority)
 
-2. `update-sql-quoting-and-secrets-safety`
+  2. `update-sql-quoting-and-secrets-safety`
    - Close remaining SQL injection vectors in view SQL, attachments, and secret SQL.
    - Dependencies: none (uses existing `sql_generation` and engine structure).
 
