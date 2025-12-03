@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Dashboard Documentation Entry Points
 The dashboard documentation MUST describe how to launch the dashboard from the Python API and MAY describe CLI launch only if the `duckalog ui` command is clearly marked as optional or experimental.
@@ -12,4 +12,3 @@ The dashboard documentation MUST describe how to launch the dashboard from the P
 - **WHEN** the documentation includes an example using `duckalog ui catalog.yaml`
 - **THEN** the example clearly indicates that this CLI command may not be available in all installations
 - **AND** directs users to the Python API entry point if the CLI command is not present.
-

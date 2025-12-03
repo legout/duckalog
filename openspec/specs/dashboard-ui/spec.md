@@ -4,25 +4,14 @@
 TBD - created by archiving change add-dashboard-starui. Update Purpose after archive.
 ## Requirements
 ### Requirement: Local Dashboard Launch
-The system SHALL provide a way to launch a local web dashboard for a single duckalog catalog from the CLI and Python API.
+The system SHALL provide a way to launch a local web dashboard for a single Duckalog catalog from the Python API, and MAY optionally provide a CLI command for launching the same dashboard implementation.
 
-#### Scenario: Launch dashboard from CLI with config path
+#### Scenario: Launch dashboard from CLI with config path (optional)
 - **GIVEN** a valid `catalog.yaml` configuration file on disk
+- **AND** an installation where the `duckalog ui` CLI command is enabled
 - **WHEN** the user runs `duckalog ui catalog.yaml`
 - **THEN** a local HTTP server is started on a default host and port
 - **AND** the CLI prints the URL where the dashboard is available.
-
-#### Scenario: Launch dashboard from Python API
-- **GIVEN** a valid loaded `Config` object representing a catalog
-- **WHEN** application code calls a documented `run_dashboard`-style API with host and port parameters
-- **THEN** a local HTTP server is started using the same dashboard implementation as the CLI
-- **AND** the function returns or exposes a handle that allows graceful shutdown.
-
-#### Scenario: Invalid config prevents launch
-- **GIVEN** an invalid or unreadable catalog config path is provided
-- **WHEN** the user attempts to launch the dashboard from the CLI
-- **THEN** the command fails fast with a clear error message
-- **AND** no HTTP server is started.
 
 ### Requirement: Dashboard Home Overview
 The dashboard home page SHALL present a concise overview of the selected catalog and navigation to other dashboard sections.

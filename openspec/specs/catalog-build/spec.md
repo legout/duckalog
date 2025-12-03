@@ -201,7 +201,7 @@ The system MUST provide canonical functions for SQL construction that serve as t
 
 ### Engine Structure
 
-The catalog build system uses a `CatalogBuilder` orchestration class to manage the build process:
+The catalog build system SHALL use a `CatalogBuilder` orchestration class to manage the build process:
 
 #### CatalogBuilder Design
 - **Purpose**: Encapsulates the entire catalog build workflow into a single, testable class
@@ -286,4 +286,44 @@ The project MUST maintain specific regression tests that cover the security beha
 - **THEN** they MUST NOT affect the test environment or other tests
 - **AND** they MUST use temporary directories or sandboxed environments
 - **AND** they MUST clean up any created files or resources after execution
+
+### Requirement: Security Regression Tests for SQL and Paths
+The project MUST include regression tests that exercise security‑sensitive behavior for SQL generation and path resolution, to prevent re‑introducing previously fixed vulnerabilities.
+
+#### Scenario: SQL injection regression tests
+- **GIVEN** view configurations and secrets whose names and values contain quotes, semicolons, comments, and other potentially dangerous characters
+- **WHEN** SQL is generated for catalog builds or dry‑run modes
+- **THEN** automated tests assert that the resulting SQL remains syntactically valid
+- **AND** configuration‑derived values remain safely contained within quoted identifiers or literals
+- **AND** no additional statements can be injected via these fields.
+
+#### Scenario: Path traversal regression tests
+- **GIVEN** configurations that reference local files using relative and absolute paths, including attempts to escape the config directory via `..` segments or platform‑specific forms
+- **WHEN** path resolution helpers are invoked during config loading or catalog builds
+- **THEN** automated tests assert that only paths within allowed roots (such as the config directory) are accepted
+- **AND** paths that resolve outside allowed roots cause configuration errors rather than silent acceptance.
+
+### Requirement: Engine Orchestration Structure and Cleanup
+The catalog build engine MUST orchestrate connection setup, attachments, secrets, views, and exports through a cohesive component that ensures proper resource cleanup even when errors occur.
+
+#### Scenario: Catalog build uses structured orchestration
+- **GIVEN** a valid catalog configuration
+- **WHEN** `build_catalog` is invoked via the CLI or Python API
+- **THEN** the engine creates and configures a DuckDB connection, sets up attachments and secrets, creates views, and performs any configured export as a single orchestrated operation
+- **AND** temporary resources such as intermediate files are tracked for cleanup instead of being managed ad‑hoc in multiple locations.
+
+#### Scenario: Resources cleaned up on failure
+- **GIVEN** a configuration that triggers an error during catalog build (for example, invalid SQL or attachment failure)
+- **WHEN** `build_catalog` runs and raises an engine error
+- **THEN** the engine still closes any open connections and attempts to delete temporary files created during the run
+- **AND** the system does not leave behind orphaned temporary database files.
+
+### Requirement: Shared CLI Filesystem Options
+Filesystem‑related CLI options MUST be defined once and reused across all commands that accept a config path, so that behavior and help text remain consistent.
+
+#### Scenario: Build, generate-sql, and validate share filesystem options
+- **GIVEN** the `build`, `generate-sql`, and `validate` CLI commands
+- **WHEN** a user passes filesystem options (such as protocol, credentials, or endpoints)
+- **THEN** each command accepts the same set of filesystem‑related flags with the same defaults and help text
+- **AND** those flags are parsed by a shared implementation that constructs the filesystem object used during config loading.
 

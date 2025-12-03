@@ -385,7 +385,7 @@ The `duckalog.config` module MUST provide a stable public API for configuration 
 - **AND** the behavior of loading and validating configs remains consistent with the config specification.
 
 ### Implementation Structure
-The configuration layer is implemented as a structured internal package under `duckalog.config` to improve maintainability while preserving the public API contract.
+The configuration layer MUST be implemented as a structured internal package under `duckalog.config` to improve maintainability while preserving the public API contract.
 
 #### Package Layout
 The `duckalog.config` package contains the following modules:
@@ -458,4 +458,52 @@ Path resolution MUST prevent unauthorized file system access through path traver
 - **WHEN** path security validation is performed
 - **THEN** the security checks SHALL handle all supported path formats correctly
 - **AND** platform-specific traversal attempts SHALL be detected and rejected
+
+### Requirement: Path Security Boundaries for Local Files
+Path resolution for local files MUST ensure that resolved paths remain within a defined set of allowed roots, and MUST reject configurations that attempt to escape those roots.
+
+#### Scenario: Paths resolved within allowed roots
+- **GIVEN** a config file located in a directory on the local filesystem
+- **AND** view or attachment definitions that reference relative paths under that directory (for example, `\"data/users.parquet\"` or `\"./sql/views.sql\"`)
+- **WHEN** the configuration is loaded and paths are resolved
+- **THEN** the resolved absolute paths remain within the allowed roots (such as the config directory and any explicitly configured base directories)
+- **AND** the configuration loads successfully.
+
+#### Scenario: Paths escaping allowed roots are rejected
+- **GIVEN** a config that references a path which resolves outside all allowed roots (for example, using `../` segments to reach system directories)
+- **WHEN** the configuration is loaded and path resolution runs
+- **THEN** the system raises a configuration or path‑resolution error
+- **AND** does not attempt to access or use the resolved path.
+
+### Requirement: Canonical SecretConfig Model
+Duckalog configuration MUST represent DuckDB secrets using a single canonical `SecretConfig` model that covers all supported secret types and maps directly to DuckDB `CREATE SECRET` parameters.
+
+#### Scenario: Secrets configured via SecretConfig
+- **GIVEN** a catalog configuration that defines one or more DuckDB secrets
+- **WHEN** the configuration is loaded and validated
+- **THEN** each secret is represented as a `SecretConfig` instance with a `type` discriminator (such as `\"s3\"`, `\"azure\"`, `\"gcs\"`, `\"http\"`, `\"postgres\"`, or `\"mysql\"`)
+- **AND** only fields defined on `SecretConfig` are used to drive DuckDB `CREATE SECRET` statements, with no reliance on duplicated or backend‑specific config models.
+
+#### Scenario: Secret options use supported primitive types
+- **GIVEN** a `SecretConfig` with an `options` dictionary
+- **WHEN** the configuration is validated and secret SQL is generated
+- **THEN** option values of type `bool`, `int`, `float`, and `str` are accepted and rendered into SQL according to the SQL generation rules
+- **AND** option values of any other type are rejected with a clear configuration or type error rather than being interpolated unsafely.
+
+### Requirement: Config Loader Helper Functions and Dispatch
+The configuration API MUST provide a clear contract for loading configs from local files and remote URIs via `load_config`, `_load_config_from_local_file`, and `load_config_from_uri`.
+
+#### Scenario: load_config dispatches between local and remote loaders
+- **GIVEN** a `path_or_uri` value passed to `load_config`
+- **WHEN** `path_or_uri` is a local filesystem path
+- **THEN** `load_config` delegates to an internal helper such as `_load_config_from_local_file` for reading and validating the configuration
+- **AND** when `path_or_uri` is a remote URI (for example, starting with `\"s3://\"` or `\"https://\"`)
+- **THEN** `load_config` delegates to `load_config_from_uri` instead.
+
+#### Scenario: load_config_from_uri is publicly accessible and uses filesystem abstraction
+- **GIVEN** a remote config URI and an appropriate filesystem or client
+- **WHEN** `load_config_from_uri` is called directly or via `load_config`
+- **THEN** it fetches the config contents using the provided filesystem abstraction
+- **AND** applies the same environment interpolation, path resolution, and validation rules as local config loading
+- **AND** is exposed from the `duckalog.config` module so that tests and advanced callers can patch or call it explicitly.
 

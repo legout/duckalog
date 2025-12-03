@@ -34,7 +34,6 @@ All exceptions MUST be logged with appropriate context and MUST preserve the ori
   - Raise the appropriate `DuckalogError` subclass
   - Preserve the original traceback using `from exc`
   - Provide a clear message about what operation failed
-
 ## Requirements
 ### Requirement: Error Types and Responsibilities
 The system MUST distinguish configuration-time failures from runtime/engine failures using dedicated exception types.
@@ -102,4 +101,19 @@ Logging MUST use the standard Python logging module and MUST avoid exposing secr
 - **WHEN** a catalog build or validation runs
 - **THEN** logs MAY include detailed information such as generated SQL or attachment parameters
 - **BUT** any values derived from environment variables intended as secrets (e.g. passwords, access keys, tokens) MUST be redacted or omitted.
+
+### Requirement: Unified Exception Hierarchy and Chaining
+Duckalog MUST expose a unified exception hierarchy for configuration, engine, and remote‑config errors, and MUST preserve underlying tracebacks via exception chaining.
+
+#### Scenario: Exceptions derive from DuckalogError
+- **GIVEN** operations that can fail due to configuration issues, engine failures, remote loading problems, or SQL file errors
+- **WHEN** such a failure occurs
+- **THEN** the system raises a domain‑specific exception such as `ConfigError`, `EngineError`, `RemoteConfigError`, or `SQLFileError`
+- **AND** each of these exception types is a subclass of a common `DuckalogError` base class.
+
+#### Scenario: Underlying errors are chained and logged
+- **GIVEN** a lower‑level library error (for example, a DuckDB exception or filesystem error) during Duckalog operations
+- **WHEN** the error is surfaced to callers
+- **THEN** Duckalog logs the failure with relevant context
+- **AND** raises an appropriate `DuckalogError` subclass using `raise ... from exc` so that callers can inspect the original cause.
 
