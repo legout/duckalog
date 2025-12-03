@@ -2,6 +2,27 @@
 
 ## Purpose
 TBD - created by archiving change add-python-api. Update Purpose after archive.
+
+## CLI Integration Notes
+
+### Note: CLI Filesystem Options Refactoring
+The CLI has been refactored to use shared filesystem options handling for consistency and maintainability. This change is transparent to Python API users but may be relevant for documentation that references CLI behavior.
+
+#### Changes to CLI Architecture
+- Centralized filesystem option processing via Typer callback
+- Consistent filesystem object creation across commands
+- No changes to underlying filesystem creation logic (`_create_filesystem_from_options`)
+
+#### Impact on Python API
+- No breaking changes to Python API functions
+- `build_catalog()`, `load_config()`, and related functions continue to accept filesystem objects as before
+- Internal CLI refactoring only affects command-line interface, not programmatic usage
+
+#### Documentation Considerations
+- When documenting filesystem support in Python API, reference the same filesystem types and options
+- CLI examples continue to work identically from user perspective
+- Internal refactoring eliminates duplication but preserves external behavior
+
 ## Requirements
 ### Requirement: generate_sql Convenience Function
 The library MUST provide a `generate_sql(config_path: str) -> str` function that returns the full SQL script for all views defined in a config without connecting to DuckDB.

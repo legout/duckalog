@@ -7,6 +7,7 @@ import logging
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 from pathlib import Path
+from typing import Any, Optional
 
 import typer
 
@@ -30,18 +31,18 @@ app = typer.Typer(help="Duckalog CLI for building and inspecting DuckDB catalogs
 
 
 def _create_filesystem_from_options(
-    protocol: str | None = None,
-    key: str | None = None,
-    secret: str | None = None,
-    token: str | None = None,
-    anon: bool | None = False,
-    timeout: int | None = 30,
-    aws_profile: str | None = None,
-    gcs_credentials_file: str | None = None,
-    azure_connection_string: str | None = None,
-    sftp_host: str | None = None,
-    sftp_port: int | None = 22,
-    sftp_key_file: str | None = None,
+    protocol: Optional[str] = None,
+    key: Optional[str] = None,
+    secret: Optional[str] = None,
+    token: Optional[str] = None,
+    anon: bool = False,
+    timeout: Optional[int] = 30,
+    aws_profile: Optional[str] = None,
+    gcs_credentials_file: Optional[str] = None,
+    azure_connection_string: Optional[str] = None,
+    sftp_host: Optional[str] = None,
+    sftp_port: int = 22,
+    sftp_key_file: Optional[str] = None,
 ):
     """Create a fsspec filesystem from CLI options.
 
@@ -257,6 +258,97 @@ def _configure_logging(verbose: bool) -> None:
     logging.basicConfig(level=level, format="%(message)s")
 
 
+# Shared callback for filesystem options across all commands
+@app.callback()
+def main_callback(
+    ctx: typer.Context,
+    fs_protocol: Optional[str] = typer.Option(
+        None,
+        "--fs-protocol",
+        help="Remote filesystem protocol: s3 (AWS), gcs (Google), abfs (Azure), sftp, github. Protocol can be inferred from other options.",
+    ),
+    fs_key: Optional[str] = typer.Option(
+        None,
+        "--fs-key",
+        help="API key, access key, or username for authentication (protocol-specific)",
+    ),
+    fs_secret: Optional[str] = typer.Option(
+        None,
+        "--fs-secret",
+        help="Secret key, password, or token for authentication (protocol-specific)",
+    ),
+    fs_token: Optional[str] = typer.Option(
+        None,
+        "--fs-token",
+        help="Authentication token for services like GitHub personal access tokens",
+    ),
+    fs_anon: bool = typer.Option(
+        False,
+        "--fs-anon",
+        help="Use anonymous access (no authentication required). Useful for public S3 buckets.",
+    ),
+    fs_timeout: Optional[int] = typer.Option(
+        None, "--fs-timeout", help="Connection timeout in seconds (default: 30)"
+    ),
+    aws_profile: Optional[str] = typer.Option(
+        None,
+        "--aws-profile",
+        help="AWS profile name for S3 authentication (overrides --fs-key/--fs-secret)",
+    ),
+    gcs_credentials_file: Optional[str] = typer.Option(
+        None,
+        "--gcs-credentials-file",
+        help="Path to Google Cloud service account credentials JSON file",
+    ),
+    azure_connection_string: Optional[str] = typer.Option(
+        None,
+        "--azure-connection-string",
+        help="Azure storage connection string (overrides --fs-key/--fs-secret for Azure)",
+    ),
+    sftp_host: Optional[str] = typer.Option(
+        None, "--sftp-host", help="SFTP server hostname (required for SFTP protocol)"
+    ),
+    sftp_port: int = typer.Option(
+        22, "--sftp-port", help="SFTP server port (default: 22)"
+    ),
+    sftp_key_file: Optional[str] = typer.Option(
+        None,
+        "--sftp-key-file",
+        help="Path to SSH private key file for SFTP authentication",
+    ),
+) -> None:
+    """Shared callback that creates filesystem objects from CLI options.
+
+    This callback applies to all commands and creates a filesystem object
+    from the provided options, storing it in ctx.obj["filesystem"].
+    """
+    if ctx.resilient_parsing:
+        return
+
+    # Initialize context object if needed
+    if ctx.obj is None:
+        ctx.obj = {}
+
+    # Create filesystem object using existing helper
+    filesystem = _create_filesystem_from_options(
+        protocol=fs_protocol,
+        key=fs_key,
+        secret=fs_secret,
+        token=fs_token,
+        anon=fs_anon,
+        timeout=fs_timeout,
+        aws_profile=aws_profile,
+        gcs_credentials_file=gcs_credentials_file,
+        azure_connection_string=azure_connection_string,
+        sftp_host=sftp_host,
+        sftp_port=sftp_port,
+        sftp_key_file=sftp_key_file,
+    )
+
+    # Store filesystem in context for command access
+    ctx.obj["filesystem"] = filesystem
+
+
 @app.command(name="version", help="Show duckalog version.")
 def version_command() -> None:
     """Show the installed duckalog package version."""
@@ -270,11 +362,12 @@ def version_command() -> None:
 
 @app.command(help="Build or update a DuckDB catalog from a config file or remote URI.")
 def build(
+    ctx: typer.Context,
     config_path: str = typer.Argument(
         ...,
         help="Path to configuration file or remote URI (e.g., s3://bucket/config.yaml)",
     ),
-    db_path: str | None = typer.Option(
+    db_path: Optional[str] = typer.Option(
         None,
         "--db-path",
         help="Override DuckDB database path. Supports local paths and remote URIs (s3://, gs://, gcs://, abfs://, adl://, sftp://).",
@@ -284,69 +377,6 @@ def build(
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose logging output."
-    ),
-    # Filesystem options for remote configuration access
-    fs_protocol: str | None = typer.Option(
-        None,
-        "--fs-protocol",
-        help="Remote filesystem protocol: s3 (AWS), gcs (Google), abfs (Azure), sftp, github. Protocol can be inferred from other options.",
-    ),
-    fs_key: str | None = typer.Option(
-        None,
-        "--fs-key",
-        help="API key, access key, or username for authentication (protocol-specific)",
-    ),
-    fs_secret: str | None = typer.Option(
-        None,
-        "--fs-secret",
-        help="Secret key, password, or token for authentication (protocol-specific)",
-    ),
-    fs_token: str | None = typer.Option(
-        None,
-        "--fs-token",
-        help="Authentication token for services like GitHub personal access tokens",
-    ),
-    fs_anon: bool = typer.Option(
-        False,
-        "--fs-anon",
-        help="Use anonymous access (no authentication required). Useful for public S3 buckets.",
-    ),
-    fs_timeout: int | None = typer.Option(
-        None,
-        "--fs-timeout",
-        help="Connection timeout in seconds (default: 30)",
-    ),
-    # Cloud-specific authentication options
-    aws_profile: str | None = typer.Option(
-        None,
-        "--aws-profile",
-        help="AWS profile name for S3 authentication (overrides --fs-key/--fs-secret)",
-    ),
-    gcs_credentials_file: str | None = typer.Option(
-        None,
-        "--gcs-credentials-file",
-        help="Path to Google Cloud service account credentials JSON file",
-    ),
-    azure_connection_string: str | None = typer.Option(
-        None,
-        "--azure-connection-string",
-        help="Azure storage connection string (overrides --fs-key/--fs-secret for Azure)",
-    ),
-    # SFTP-specific options
-    sftp_host: str | None = typer.Option(
-        None,
-        "--sftp-host",
-        help="SFTP server hostname (required for SFTP protocol)",
-    ),
-    sftp_port: int = typer.Option(
-        22,
-        "--sftp-port",
-        help="SFTP server port (default: 22)",
-    ),
-    sftp_key_file: str | None = typer.Option(
-        None,
-        "--sftp-key-file",
-        help="Path to SSH private key file for SFTP authentication",
     ),
 ) -> None:
     """CLI entry point for the ``build`` command.
@@ -393,36 +423,11 @@ def build(
         db_path: Optional override for the DuckDB database file path. Supports local paths and remote URIs for cloud storage export.
         dry_run: If ``True``, print SQL instead of modifying the database.
         verbose: If ``True``, enable more verbose logging.
-        fs_protocol: Filesystem protocol for remote configs (s3, gcs, abfs, sftp, github).
-        fs_key: API key or access key for authentication.
-        fs_secret: Secret key or password for authentication.
-        fs_token: Authentication token (GitHub, personal access tokens).
-        fs_anon: Use anonymous access.
-        fs_timeout: Connection timeout in seconds.
-        aws_profile: Use AWS profile for authentication.
-        gcs_credentials_file: Path to Google Cloud credentials file.
-        azure_connection_string: Azure storage connection string.
-        sftp_host: SFTP server hostname.
-        sftp_port: SFTP server port.
-        sftp_key_file: Path to SFTP private key file.
     """
     _configure_logging(verbose)
 
-    # Create filesystem from CLI options if provided
-    filesystem = _create_filesystem_from_options(
-        protocol=fs_protocol,
-        key=fs_key,
-        secret=fs_secret,
-        token=fs_token,
-        anon=fs_anon,
-        timeout=fs_timeout,
-        aws_profile=aws_profile,
-        gcs_credentials_file=gcs_credentials_file,
-        azure_connection_string=azure_connection_string,
-        sftp_host=sftp_host,
-        sftp_port=sftp_port,
-        sftp_key_file=sftp_key_file,
-    )
+    # Get filesystem from context (created by shared callback)
+    filesystem = ctx.obj.get("filesystem")
 
     # Validate that local files exist, but allow remote URIs
     try:
@@ -474,49 +479,15 @@ def build(
 
 @app.command(name="generate-sql", help="Validate config and emit CREATE VIEW SQL only.")
 def generate_sql(
+    ctx: typer.Context,
     config_path: str = typer.Argument(
         ..., help="Path to configuration file or remote URI"
     ),
-    output: Path | None = typer.Option(
+    output: Optional[Path] = typer.Option(
         None, "--output", "-o", help="Write SQL output to file instead of stdout."
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose logging output."
-    ),
-    # Filesystem options
-    fs_protocol: str | None = typer.Option(
-        None, "--fs-protocol", help="Filesystem protocol (s3, gcs, abfs, sftp, github)"
-    ),
-    fs_key: str | None = typer.Option(
-        None, "--fs-key", help="API key or access key for authentication"
-    ),
-    fs_secret: str | None = typer.Option(
-        None, "--fs-secret", help="Secret key or password for authentication"
-    ),
-    fs_token: str | None = typer.Option(
-        None, "--fs-token", help="Authentication token (GitHub, personal access tokens)"
-    ),
-    fs_anon: bool = typer.Option(
-        False, "--fs-anon", help="Use anonymous access (true/false)"
-    ),
-    fs_timeout: int | None = typer.Option(
-        None, "--fs-timeout", help="Connection timeout in seconds"
-    ),
-    aws_profile: str | None = typer.Option(
-        None, "--aws-profile", help="Use AWS profile for authentication"
-    ),
-    gcs_credentials_file: str | None = typer.Option(
-        None, "--gcs-credentials-file", help="Path to Google Cloud credentials file"
-    ),
-    azure_connection_string: str | None = typer.Option(
-        None, "--azure-connection-string", help="Azure storage connection string"
-    ),
-    sftp_host: str | None = typer.Option(
-        None, "--sftp-host", help="SFTP server hostname"
-    ),
-    sftp_port: int = typer.Option(22, "--sftp-port", help="SFTP server port"),
-    sftp_key_file: str | None = typer.Option(
-        None, "--sftp-key-file", help="Path to SFTP private key file"
     ),
 ) -> None:
     """CLI entry point for ``generate-sql`` command.
@@ -529,21 +500,8 @@ def generate_sql(
     """
     _configure_logging(verbose)
 
-    # Create filesystem from CLI options if provided
-    filesystem = _create_filesystem_from_options(
-        protocol=fs_protocol,
-        key=fs_key,
-        secret=fs_secret,
-        token=fs_token,
-        anon=fs_anon,
-        timeout=fs_timeout,
-        aws_profile=aws_profile,
-        gcs_credentials_file=gcs_credentials_file,
-        azure_connection_string=azure_connection_string,
-        sftp_host=sftp_host,
-        sftp_port=sftp_port,
-        sftp_key_file=sftp_key_file,
-    )
+    # Get filesystem from context (created by shared callback)
+    filesystem = ctx.obj.get("filesystem")
 
     # Validate that local files exist, but allow remote URIs
     try:
@@ -584,46 +542,12 @@ def generate_sql(
 
 @app.command(help="Validate a config file and report success or failure.")
 def validate(
+    ctx: typer.Context,
     config_path: str = typer.Argument(
         ..., help="Path to configuration file or remote URI"
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose logging output."
-    ),
-    # Filesystem options
-    fs_protocol: str | None = typer.Option(
-        None, "--fs-protocol", help="Filesystem protocol (s3, gcs, abfs, sftp, github)"
-    ),
-    fs_key: str | None = typer.Option(
-        None, "--fs-key", help="API key or access key for authentication"
-    ),
-    fs_secret: str | None = typer.Option(
-        None, "--fs-secret", help="Secret key or password for authentication"
-    ),
-    fs_token: str | None = typer.Option(
-        None, "--fs-token", help="Authentication token (GitHub, personal access tokens)"
-    ),
-    fs_anon: bool = typer.Option(
-        False, "--fs-anon", help="Use anonymous access (true/false)"
-    ),
-    fs_timeout: int | None = typer.Option(
-        None, "--fs-timeout", help="Connection timeout in seconds"
-    ),
-    aws_profile: str | None = typer.Option(
-        None, "--aws-profile", help="Use AWS profile for authentication"
-    ),
-    gcs_credentials_file: str | None = typer.Option(
-        None, "--gcs-credentials-file", help="Path to Google Cloud credentials file"
-    ),
-    azure_connection_string: str | None = typer.Option(
-        None, "--azure-connection-string", help="Azure storage connection string"
-    ),
-    sftp_host: str | None = typer.Option(
-        None, "--sftp-host", help="SFTP server hostname"
-    ),
-    sftp_port: int = typer.Option(22, "--sftp-port", help="SFTP server port"),
-    sftp_key_file: str | None = typer.Option(
-        None, "--sftp-key-file", help="Path to SFTP private key file"
     ),
 ) -> None:
     """CLI entry point for ``validate`` command.
@@ -634,21 +558,8 @@ def validate(
     """
     _configure_logging(verbose)
 
-    # Create filesystem from CLI options if provided
-    filesystem = _create_filesystem_from_options(
-        protocol=fs_protocol,
-        key=fs_key,
-        secret=fs_secret,
-        token=fs_token,
-        anon=fs_anon,
-        timeout=fs_timeout,
-        aws_profile=aws_profile,
-        gcs_credentials_file=gcs_credentials_file,
-        azure_connection_string=azure_connection_string,
-        sftp_host=sftp_host,
-        sftp_port=sftp_port,
-        sftp_key_file=sftp_key_file,
-    )
+    # Get filesystem from context (created by shared callback)
+    filesystem = ctx.obj.get("filesystem")
 
     # Validate that local files exist, but allow remote URIs
     try:
@@ -865,7 +776,7 @@ def _fail(message: str, code: int) -> None:
 
 @app.command(help="Initialize a new Duckalog configuration file.")
 def init(
-    output: str | None = typer.Option(
+    output: Optional[str] = typer.Option(
         None,
         "--output",
         "-o",
