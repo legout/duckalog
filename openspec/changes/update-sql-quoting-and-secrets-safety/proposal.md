@@ -10,6 +10,8 @@ Recent consolidated reviews identified remaining SQL injection risks and inconsi
 
 Duckalog is intended for use in serious data platforms where configuration may be partially untrusted (or shared between teams). We need a clear specification for safe SQL construction and secret SQL generation, and we need the implementation to match it.
 
+This change builds on archived change `2025-12-02-implement-secrets-creation`, which introduced `generate_secret_sql` and actual `CREATE SECRET` execution; it hardens that behavior and makes the SQL construction rules explicit.
+
 ## What Changes
 
 - **Define a canonical SQL quoting surface**
@@ -58,4 +60,3 @@ Duckalog is intended for use in serious data platforms where configuration may b
 
 - Stricter enforcement of option types for secrets could surface `TypeError` in configurations that previously “worked by accident” with unsafe interpolation. The change is intentionally conservative and improves safety, but we should call it out in the changelog.
 - Centralizing quoting may require adjusting a few internal call sites, but this reduces long-term risk and complexity.
-

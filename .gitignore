@@ -17,3 +17,4 @@ site/
 **/*.duckdb
 **/__marimo__
 .worktree
+openspec/archive-2025-12-02-validation.md

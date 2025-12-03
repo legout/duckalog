@@ -15,6 +15,8 @@ This can confuse users and contributors:
 
 We need a single, explicit statement of supported Python versions, and we need metadata, specs, and docs to match that statement.
 
+This change makes explicit the assumptions already baked into archived change `2025-12-02-modernize-python-typing`, which migrated the codebase to Python 3.12+ typing idioms (PEP 604 unions, built-in generics).
+
 ## What Changes
 
 - **Decide and document the minimum supported Python version**
@@ -58,4 +60,3 @@ We need a single, explicit statement of supported Python versions, and we need m
 ## Risks and Trade-offs
 
 - Some users on older Python versions will no longer be able to run Duckalog without upgrading their environment. Given the use of modern typing conventions and the project’s target audience, this is an acceptable trade-off for simplicity and clarity.
-

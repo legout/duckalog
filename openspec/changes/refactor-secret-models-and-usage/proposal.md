@@ -15,6 +15,8 @@ This duplication has led to:
 
 Recent work has implemented real DuckDB `CREATE SECRET` statements and hardened SQL generation. To keep this maintainable, we need a single, clearly specified secret model surface that all code and docs agree on.
 
+This change refines and simplifies the behavior introduced by archived changes `2025-11-17-add-duckdb-secrets` and `2025-12-02-implement-secrets-creation`, making `SecretConfig` the canonical configuration model that those behaviors rely on.
+
 ## What Changes
 
 - **Choose a single canonical secret model**
@@ -66,4 +68,3 @@ Recent work has implemented real DuckDB `CREATE SECRET` statements and hardened 
 
 - Configurations that accidentally relied on undocumented fields or on internal helper models may need adjustment once the canonical model is enforced.
 - Tightening the mapping between `SecretConfig` and DuckDB `CREATE SECRET` may surface inconsistencies between earlier documentation and actual behavior; this is acceptable and should be resolved in favor of the spec.
-
