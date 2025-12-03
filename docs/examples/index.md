@@ -57,7 +57,7 @@ Use this guide to find the right example for your use case:
 ## Prerequisites for All Examples
 
 ### Required Software
-- **Python 3.9+** with Duckalog installed:
+- **Python 3.12+** with Duckalog installed:
   ```bash
   pip install duckalog
   ```

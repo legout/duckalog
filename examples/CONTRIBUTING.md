@@ -143,7 +143,7 @@ if __name__ == "__main__":
 ## Quality Standards
 
 ### Code Quality
-- **Python 3.9+** compatibility
+- **Python 3.12+** compatibility
 - **Type hints** on public functions
 - **Error handling** with clear messages
 - **No external dependencies** beyond Duckalog and common libraries

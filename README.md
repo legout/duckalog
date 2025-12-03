@@ -46,7 +46,7 @@ For a full product and technical description, see `docs/PRD_Spec.md`.
 
 ## Installation
 
-**Requirements:** Python 3.9 or newer
+**Requirements:** Python 3.12 or newer
 
 ### Install from PyPI
 
@@ -912,7 +912,7 @@ We welcome contributions to duckalog! This section provides guidelines and instr
 
 ### Development Setup
 
-**Requirements:** Python 3.9 or newer
+**Requirements:** Python 3.12 or newer
 
 #### Automated Version Management
 
@@ -948,9 +948,9 @@ For detailed examples and troubleshooting, see:
 
 Duckalog uses a streamlined GitHub Actions setup to keep CI predictable:
 
-- **Tests workflow** runs Ruff + mypy on Python 3.11 and executes pytest on Ubuntu for Python 3.9–3.12. If tests fail, the workflow fails—no auto-generated smoke tests.
+- **Tests workflow** runs Ruff + mypy on Python 3.12 and executes pytest on Ubuntu for Python 3.12 and 3.13. If tests fail, the workflow fails—no auto-generated smoke tests.
 - **Security workflow** focuses on a curated set of scans: TruffleHog and GitLeaks for secrets, Safety + pip-audit for dependency issues, and Bandit + Semgrep for code-level checks. Heavy container or supply-chain scans run only when explicitly needed.
-- **publish.yml** builds sdist + wheel once on Python 3.11, validates artifacts with `twine check`, smoke-tests the wheel, and then reuses the artifacts for Test PyPI, PyPI, or dry-run scenarios. Release jobs rely on the `Tests` workflow’s status rather than re-running the full test matrix.
+- **publish.yml** builds sdist + wheel once on Python 3.12, validates artifacts with `twine check`, smoke-tests the wheel, and then reuses the artifacts for Test PyPI, PyPI, or dry-run scenarios. Release jobs rely on the `Tests` workflow’s status rather than re-running the full test matrix.
 
 For local development, we recommend:
 

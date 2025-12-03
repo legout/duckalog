@@ -212,7 +212,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Package Distribution**:
   - PyPI-ready package with proper metadata
   - Automated publishing workflow for releases
-  - Multi-Python version compatibility (3.9-3.12)
+  - Multi-Python version compatibility (3.12+)
   - Professional package presentation with badges
 
 ### Technical Implementation
@@ -224,7 +224,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation**: MkDocs with Material theme and API reference generation
 
 ### Supported Python Versions
-- Python 3.9+
+- Python 3.12+
 - Tested on Ubuntu, Windows, and macOS
 
 ### Known Limitations

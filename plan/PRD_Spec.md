@@ -448,7 +448,7 @@ At minimum:
 
 ### 1.7. Non-functional Requirements
 
-- **Language:** Python 3.9+.
+- **Language:** Python 3.12+.
 - **Dependencies:**
   - `duckdb` Python package.
   - `pyyaml` for YAML.

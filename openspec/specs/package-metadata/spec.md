@@ -153,3 +153,29 @@ The project SHALL include complete and accurate author and maintainer informatio
 - **WHEN** the package is evaluated in professional contexts
 - **THEN** it presents complete author and maintainer information for credibility
 
+### Requirement: Python Version Support Policy
+The project SHALL explicitly declare the minimum supported Python version and maintain consistent metadata across all project surfaces.
+
+#### Scenario: Python version requirement clarity
+- **GIVEN** users evaluating duckalog for their projects
+- **WHEN** they check package metadata or documentation for Python version requirements
+- **THEN** they find a clear statement that Python >= 3.12 is required
+- **AND** the rationale is documented (use of modern typing features like PEP 604 unions and built-in generics)
+
+#### Scenario: Packaging metadata alignment
+- **GIVEN** the pyproject.toml file
+- **WHEN** the package is built or distributed
+- **THEN** the `requires-python` field is set to `>=3.12`
+- **AND** Trove classifiers reflect only supported Python versions (e.g., 3.12, 3.13)
+
+#### Scenario: Documentation consistency
+- **GIVEN** project documentation including README and specs
+- **WHEN** users reference Python version requirements
+- **THEN** all documentation consistently mentions Python 3.12+ as the minimum supported version
+- **AND** no older versions (3.9-3.11) are referenced as supported
+
+#### Scenario: Modern typing feature support
+- **GIVEN** the project's code style guidelines
+- **WHEN** contributors write new code or update existing code
+- **THEN** they are explicitly allowed to use PEP 604 unions (`str | int`) and built-in generics (`list[int]`, `dict[str, Any]`)
+- **AND** these features are documented as encouraged rather than compatibility concerns

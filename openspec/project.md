@@ -9,7 +9,7 @@ duckalog is a Python library and CLI for building DuckDB catalogs (views) from d
 - Treat DuckDB catalogs as versioned, testable, and shareable artifacts.
 
 ## Tech Stack
-- Language: Python (>= 3.9).
+- Language: Python (>= 3.12).
 - Packaging: `setuptools` with `src/` layout (`src/duckalog`).
 - Core runtime libraries:
   - `duckdb` – embedded analytical database engine.
