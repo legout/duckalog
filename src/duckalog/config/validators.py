@@ -4,12 +4,12 @@ This module contains complex validation helper functions and path resolution log
 used throughout the configuration system.
 """
 
-import logging
 import os
 import re
 from pathlib import Path
 from typing import Any, Optional, Union
 
+from loguru import logger
 from duckalog.errors import ConfigError, PathResolutionError
 
 
@@ -18,9 +18,9 @@ LOGGER_NAME = "duckalog"
 SENSITIVE_KEYWORDS = ("password", "secret", "token", "key", "pwd")
 
 
-def get_logger(name: str = LOGGER_NAME) -> logging.Logger:
+def get_logger(name: str = LOGGER_NAME):
     """Return a logger configured for Duckalog."""
-    return logging.getLogger(name)
+    return logger.bind(name=name)
 
 
 def _is_sensitive(key: str) -> bool:
@@ -40,13 +40,12 @@ def _redact_value(value: Any, key_hint: str = "") -> Any:
     return value
 
 
-def _emit_std_logger(level: int, message: str, safe_details: dict[str, Any]) -> None:
-    """Emit a log message using stdlib logging."""
-    logger = logging.getLogger(LOGGER_NAME)
+def _emit_loguru_logger(level_name: str, message: str, safe_details: dict[str, Any]) -> None:
+    """Emit a log message using loguru."""
     if safe_details:
-        logger.log(level, "%s %s", message, safe_details)
+        logger.log(level_name, "{} {}", message, safe_details)
     else:
-        logger.log(level, message)
+        logger.log(level_name, message)
 
 
 def _log(level: int, message: str, **details: Any) -> None:
@@ -55,22 +54,29 @@ def _log(level: int, message: str, **details: Any) -> None:
     if details:
         safe_details = {k: _redact_value(v, k) for k, v in details.items()}
 
-    _emit_std_logger(level, message, safe_details)
+    # Map stdlib logging levels to loguru
+    level_map = {
+        20: "INFO",   # logging.INFO
+        10: "DEBUG",  # logging.DEBUG
+        40: "ERROR",  # logging.ERROR
+    }
+    level_name = level_map.get(level, "INFO")
+    _emit_loguru_logger(level_name, message, safe_details)
 
 
 def log_info(message: str, **details: Any) -> None:
     """Log a redacted INFO-level message."""
-    _log(logging.INFO, message, **details)
+    _log(20, message, **details)
 
 
 def log_debug(message: str, **details: Any) -> None:
     """Log a redacted DEBUG-level message."""
-    _log(logging.DEBUG, message, **details)
+    _log(10, message, **details)
 
 
 def log_error(message: str, **details: Any) -> None:
     """Log a redacted ERROR-level message."""
-    _log(logging.ERROR, message, **details)
+    _log(40, message, **details)
 
 
 # Path resolution and validation functions

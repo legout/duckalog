@@ -5,7 +5,6 @@ and typing. These models form the foundation of the configuration system
 and must not import from other config modules to avoid circular dependencies.
 """
 
-import logging
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Union, Optional

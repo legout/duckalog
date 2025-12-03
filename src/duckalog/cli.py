@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 # mypy: disable-error-code=assignment
-import logging
+import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 from pathlib import Path
 from typing import Any, Optional
+
+from loguru import logger
 
 import typer
 
@@ -253,9 +255,16 @@ def _configure_logging(verbose: bool) -> None:
         verbose: When ``True``, set the log level to ``INFO``; otherwise use
             ``WARNING``.
     """
+    # Remove default handler to avoid duplicate output
+    logger.remove()
 
-    level = logging.INFO if verbose else logging.WARNING
-    logging.basicConfig(level=level, format="%(message)s")
+    # Add a new handler with appropriate level and format
+    level = "INFO" if verbose else "WARNING"
+    logger.add(
+        sys.stderr,
+        level=level,
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | {message}"
+    )
 
 
 # Shared callback for filesystem options across all commands

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -546,8 +545,8 @@ def build_catalog(
             print(sql)
     """
 
-    if verbose:
-        logging.getLogger("duckalog").setLevel(logging.INFO)
+    # Note: Logging verbosity is configured at the CLI or application level,
+    # not per-function. The logging configuration should already be set.
 
     config = load_config(config_path)
 

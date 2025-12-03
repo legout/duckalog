@@ -5,22 +5,13 @@ handling both local file loading and remote URI loading.
 """
 
 import json
-import logging
 from pathlib import Path
 from typing import Any, Optional
 
 import yaml
 
-# Temporary import fixes to avoid circular imports
-import json
-import logging
-from pathlib import Path
-from typing import Any, Optional
-
-import yaml
-
-# Import directly from the main module for now to avoid circular imports
 from duckalog.errors import ConfigError
+from .validators import log_info, log_debug
 
 
 def _interpolate_env(value: Any) -> Any:
@@ -68,19 +59,6 @@ def _load_sql_files_from_config(
         )
 
     return config
-
-
-def log_info(message: str, **details: Any) -> None:
-    """Simple logging stub."""
-    print(f"INFO: {message} {details}")
-
-
-def log_debug(message: str, **details: Any) -> None:
-    """Simple logging stub."""
-    print(f"DEBUG: {message} {details}")
-
-
-from duckalog.errors import ConfigError
 
 
 def load_config(
