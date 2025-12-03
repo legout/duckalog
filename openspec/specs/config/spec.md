@@ -375,6 +375,40 @@ Secret configurations MUST enforce strict typing for options and use safe SQL qu
 - **WHEN** `CREATE SECRET` SQL statements are generated
 - **THEN** all string values SHALL be emitted using safe SQL literal quoting that doubles embedded single quotes
 
+### Requirement: Stable Config Module Public API
+The `duckalog.config` module MUST provide a stable public API for configuration models and helpers, regardless of its internal file layout.
+
+#### Scenario: Public config API remains stable across refactors
+- **GIVEN** user code that imports `Config`, `SecretConfig`, and `load_config` from `duckalog.config`
+- **WHEN** the internal implementation of the config layer is refactored into multiple modules or packages
+- **THEN** those imports continue to work without modification
+- **AND** the behavior of loading and validating configs remains consistent with the config specification.
+
+### Implementation Structure
+The configuration layer is implemented as a structured internal package under `duckalog.config` to improve maintainability while preserving the public API contract.
+
+#### Package Layout
+The `duckalog.config` package contains the following modules:
+
+- **`models.py`**: Pydantic model definitions and schema validation (Config, SecretConfig, ViewConfig, etc.)
+- **`loader.py`**: Configuration loading orchestration (`load_config`, `_load_config_from_local_file`, remote loading dispatch)
+- **`interpolation.py`**: Environment variable interpolation logic (`${env:VAR}` placeholder resolution)
+- **`validators.py`**: Complex validation helper functions and cross-field validation logic
+- **`sql_integration.py`**: SQL file loading and path resolution integration
+- **`__init__.py`**: Public API re-exports to maintain backward compatibility
+
+#### Responsibilities and Dependencies
+- **`models.py`** serves as the foundation and MUST NOT import from other config modules to prevent circular dependencies
+- **`loader.py`** orchestrates the loading process and imports utilities from `interpolation.py`, `validators.py`, and `sql_integration.py`
+- **`interpolation.py`**, **`validators.py`**, and **`sql_integration.py`** contain supporting logic and import models from `models.py` only
+- **`__init__.py`** provides the public API surface by re-exporting all symbols that were previously available from the monolithic `config.py`
+
+#### External API Compatibility
+The public import surface remains unchanged:
+- `from duckalog.config import Config, load_config, SecretConfig` continues to work
+- `from duckalog import config` with subsequent `config.Config` access continues to work
+- All existing configuration behaviors and validation rules remain identical
+
 ### Security Regression Tests
 
 The system MUST maintain a comprehensive suite of regression tests to prevent security vulnerabilities from being re-introduced during future development and refactoring.

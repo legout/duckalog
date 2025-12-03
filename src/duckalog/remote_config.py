@@ -403,7 +403,7 @@ def load_config_from_uri(
 
     # Process the configuration using the same logic as local configs
     # but adapted for remote content
-    from .config import _interpolate_env
+    from duckalog.config.interpolation import _interpolate_env
 
     log_debug("Remote config keys", keys=list(parsed_config.keys()))
     interpolated = _interpolate_env(parsed_config)

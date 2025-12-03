@@ -1,0 +1,1651 @@
+"""Configuration schema and loader for Duckalog catalogs.
+
+This module provides a unified configuration layer that consolidates:
+
+- Configuration schema definitions and validation (Pydantic models)
+- Path resolution utilities with security validation
+- SQL file loading and template processing
+- Logging with automatic sensitive data redaction
+
+The consolidation reduces complexity by eliminating separate modules for path resolution,
+SQL file loading, and logging utilities, while maintaining the same public API.
+
+## Key Functions
+
+### Configuration Loading
+- `load_config()`: Main entry point for loading configuration files
+- `load_config_with_context()`: Load config with additional context information
+- `load_config_with_schema()`: Load config using a custom schema class
+
+### Path Resolution
+- `is_relative_path()`: Detect if a path is relative
+- `resolve_relative_path()`: Resolve relative paths to absolute paths
+- `validate_path_security()`: Validate path security boundaries
+- `normalize_path_for_sql()`: Normalize paths for SQL usage
+
+### SQL File Processing
+- Internal functions for loading SQL content from external files
+- Template processing with variable substitution
+- Security validation of SQL content
+
+### Logging Utilities
+- `log_info()`, `log_debug()`, `log_error()`: Redacted logging functions
+- Automatic detection and redaction of sensitive data
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Literal, Union, Optional
+
+import yaml
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+
+from duckalog.errors import ConfigError, DuckalogError, PathResolutionError
+
+
+def is_relative_path(path: str) -> bool:
+    """Detect if a path is relative based on platform-specific rules."""
+    if not path or not path.strip():
+        return False
+
+    # Check for protocols (http, s3, gs, https, etc.)
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path):
+        return False
+
+    # Platform-specific checks
+    try:
+        if Path(path).is_absolute():
+            return False
+    except (OSError, ValueError):
+        # Path might contain invalid characters for the current platform
+        pass
+
+    # Windows drive letter check (C:, D:, etc.)
+    if re.match(r"^[a-zA-Z]:[\\\\/]", path):
+        return False
+
+    # Windows UNC path check (\\server\share)
+    if path.startswith("\\\\"):
+        return False
+
+    return True
+
+
+def resolve_relative_path(path: str, config_dir: Path) -> str:
+    """Resolve a relative path to an absolute path relative to config directory."""
+    if not path or not path.strip():
+        raise ValueError("Path cannot be empty")
+
+    path = path.strip()
+
+    # If path is already absolute, return as-is
+    if not is_relative_path(path):
+        return path
+
+    # Resolve relative path against config directory
+    try:
+        config_dir = config_dir.resolve()
+        resolved_path = config_dir / path
+        resolved_path = resolved_path.resolve()
+
+        log_debug(
+            f"Resolved relative path: {path} -> {resolved_path}",
+            config_dir=str(config_dir),
+        )
+
+        return str(resolved_path)
+
+    except (OSError, ValueError) as exc:
+        raise ValueError(
+            f"Failed to resolve path '{path}' relative to '{config_dir}': {exc}"
+        ) from exc
+
+
+def validate_path_security(path: str, config_dir: Path) -> bool:
+    """Validate that resolved paths don't violate security boundaries."""
+    if not path or not path.strip():
+        return False
+
+    # Remote URIs are considered safe
+    if not is_relative_path(path):
+        # Check if it's a remote URI (has protocol)
+        if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path):
+            return True
+
+    try:
+        # Resolve relative paths only
+        if is_relative_path(path):
+            resolved_path_str = resolve_relative_path(path, config_dir.resolve())
+            resolved_path = Path(resolved_path_str)
+        else:
+            # For non-relative local paths, validate them
+            resolved_path = Path(path).resolve()
+
+        config_dir_resolved = config_dir.resolve()
+
+        # Check if resolved path is within allowed roots
+        try:
+            if is_within_allowed_roots(str(resolved_path), [config_dir_resolved]):
+                return True
+            else:
+                log_debug(
+                    f"Path resolution security violation: {resolved_path} is outside allowed root {config_dir_resolved}"
+                )
+                return False
+        except ValueError as exc:
+            # Path resolution failed (invalid path)
+            log_debug(
+                f"Path resolution validation failed: {exc}",
+                path=path,
+                resolved_path=str(resolved_path),
+            )
+            return False
+
+    except (OSError, ValueError, RuntimeError):
+        return False
+
+
+def normalize_path_for_sql(path: str) -> str:
+    """Normalize a path for use in SQL statements."""
+    if not path or not path.strip():
+        raise ValueError("Path cannot be empty")
+
+    path = path.strip()
+
+    # Convert to Path object for normalization
+    try:
+        path_obj = Path(path)
+        normalized = str(path_obj)
+    except (OSError, ValueError):
+        # If pathlib can't handle it, use as-is
+        normalized = path
+
+    # Import quote_literal from sql_generation to avoid circular imports
+    from .sql_generation import quote_literal
+
+    return quote_literal(normalized)
+
+
+def is_within_allowed_roots(candidate_path: str, allowed_roots: list[Path]) -> bool:
+    """Check if a resolved path is within any of the allowed root directories."""
+    try:
+        # Resolve the candidate path to absolute, following symlinks
+        resolved_candidate = Path(candidate_path).resolve()
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise ValueError(f"Cannot resolve path '{candidate_path}': {exc}") from exc
+
+    # Resolve all allowed roots to absolute paths
+    try:
+        resolved_roots = [root.resolve() for root in allowed_roots]
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise ValueError(f"Cannot resolve allowed root: {exc}") from exc
+
+    # Check if candidate is within any allowed root
+    for root in resolved_roots:
+        try:
+            # Use commonpath to find the common prefix
+            common = Path(os.path.commonpath([resolved_candidate, root]))
+
+            # If the common path equals the root, then candidate is within this root
+            if common == root:
+                return True
+
+        except ValueError:
+            # os.path.commonpath raises ValueError when paths are on different
+            # drives (Windows) or have no common prefix - treat as not within root
+            continue
+
+    return False
+
+
+def is_windows_path_absolute(path: str) -> bool:
+    """Check Windows-specific absolute path patterns."""
+    # Drive letter: C:\path
+    if re.match(r"^[a-zA-Z]:[\\\\/]", path):
+        return True
+
+    # UNC path: \\server\share
+    if path.startswith("\\\\"):
+        return True
+
+    return False
+
+
+def detect_path_type(path: str) -> str:
+    """Detect the type of path for categorization."""
+    if not path or not path.strip():
+        return "invalid"
+
+    # Check for remote URIs with protocols
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path):
+        return "remote"
+
+    # Check for absolute paths
+    if not is_relative_path(path):
+        return "absolute"
+
+    # Otherwise it's relative
+    return "relative"
+
+
+def validate_file_accessibility(path: str) -> tuple[bool, str | None]:
+    """Validate that a file path is accessible."""
+    if not path or not path.strip():
+        return False, "Path cannot be empty"
+
+    try:
+        path_obj = Path(path)
+
+        # Check if file exists
+        if not path_obj.exists():
+            return False, f"File does not exist: {path}"
+
+        # Check if it's a file (not a directory)
+        if not path_obj.is_file():
+            return False, f"Path is not a file: {path}"
+
+        # Check if file is readable
+        try:
+            with open(path_obj, "rb"):
+                pass
+        except PermissionError:
+            return False, f"Permission denied reading file: {path}"
+        except OSError as exc:
+            return False, f"Error accessing file {path}: {exc}"
+
+        return True, None
+
+    except (OSError, ValueError) as exc:
+        return False, f"Invalid path: {exc}"
+
+
+# Logging and redaction utilities (consolidated from logging_utils.py)
+import logging
+
+LOGGER_NAME = "duckalog"
+SENSITIVE_KEYWORDS = ("password", "secret", "token", "key", "pwd")
+
+
+def get_logger(name: str = LOGGER_NAME) -> logging.Logger:
+    """Return a logger configured for Duckalog."""
+    return logging.getLogger(name)
+
+
+def _is_sensitive(key: str) -> bool:
+    """Check if a key contains sensitive information."""
+    lowered = key.lower()
+    return any(keyword in lowered for keyword in SENSITIVE_KEYWORDS)
+
+
+def _redact_value(value: Any, key_hint: str = "") -> Any:
+    """Redact sensitive values from log data."""
+    if isinstance(value, dict):
+        return {k: _redact_value(v, k) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact_value(item, key_hint) for item in value]
+    if isinstance(value, str) and _is_sensitive(key_hint):
+        return "***REDACTED***"
+    return value
+
+
+def _emit_std_logger(level: int, message: str, safe_details: dict[str, Any]) -> None:
+    """Emit a log message using stdlib logging."""
+    logger = logging.getLogger(LOGGER_NAME)
+    if safe_details:
+        logger.log(level, "%s %s", message, safe_details)
+    else:
+        logger.log(level, message)
+
+
+def _log(level: int, message: str, **details: Any) -> None:
+    """Log a redacted message."""
+    safe_details: dict[str, Any] = {}
+    if details:
+        safe_details = {k: _redact_value(v, k) for k, v in details.items()}
+
+    _emit_std_logger(level, message, safe_details)
+
+
+def log_info(message: str, **details: Any) -> None:
+    """Log a redacted INFO-level message."""
+    _log(logging.INFO, message, **details)
+
+
+def log_debug(message: str, **details: Any) -> None:
+    """Log a redacted DEBUG-level message."""
+    _log(logging.DEBUG, message, **details)
+
+
+def log_error(message: str, **details: Any) -> None:
+    """Log a redacted ERROR-level message."""
+    _log(logging.ERROR, message, **details)
+
+
+if TYPE_CHECKING:  # pragma: no cover - used for type checking only
+    from .sql_file_loader import SQLFileLoader
+
+
+EnvSource = Literal["parquet", "delta", "iceberg", "duckdb", "sqlite", "postgres"]
+SecretType = Literal["s3", "azure", "gcs", "http", "postgres", "mysql"]
+SecretProvider = Literal["config", "credential_chain"]
+ENV_PATTERN = re.compile(r"\$\{env:([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+class SecretConfig(BaseModel):
+    """Configuration for a DuckDB secret.
+
+    Attributes:
+        type: Secret type (s3, azure, gcs, http, postgres, mysql).
+        name: Optional name for the secret (defaults to type if not provided).
+        provider: Secret provider (config or credential_chain).
+        persistent: Whether to create a persistent secret. Defaults to False.
+        scope: Optional scope prefix for the secret.
+        key_id: Access key ID or username for authentication.
+        secret: Secret key or password for authentication.
+        region: Geographic region for cloud services.
+        endpoint: Custom endpoint URL for cloud services.
+        connection_string: Full connection string for databases.
+        tenant_id: Azure tenant ID for authentication.
+        account_name: Azure storage account name.
+        client_id: Azure client ID for authentication.
+        client_secret: Azure client secret for authentication.
+        service_account_key: GCS service account key.
+        json_key: GCS JSON key.
+        bearer_token: HTTP bearer token for authentication.
+        header: HTTP header for authentication.
+        database: Database name for database secrets.
+        host: Database host for database secrets.
+        port: Database port for database secrets.
+        user: Database username (alternative to key_id for database types).
+        password: Database password (alternative to secret for database types).
+        options: Additional key-value options for the secret.
+    """
+
+    type: SecretType
+    name: Optional[str] = None
+    provider: SecretProvider = "config"
+    persistent: bool = False
+    scope: Optional[str] = None
+    key_id: Optional[str] = None
+    secret: Optional[str] = None
+    region: Optional[str] = None
+    endpoint: Optional[str] = None
+    connection_string: Optional[str] = None
+    tenant_id: Optional[str] = None
+    account_name: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    service_account_key: Optional[str] = None
+    json_key: Optional[str] = None
+    bearer_token: Optional[str] = None
+    header: Optional[str] = None
+    database: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    user: Optional[str] = None
+    password: Optional[str] = None
+    options: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("Secret name cannot be empty")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_secret_fields(self) -> "SecretConfig":
+        """Validate required fields based on secret type and provider."""
+        if self.type == "s3":
+            if self.provider == "config":
+                if not self.key_id or not self.secret:
+                    raise ValueError("S3 config provider requires key_id and secret")
+            # credential_chain provider doesn't require explicit credentials
+        elif self.type == "azure":
+            if self.provider == "config":
+                if (
+                    not self.connection_string
+                    and not (self.tenant_id and self.account_name)
+                    and not (self.tenant_id and self.client_id and self.client_secret)
+                ):
+                    raise ValueError(
+                        "Azure config provider requires connection_string, (tenant_id and account_name), or (tenant_id, client_id, and client_secret)"
+                    )
+        elif self.type == "gcs":
+            if self.provider == "config":
+                if not (
+                    self.service_account_key
+                    or self.json_key
+                    or (self.key_id and self.secret)
+                ):
+                    raise ValueError(
+                        "GCS config provider requires service_account_key, json_key, or (key_id and secret)"
+                    )
+        elif self.type == "http":
+            if not (self.bearer_token or self.header or (self.key_id and self.secret)):
+                raise ValueError(
+                    "HTTP secret requires bearer_token, header, or (key_id and secret)"
+                )
+        elif self.type in {"postgres", "mysql"}:
+            if not self.connection_string and not (
+                self.host
+                and self.database
+                and (self.user or self.key_id)
+                and (self.password or self.secret)
+            ):
+                raise ValueError(
+                    f"{self.type.upper()} secret requires connection_string or (host, database, user/key_id, and password/secret)"
+                )
+        return self
+
+
+class DuckDBConfig(BaseModel):
+    """DuckDB connection and session settings.
+
+    Attributes:
+        database: Path to the DuckDB database file. Defaults to ``":memory:"``.
+        install_extensions: Names of extensions to install before use.
+        load_extensions: Names of extensions to load in the session.
+        pragmas: SQL statements (typically ``SET`` pragmas) executed after
+            connecting and loading extensions.
+        settings: DuckDB SET statements executed after pragmas. Can be a
+            single string or list of strings.
+        secrets: List of secret definitions for external services and databases.
+    """
+
+    database: str = ":memory:"
+    install_extensions: list[str] = Field(default_factory=list)
+    load_extensions: list[str] = Field(default_factory=list)
+    pragmas: list[str] = Field(default_factory=list)
+    settings: Optional[Union[str, list[str]]] = None
+    secrets: list[SecretConfig] = Field(default_factory=list)
+
+    @field_validator("settings")
+    @classmethod
+    def _validate_settings(
+        cls, value: Optional[Union[str, list[str]]]
+    ) -> Optional[Union[str, list[str]]]:
+        if value is None:
+            return None
+
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return None
+            # Basic validation for SET statement format
+            if not value.upper().startswith("SET "):
+                raise ValueError("Settings must be valid DuckDB SET statements")
+            return value
+
+        if isinstance(value, list):
+            validated_settings = []
+            for setting in value:
+                if isinstance(setting, str):
+                    setting = setting.strip()
+                    if setting:  # Skip empty strings
+                        if not setting.upper().startswith("SET "):
+                            raise ValueError(
+                                "Settings must be valid DuckDB SET statements"
+                            )
+                        validated_settings.append(setting)
+                else:
+                    raise ValueError("Settings list must contain only strings")
+            return validated_settings if validated_settings else None
+
+        raise ValueError("Settings must be a string or list of strings")
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class DuckDBAttachment(BaseModel):
+    """Configuration for attaching another DuckDB database.
+
+    Attributes:
+        alias: Alias under which the database will be attached.
+        path: Filesystem path to the DuckDB database file.
+        read_only: Whether the attachment should be opened in read-only mode.
+            Defaults to ``True`` for safety.
+    """
+
+    alias: str
+    path: str
+    read_only: bool = True
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class SQLiteAttachment(BaseModel):
+    """Configuration for attaching a SQLite database.
+
+    Attributes:
+        alias: Alias under which the SQLite database will be attached.
+        path: Filesystem path to the SQLite ``.db`` file.
+    """
+
+    alias: str
+    path: str
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class PostgresAttachment(BaseModel):
+    """Configuration for attaching a Postgres database.
+
+    Attributes:
+        alias: Alias used inside DuckDB to reference the Postgres database.
+        host: Hostname or IP address of the Postgres server.
+        port: TCP port of the Postgres server.
+        database: Database name to connect to.
+        user: Username for authentication.
+        password: Password for authentication.
+        sslmode: Optional SSL mode (for example, ``require``).
+        options: Extra key/value options passed to the attachment clause.
+    """
+
+    alias: str
+    host: str
+    port: int = Field(ge=1, le=65535)
+    database: str
+    user: str
+    password: str
+    sslmode: Optional[str] = None
+    options: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class DuckalogAttachment(BaseModel):
+    """Configuration for attaching another Duckalog catalog config.
+
+    Attributes:
+        alias: Alias under which the child catalog will be attached.
+        config_path: Path to the child Duckalog config file.
+        database: Optional override for the child's database file path.
+        read_only: Whether the attachment should be opened in read-only mode.
+            Defaults to ``True`` for safety.
+    """
+
+    alias: str
+    config_path: str
+    database: Optional[str] = None
+    read_only: bool = True
+
+    @field_validator("alias")
+    @classmethod
+    def _validate_alias(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("Duckalog attachment alias cannot be empty")
+        return value.strip()
+
+    @field_validator("config_path")
+    @classmethod
+    def _validate_config_path(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("Duckalog attachment config_path cannot be empty")
+        return value.strip()
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class AttachmentsConfig(BaseModel):
+    """Collection of attachment configurations.
+
+    Attributes:
+        duckdb: DuckDB attachment entries.
+        sqlite: SQLite attachment entries.
+        postgres: Postgres attachment entries.
+        duckalog: Duckalog config attachment entries.
+    """
+
+    duckdb: list[DuckDBAttachment] = Field(default_factory=list)
+    sqlite: list[SQLiteAttachment] = Field(default_factory=list)
+    postgres: list[PostgresAttachment] = Field(default_factory=list)
+    duckalog: list[DuckalogAttachment] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class IcebergCatalogConfig(BaseModel):
+    """Configuration for an Iceberg catalog.
+
+    Attributes:
+        name: Catalog name referenced by Iceberg views.
+        catalog_type: Backend type (for example, ``rest``, ``hive``, ``glue``).
+        uri: Optional URI used by certain catalog types.
+        warehouse: Optional warehouse location for catalog data.
+        options: Additional catalog-specific options.
+    """
+
+    name: str
+    catalog_type: str
+    uri: Optional[str] = None
+    warehouse: Optional[str] = None
+    options: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("Iceberg catalog name cannot be empty")
+        return value
+
+
+class SQLFileReference(BaseModel):
+    """Reference to SQL content in an external file.
+
+    Attributes:
+        path: Path to the SQL file (relative or absolute).
+        variables: Dictionary of variables for template substitution.
+        as_template: Whether to process the file content as a template.
+    """
+
+    path: str = Field(..., description="Path to the SQL file")
+    variables: Optional[dict[str, Any]] = Field(
+        default=None, description="Variables for template substitution"
+    )
+    as_template: bool = Field(
+        default=False, description="Whether to process as template"
+    )
+
+
+class ViewConfig(BaseModel):
+    """Definition of a single catalog view.
+
+    A view can be defined in several ways:
+    1. **Inline SQL**: Using the ``sql`` field with raw SQL text
+    2. **SQL File**: Using ``sql_file`` to reference external SQL files
+    3. **SQL Template**: Using ``sql_template`` for parameterized SQL files
+    4. **Data Source**: Using ``source`` + required fields for direct data access
+    5. **Source + SQL**: Using ``source`` for data access plus ``sql`` for transformations
+
+    For data sources, the required fields depend on the source type:
+    - Parquet/Delta: ``uri`` field is required
+    - Iceberg: Either ``uri`` OR both ``catalog`` and ``table``
+    - DuckDB/SQLite/Postgres: Both ``database`` and ``table`` are required
+
+    When using SQL with a data source, the SQL will be applied as a transformation
+    over the data from the specified source.
+
+    Additional metadata fields such as ``description`` and ``tags`` do not affect
+    SQL generation but are preserved for documentation and tooling.
+
+    Attributes:
+        name: Unique view name within the config.
+        sql: Raw SQL text defining the view body.
+        sql_file: Direct reference to a SQL file.
+        sql_template: Reference to a SQL template file with variable substitution.
+        source: Source type (e.g. ``"parquet"``, ``"iceberg"``, ``"duckdb"``).
+        uri: URI for file- or table-based sources (Parquet/Delta/Iceberg).
+        database: Attachment alias for attached-database sources.
+        table: Table name (optionally schema-qualified) for attached sources.
+        catalog: Iceberg catalog name for catalog-based Iceberg views.
+        options: Source-specific options passed to scan functions.
+        description: Optional human-readable description of the view.
+        tags: Optional list of tags for classification.
+    """
+
+    name: str
+    sql: Optional[str] = None
+    sql_file: Optional[SQLFileReference] = None
+    sql_template: Optional[SQLFileReference] = None
+    source: Optional[EnvSource] = None
+    uri: Optional[str] = None
+    database: Optional[str] = None
+    table: Optional[str] = None
+    catalog: Optional[str] = None
+    options: dict[str, Any] = Field(default_factory=dict)
+    description: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("View name cannot be empty")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_definition(self) -> "ViewConfig":
+        has_sql = bool(self.sql and self.sql.strip())
+        has_sql_file = self.sql_file is not None
+        has_sql_template = self.sql_template is not None
+        has_source = self.source is not None
+
+        # Count how many SQL sources are defined
+        sql_sources = sum([has_sql, has_sql_file, has_sql_template])
+
+        # Must have either SQL content or a data source
+        if sql_sources == 0 and not has_source:
+            raise ValueError("View must define either SQL content or a data source")
+
+        # Cannot have multiple SQL sources
+        if sql_sources > 1:
+            raise ValueError(
+                "View cannot have multiple SQL sources (sql, sql_file, sql_template). "
+                "Use only one of these fields."
+            )
+
+        # Validate SQL file references
+        if self.sql_file is not None:
+            if not self.sql_file.path or not self.sql_file.path.strip():
+                raise ValueError(f"View '{self.name}': sql_file.path cannot be empty")
+
+        if self.sql_template is not None:
+            if not self.sql_template.path or not self.sql_template.path.strip():
+                raise ValueError(
+                    f"View '{self.name}': sql_template.path cannot be empty"
+                )
+
+        # If we have SQL content, clean it up
+        if isinstance(self.sql, str) and self.sql.strip():
+            self.sql = self.sql.strip()
+
+        # Validate data source configuration (if source is defined)
+        if has_source:
+            if self.source in {"parquet", "delta"}:
+                if not self.uri:
+                    raise ValueError(
+                        f"View '{self.name}' requires a 'uri' for source '{self.source}'"
+                    )
+            elif self.source == "iceberg":
+                has_uri = bool(self.uri)
+                has_catalog_table = bool(self.catalog and self.table)
+                if has_uri == has_catalog_table:
+                    raise ValueError(
+                        "Iceberg views require either 'uri' OR both 'catalog' and 'table', but not both"
+                    )
+            elif self.source in {"duckdb", "sqlite", "postgres"}:
+                if not self.database or not self.table:
+                    raise ValueError(
+                        f"View '{self.name}' with source '{self.source}' requires both 'database' and 'table'"
+                    )
+            else:  # pragma: no cover - enforced by Literal
+                raise ValueError(f"Unsupported view source '{self.source}'")
+
+        return self
+
+
+class SemanticDimensionConfig(BaseModel):
+    """Definition of a semantic dimension.
+
+    A dimension represents a business attribute that maps to an expression
+    over the base view of a semantic model.
+
+    Attributes:
+        name: Unique dimension name within the semantic model.
+        expression: SQL expression referencing columns from the base view.
+        label: Human-readable display name.
+        description: Optional detailed description.
+        type: Optional data type hint (time, number, string, boolean, date).
+        time_grains: Optional list of time grains for time dimensions.
+    """
+
+    name: str
+    expression: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    type: Optional[str] = None
+    time_grains: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Dimension name cannot be empty")
+        return value
+
+    @field_validator("expression")
+    @classmethod
+    def _validate_expression(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Dimension expression cannot be empty")
+        return value
+
+    @field_validator("type")
+    @classmethod
+    def _validate_type(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None:
+            value = value.strip().lower()
+            valid_types = {"time", "number", "string", "boolean", "date"}
+            if value not in valid_types:
+                raise ValueError(
+                    f"Invalid dimension type '{value}'. Valid types are: {', '.join(sorted(valid_types))}"
+                )
+        return value
+
+    @field_validator("time_grains")
+    @classmethod
+    def _validate_time_grains(cls, value: list[str], info: ValidationInfo) -> list[str]:
+        if value:
+            # Only allow time_grains for time dimensions
+            if info.data.get("type") != "time":
+                raise ValueError(
+                    "time_grains can only be specified for time dimensions"
+                )
+
+            valid_grains = {
+                "year",
+                "quarter",
+                "month",
+                "week",
+                "day",
+                "hour",
+                "minute",
+                "second",
+            }
+            for grain in value:
+                grain_clean = grain.strip().lower()
+                if grain_clean not in valid_grains:
+                    raise ValueError(
+                        f"Invalid time grain '{grain}'. Valid grains are: {', '.join(sorted(valid_grains))}"
+                    )
+
+            # Return cleaned time grains
+            return [grain.strip().lower() for grain in value]
+        return value
+
+
+class SemanticMeasureConfig(BaseModel):
+    """Definition of a semantic measure.
+
+    A measure represents a business metric that typically involves aggregation
+    or calculation over the base view of a semantic model.
+
+    Attributes:
+        name: Unique measure name within the semantic model.
+        expression: SQL expression (often aggregated) over the base view.
+        label: Human-readable display name.
+        description: Optional detailed description.
+        type: Optional data type hint.
+    """
+
+    name: str
+    expression: str
+    label: Optional[str] = None
+    description: Optional[str] = None
+    type: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Measure name cannot be empty")
+        return value
+
+    @field_validator("expression")
+    @classmethod
+    def _validate_expression(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Measure expression cannot be empty")
+        return value
+
+
+class SemanticJoinConfig(BaseModel):
+    """Definition of a semantic join.
+
+    A join defines a relationship to another view for enriching the semantic model
+    with additional data, typically dimension tables.
+
+    Attributes:
+        to_view: Name of an existing view in the views section to join to.
+        type: Join type (inner, left, right, full).
+        on_condition: SQL join condition expression.
+    """
+
+    to_view: str
+    type: str
+    on_condition: str
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("to_view")
+    @classmethod
+    def _validate_to_view(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Join 'to_view' cannot be empty")
+        return value
+
+    @field_validator("type")
+    @classmethod
+    def _validate_type(cls, value: str) -> str:
+        value = value.strip().lower()
+        valid_types = {"inner", "left", "right", "full"}
+        if value not in valid_types:
+            raise ValueError(
+                f"Invalid join type '{value}'. Valid types are: {', '.join(sorted(valid_types))}"
+            )
+        return value
+
+    @field_validator("on_condition")
+    @classmethod
+    def _validate_on_condition(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Join 'on_condition' cannot be empty")
+        return value
+
+
+class SemanticDefaultsConfig(BaseModel):
+    """Default configuration for a semantic model.
+
+    Provides default settings for query builders and dashboards,
+    such as the primary time dimension and default measures.
+
+    Attributes:
+        time_dimension: Default time dimension name.
+        primary_measure: Default primary measure name.
+        default_filters: Optional list of default filters.
+    """
+
+    time_dimension: Optional[str] = None
+    primary_measure: Optional[str] = None
+    default_filters: list[dict[str, Any]] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("time_dimension")
+    @classmethod
+    def _validate_time_dimension(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("Default time dimension cannot be empty string")
+        return value
+
+    @field_validator("primary_measure")
+    @classmethod
+    def _validate_primary_measure(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("Default primary measure cannot be empty string")
+        return value
+
+
+class SemanticModelConfig(BaseModel):
+    """Definition of a semantic model.
+
+    A semantic model provides business-friendly metadata on top of an existing
+    Duckalog view, defining dimensions and measures for analytics and BI use cases.
+
+    Attributes:
+        name: Unique semantic model name within the config.
+        base_view: Name of an existing view in the views section.
+        dimensions: Optional list of dimension definitions.
+        measures: Optional list of measure definitions.
+        joins: Optional list of join definitions to other views.
+        defaults: Optional default configuration for query builders.
+        label: Human-readable display name.
+        description: Optional detailed description.
+        tags: Optional list of classification tags.
+    """
+
+    name: str
+    base_view: str
+    dimensions: list[SemanticDimensionConfig] = Field(default_factory=list)
+    measures: list[SemanticMeasureConfig] = Field(default_factory=list)
+    joins: list[SemanticJoinConfig] = Field(default_factory=list)
+    defaults: Optional[SemanticDefaultsConfig] = None
+    label: Optional[str] = None
+    description: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Semantic model name cannot be empty")
+        return value
+
+    @field_validator("base_view")
+    @classmethod
+    def _validate_base_view(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Base view cannot be empty")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_uniqueness(self) -> "SemanticModelConfig":
+        """Validate that dimension and measure names are unique within the model."""
+        dimension_names = {dim.name for dim in self.dimensions}
+        measure_names = {measure.name for measure in self.measures}
+
+        # Check for duplicate dimension names
+        if len(dimension_names) != len(self.dimensions):
+            duplicates = [
+                name
+                for name in dimension_names
+                if sum(1 for dim in self.dimensions if dim.name == name) > 1
+            ]
+            raise ValueError(
+                f"Duplicate dimension name(s) found: {', '.join(duplicates)}"
+            )
+
+        # Check for duplicate measure names
+        if len(measure_names) != len(self.measures):
+            duplicates = [
+                name
+                for name in measure_names
+                if sum(1 for measure in self.measures if measure.name == name) > 1
+            ]
+            raise ValueError(
+                f"Duplicate measure name(s) found: {', '.join(duplicates)}"
+            )
+
+        # Check for conflicts between dimensions and measures
+        conflicts = dimension_names.intersection(measure_names)
+        if conflicts:
+            raise ValueError(
+                f"Dimension and measure name(s) conflict: {', '.join(sorted(conflicts))}"
+            )
+
+        # Validate defaults reference existing dimensions and measures
+        if self.defaults:
+            if self.defaults.time_dimension:
+                if self.defaults.time_dimension not in dimension_names:
+                    raise ValueError(
+                        f"Default time dimension '{self.defaults.time_dimension}' does not exist in dimensions"
+                    )
+                # Verify the time dimension is actually typed as 'time'
+                time_dim = next(
+                    (
+                        dim
+                        for dim in self.dimensions
+                        if dim.name == self.defaults.time_dimension
+                    ),
+                    None,
+                )
+                if time_dim and time_dim.type != "time":
+                    raise ValueError(
+                        f"Default time dimension '{self.defaults.time_dimension}' must have type 'time'"
+                    )
+
+            if self.defaults.primary_measure:
+                if self.defaults.primary_measure not in measure_names:
+                    raise ValueError(
+                        f"Default primary measure '{self.defaults.primary_measure}' does not exist in measures"
+                    )
+
+            # Validate default filters reference existing dimensions
+            for filter_def in self.defaults.default_filters:
+                filter_dimension = filter_def.get("dimension")
+                if filter_dimension and filter_dimension not in dimension_names:
+                    raise ValueError(
+                        f"Default filter dimension '{filter_dimension}' does not exist in dimensions"
+                    )
+
+        return self
+
+
+class Config(BaseModel):
+    """Top-level Duckalog configuration.
+
+    Attributes:
+        version: Positive integer describing the config schema version.
+        duckdb: DuckDB session and connection settings.
+        views: List of view definitions to create in the catalog.
+        attachments: Optional attachments to external databases.
+        iceberg_catalogs: Optional Iceberg catalog definitions.
+        semantic_models: Optional semantic model definitions for business metadata.
+    """
+
+    version: int
+    duckdb: DuckDBConfig
+    views: list[ViewConfig]
+    attachments: AttachmentsConfig = Field(default_factory=AttachmentsConfig)
+    iceberg_catalogs: list[IcebergCatalogConfig] = Field(default_factory=list)
+    semantic_models: list[SemanticModelConfig] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("version")
+    @classmethod
+    def _version_positive(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("Config version must be a positive integer")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_uniqueness(self) -> "Config":
+        seen: dict[str, int] = {}
+        duplicates: list[str] = []
+        for index, view in enumerate(self.views):
+            if view.name in seen:
+                duplicates.append(view.name)
+            else:
+                seen[view.name] = index
+        if duplicates:
+            dup_list = ", ".join(sorted(set(duplicates)))
+            raise ValueError(f"Duplicate view name(s) found: {dup_list}")
+
+        catalog_names: dict[str, int] = {}
+        duplicates = []
+        for catalog in self.iceberg_catalogs:
+            if catalog.name in catalog_names:
+                duplicates.append(catalog.name)
+            else:
+                catalog_names[catalog.name] = 1
+        if duplicates:
+            dup_list = ", ".join(sorted(set(duplicates)))
+            raise ValueError(f"Duplicate Iceberg catalog name(s) found: {dup_list}")
+
+        missing_catalog_views: list[str] = []
+        defined_catalogs = set(catalog_names.keys())
+        for view in self.views:
+            if (
+                view.source == "iceberg"
+                and view.catalog
+                and view.catalog not in defined_catalogs
+            ):
+                missing_catalog_views.append(f"{view.name} -> {view.catalog}")
+        if missing_catalog_views:
+            details = ", ".join(missing_catalog_views)
+            raise ValueError(
+                "Iceberg view(s) reference undefined catalog(s): "
+                f"{details}. Define each catalog under `iceberg_catalogs`."
+            )
+
+        # Validate semantic models
+        semantic_model_names: dict[str, int] = {}
+        duplicates = []
+        for semantic_model in self.semantic_models:
+            if semantic_model.name in semantic_model_names:
+                duplicates.append(semantic_model.name)
+            else:
+                semantic_model_names[semantic_model.name] = 1
+        if duplicates:
+            dup_list = ", ".join(sorted(set(duplicates)))
+            raise ValueError(f"Duplicate semantic model name(s) found: {dup_list}")
+
+        # Validate that semantic model base views exist
+        view_names = {view.name for view in self.views}
+        missing_base_views: list[str] = []
+        for semantic_model in self.semantic_models:
+            if semantic_model.base_view not in view_names:
+                missing_base_views.append(
+                    f"{semantic_model.name} -> {semantic_model.base_view}"
+                )
+        if missing_base_views:
+            details = ", ".join(missing_base_views)
+            raise ValueError(
+                "Semantic model(s) reference undefined base view(s): "
+                f"{details}. Define each view under `views`."
+            )
+
+        # Validate that semantic model joins reference existing views
+        missing_join_views: list[str] = []
+        for semantic_model in self.semantic_models:
+            for join in semantic_model.joins:
+                if join.to_view not in view_names:
+                    missing_join_views.append(f"{semantic_model.name}.{join.to_view}")
+        if missing_join_views:
+            details = ", ".join(missing_join_views)
+            raise ValueError(
+                "Semantic model join(s) reference undefined view(s): "
+                f"{details}. Define each view under `views`."
+            )
+
+        return self
+
+
+def load_config(
+    path: str,
+    load_sql_files: bool = True,
+    sql_file_loader: Optional["SQLFileLoader"] = None,
+    resolve_paths: bool = True,
+    filesystem: Any | None = None,
+) -> Config:
+    """Load, interpolate, and validate a Duckalog configuration file.
+
+    This helper is the main entry point for turning a YAML or JSON file into a
+    validated :class:`Config` instance. It applies environment-variable
+    interpolation and enforces the configuration schema.
+
+    Args:
+        path: Path to a YAML or JSON config file, or a remote URI.
+        load_sql_files: Whether to load and process SQL from external files.
+                      If False, SQL file references are left as-is for later processing.
+        sql_file_loader: Optional SQLFileLoader instance for loading SQL files.
+                        If None, a default loader will be created.
+        resolve_paths: Whether to resolve relative paths to absolute paths.
+                      If True, relative paths in view URIs and attachment paths
+                      will be resolved relative to the config file's directory.
+                      For remote configs, this defaults to False.
+        filesystem: Optional fsspec filesystem object to use for remote operations.
+                   If provided, this filesystem will be used instead of creating
+                   a new one based on URI scheme. Useful for custom
+                   authentication or advanced use cases.
+
+    Returns:
+        A validated :class:`Config` object.
+
+    Raises:
+        ConfigError: If the file cannot be read, is not valid YAML/JSON,
+            fails schema validation, contains unresolved
+            ``${env:VAR_NAME}`` placeholders, or if SQL file loading fails.
+
+    Example:
+        Load a catalog from ``catalog.yaml``::
+
+            from duckalog import load_config
+
+            config = load_config("catalog.yaml")
+            print(len(config.views))
+
+        Load a catalog from S3::
+
+            config = load_config("s3://my-bucket/configs/catalog.yaml")
+            print(len(config.views))
+
+        Load a catalog with custom filesystem::
+
+            import fsspec
+            fs = fsspec.filesystem("s3", key="key", secret="secret", anon=False)
+            config = load_config("s3://my-bucket/configs/catalog.yaml", filesystem=fs)
+            print(len(config.views))
+    """
+    # Check if this is a remote URI
+    try:
+        from .remote_config import is_remote_uri, load_config_from_uri
+
+        if is_remote_uri(path):
+            # For remote URIs, use the remote loader
+            # Default resolve_paths to False for remote configs
+            return load_config_from_uri(
+                uri=path,
+                load_sql_files=load_sql_files,
+                sql_file_loader=sql_file_loader,
+                resolve_paths=False,  # Remote configs don't resolve relative paths by default
+                filesystem=filesystem,  # Pass through filesystem parameter
+            )
+    except ImportError:
+        # Remote functionality not available, continue with local loading
+        pass
+
+    # Local file loading - delegate to the dedicated helper
+    return _load_config_from_local_file(
+        path=path,
+        load_sql_files=load_sql_files,
+        sql_file_loader=sql_file_loader,
+        resolve_paths=resolve_paths,
+        filesystem=filesystem,
+    )
+
+
+def _load_config_from_local_file(
+    path: str,
+    load_sql_files: bool = True,
+    sql_file_loader: Optional["SQLFileLoader"] = None,
+    resolve_paths: bool = True,
+    filesystem: Any | None = None,
+) -> Config:
+    """Load a configuration from a local file.
+
+    This is an internal helper responsible for local file reading, environment
+    interpolation, path resolution, and validation. It treats `filesystem` as
+    an optional abstraction for local I/O when supplied (for example, fsspec-like
+    objects in tests).
+
+    Args:
+        path: Path to a local YAML or JSON config file.
+        load_sql_files: Whether to load and process SQL from external files.
+        sql_file_loader: Optional SQLFileLoader instance for loading SQL files.
+        resolve_paths: Whether to resolve relative paths to absolute paths.
+        filesystem: Optional filesystem object for file I/O operations.
+                   If None, uses default path-based file I/O.
+
+    Returns:
+        A validated :class:`Config` object.
+
+    Raises:
+        ConfigError: If the file cannot be read, is not valid YAML/JSON,
+            fails schema validation, contains unresolved
+            ``${env:VAR_NAME}`` placeholders, or if SQL file loading fails.
+    """
+    config_path = Path(path)
+    if not config_path.exists():
+        raise ConfigError(f"Config file not found: {path}")
+
+    log_info("Loading config", path=str(config_path))
+    try:
+        if filesystem is not None:
+            # Use provided filesystem for I/O
+            if not hasattr(filesystem, "open") or not hasattr(filesystem, "exists"):
+                raise ConfigError(
+                    "filesystem object must provide 'open' and 'exists' methods "
+                    "for fsspec-compatible interface"
+                )
+            if not filesystem.exists(str(config_path)):
+                raise ConfigError(f"Config file not found: {path}")
+            with filesystem.open(str(config_path), "r") as f:
+                raw_text = f.read()
+        else:
+            # Use default path-based file I/O
+            raw_text = config_path.read_text()
+    except OSError as exc:  # pragma: no cover - filesystem failures are rare
+        raise ConfigError(f"Failed to read config file: {exc}") from exc
+
+    suffix = config_path.suffix.lower()
+    if suffix in {".yaml", ".yml"}:
+        parsed = yaml.safe_load(raw_text)
+    elif suffix == ".json":
+        parsed = json.loads(raw_text)
+    else:
+        raise ConfigError("Config files must use .yaml, .yml, or .json extensions")
+
+    if parsed is None:
+        raise ConfigError("Config file is empty")
+    if not isinstance(parsed, dict):
+        raise ConfigError("Config file must define a mapping at the top level")
+
+    log_debug("Raw config keys", keys=list(parsed.keys()))
+    interpolated = _interpolate_env(parsed)
+
+    try:
+        config = Config.model_validate(interpolated)
+    except ValidationError as exc:  # pragma: no cover - raised in tests
+        raise ConfigError(exc.errors()) from exc
+
+    # Resolve relative paths if requested
+    if resolve_paths:
+        config = _resolve_paths_in_config(config, config_path)
+
+    # Load SQL from external files if requested
+    if load_sql_files:
+        config = _load_sql_files_from_config(config, config_path, sql_file_loader)
+
+    log_info("Config loaded", path=str(config_path), views=len(config.views))
+    return config
+
+
+def _load_sql_files_from_config(
+    config: Config,
+    config_path: Path,
+    sql_file_loader: Optional[Any] = None,
+) -> Config:
+    """Load SQL content from external files referenced in the config.
+
+    This functionality has been simplified as part of the config layer consolidation.
+    SQL file references are no longer supported - SQL content should be inlined.
+
+    Args:
+        config: The configuration object to process
+        config_path: Path to the configuration file (for relative path resolution)
+        sql_file_loader: Ignored parameter (functionality simplified)
+
+    Returns:
+        Updated configuration unchanged
+
+    Raises:
+        ConfigError: If the config contains SQL file references
+    """
+    # Check if any views have SQL file references
+    has_sql_files = any(
+        getattr(view, "sql_file", None) is not None
+        or getattr(view, "sql_template", None) is not None
+        for view in config.views
+    )
+
+    if has_sql_files:
+        raise ConfigError(
+            "SQL file references (sql_file, sql_template) are no longer supported "
+            "as part of config layer consolidation. Please inline SQL content directly "
+            "in your configuration files using the 'sql' field."
+        )
+
+    # No SQL files found, return config unchanged
+    return config
+
+
+def _interpolate_env(value: Any) -> Any:
+    """Recursively interpolate ${env:VAR} placeholders in config data."""
+
+    if isinstance(value, str):
+        return ENV_PATTERN.sub(_replace_env_match, value)
+    if isinstance(value, list):
+        return [_interpolate_env(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _interpolate_env(val) for key, val in value.items()}
+    return value
+
+
+def _replace_env_match(match: re.Match[str]) -> str:
+    var_name = match.group(1)
+    try:
+        return os.environ[var_name]
+    except KeyError as exc:
+        raise ConfigError(f"Environment variable '{var_name}' is not set") from exc
+
+
+def _resolve_paths_in_config(config: Config, config_path: Path) -> Config:
+    """Resolve relative paths in a configuration to absolute paths.
+
+    This function processes view URIs and attachment paths, resolving any
+    relative paths to absolute paths relative to the configuration file's directory.
+
+    Args:
+        config: The loaded configuration object
+        config_path: Path to the configuration file
+
+    Returns:
+        The configuration with resolved paths
+
+    Raises:
+        ConfigError: If path resolution fails due to security or access issues
+    """
+    try:
+        config_dict = config.model_dump(mode="python")
+        config_dir = config_path.parent
+
+        # Resolve paths in views
+        if "views" in config_dict and config_dict["views"]:
+            for view_data in config_dict["views"]:
+                _resolve_view_paths(view_data, config_dir)
+
+        # Resolve paths in attachments
+        if "attachments" in config_dict and config_dict["attachments"]:
+            _resolve_attachment_paths(config_dict["attachments"], config_dir)
+
+        # Revalidate the config with resolved paths
+        resolved_config = Config.model_validate(config_dict)
+
+        log_debug(
+            "Path resolution completed",
+            config_path=str(config_path),
+            views_count=len(resolved_config.views),
+            attachments_count=len(
+                resolved_config.attachments.duckdb
+                + resolved_config.attachments.sqlite
+                + resolved_config.attachments.postgres
+                + resolved_config.attachments.duckalog
+            ),
+        )
+
+        return resolved_config
+
+    except Exception as exc:
+        raise ConfigError(f"Path resolution failed: {exc}") from exc
+
+
+def _resolve_view_paths(view_data: dict, config_dir: Path) -> None:
+    """Resolve paths in a single view configuration.
+
+    Args:
+        view_data: Dictionary representation of a view
+        config_dir: Configuration file directory
+
+    Raises:
+        PathResolutionError: If path resolution fails security validation
+    """
+    if "uri" in view_data and view_data["uri"]:
+        original_uri = view_data["uri"]
+
+        if is_relative_path(original_uri):
+            # Resolve the path (security validation is handled within resolve_relative_path)
+            try:
+                resolved_uri = resolve_relative_path(original_uri, config_dir)
+                view_data["uri"] = resolved_uri
+                log_debug(
+                    "Resolved view URI", original=original_uri, resolved=resolved_uri
+                )
+            except ValueError as exc:
+                raise PathResolutionError(
+                    f"Failed to resolve URI '{original_uri}': {exc}",
+                    original_path=original_uri,
+                ) from exc
+
+
+def _resolve_attachment_paths(attachments_data: dict, config_dir: Path) -> None:
+    """Resolve paths in attachment configurations.
+
+    Args:
+        attachments_data: Dictionary representation of attachments
+        config_dir: Configuration file directory
+
+    Raises:
+        PathResolutionError: If path resolution fails security validation
+    """
+    # Resolve DuckDB attachment paths
+    if "duckdb" in attachments_data and attachments_data["duckdb"]:
+        for attachment in attachments_data["duckdb"]:
+            if "path" in attachment and attachment["path"]:
+                original_path = attachment["path"]
+
+                if is_relative_path(original_path):
+                    # Resolve the path (security validation is handled within resolve_relative_path)
+                    try:
+                        resolved_path = resolve_relative_path(original_path, config_dir)
+                        attachment["path"] = resolved_path
+                        log_debug(
+                            "Resolved DuckDB attachment",
+                            original=original_path,
+                            resolved=resolved_path,
+                        )
+                    except ValueError as exc:
+                        raise PathResolutionError(
+                            f"Failed to resolve DuckDB attachment path '{original_path}': {exc}",
+                            original_path=original_path,
+                        ) from exc
+
+    # Resolve SQLite attachment paths
+    if "sqlite" in attachments_data and attachments_data["sqlite"]:
+        for attachment in attachments_data["sqlite"]:
+            if "path" in attachment and attachment["path"]:
+                original_path = attachment["path"]
+
+                if is_relative_path(original_path):
+                    # Resolve the path (security validation is handled within resolve_relative_path)
+                    try:
+                        resolved_path = resolve_relative_path(original_path, config_dir)
+                        attachment["path"] = resolved_path
+                        log_debug(
+                            "Resolved SQLite attachment",
+                            original=original_path,
+                            resolved=resolved_path,
+                        )
+                    except ValueError as exc:
+                        raise PathResolutionError(
+                            f"Failed to resolve SQLite attachment path '{original_path}': {exc}",
+                            original_path=original_path,
+                        ) from exc
+
+    # Resolve Duckalog attachment paths
+    if "duckalog" in attachments_data and attachments_data["duckalog"]:
+        for attachment in attachments_data["duckalog"]:
+            # Resolve config_path relative to parent config
+            if "config_path" in attachment and attachment["config_path"]:
+                original_path = attachment["config_path"]
+                if is_relative_path(original_path):
+                    try:
+                        resolved_path = resolve_relative_path(original_path, config_dir)
+                        attachment["config_path"] = resolved_path
+                        log_debug(
+                            "Resolved Duckalog attachment config path",
+                            original=original_path,
+                            resolved=resolved_path,
+                        )
+                    except ValueError as exc:
+                        raise PathResolutionError(
+                            f"Failed to resolve Duckalog attachment config_path '{original_path}': {exc}",
+                            original_path=original_path,
+                        ) from exc
+
+            # Resolve database override relative to parent config
+            if "database" in attachment and attachment["database"]:
+                original_db = attachment["database"]
+                if is_relative_path(original_db):
+                    try:
+                        resolved_db = resolve_relative_path(original_db, config_dir)
+                        attachment["database"] = resolved_db
+                        log_debug(
+                            "Resolved Duckalog attachment database override",
+                            original=original_db,
+                            resolved=resolved_db,
+                        )
+                    except ValueError as exc:
+                        raise PathResolutionError(
+                            f"Failed to resolve Duckalog attachment database '{original_db}': {exc}",
+                            original_path=original_db,
+                        ) from exc
+
+
+__all__ = [
+    "Config",
+    "ConfigError",
+    "DuckDBConfig",
+    "SecretConfig",
+    "AttachmentsConfig",
+    "DuckDBAttachment",
+    "SQLiteAttachment",
+    "PostgresAttachment",
+    "DuckalogAttachment",
+    "IcebergCatalogConfig",
+    "ViewConfig",
+    "SemanticModelConfig",
+    "SemanticDimensionConfig",
+    "SemanticMeasureConfig",
+    "load_config",
+    # Path resolution functions
+    "is_relative_path",
+    "resolve_relative_path",
+    "validate_path_security",
+    "normalize_path_for_sql",
+    "is_within_allowed_roots",
+    "is_windows_path_absolute",
+    "detect_path_type",
+    "validate_file_accessibility",
+]
