@@ -1,6 +1,6 @@
-# Path Resolution Feature
+# Path Resolution and Security
 
-Duckalog's path resolution feature automatically resolves relative file paths to absolute paths relative to the configuration file location, providing consistent behavior across different working directories while maintaining security and cross-platform compatibility.
+Duckalog's path resolution feature automatically resolves relative file paths to absolute paths relative to the configuration file location, providing consistent behavior across different working directories while maintaining comprehensive security boundaries and cross-platform compatibility.
 
 ## Overview
 
@@ -8,38 +8,65 @@ The path resolution feature addresses common challenges when working with file-b
 
 - **Portability**: Configurations can be moved between environments without breaking file references
 - **Consistency**: Paths are resolved consistently regardless of the current working directory
-- **Security**: Built-in validation prevents directory traversal attacks while allowing reasonable parent directory access
-- **Flexibility**: Works with relative paths, absolute paths, and remote URIs
+- **Security**: Built-in validation prevents directory traversal attacks through comprehensive boundary checking
+- **Flexibility**: Works with relative paths, absolute paths, and remote URIs with appropriate security handling
 
 ## How It Works
+
+### Implementation Details
+
+Path resolution is implemented in the `duckalog.config` package through the `validators` submodule:
+
+- **Detection**: `is_relative_path()` identifies relative vs absolute paths
+- **Resolution**: `resolve_relative_path()` resolves paths relative to config directory
+- **Security**: `validate_path_security()` enforces boundary validation
+- **Normalization**: `normalize_path_for_sql()` ensures SQL-safe paths
 
 ### Automatic Detection and Resolution
 
 When path resolution is enabled, Duckalog automatically:
 
-1. **Detects** whether a path is relative or absolute
+1. **Detects** whether a path is relative or absolute using platform-aware logic
 2. **Resolves** relative paths against the configuration file's directory
-3. **Validates** the resolved path for security concerns
-4. **Updates** the configuration with resolved absolute paths
+3. **Validates** the resolved path against security boundaries
+4. **Normalizes** paths for SQL usage and cross-platform compatibility
+5. **Checks** file accessibility before operations
+
+### Security Boundary Validation
+
+**Security Principles:**
+- **Config Directory Anchoring**: All relative paths resolve relative to config file location
+- **Controlled Parent Access**: Limited parent directory navigation allowed for shared resources
+- **Traversal Protection**: Blocks dangerous patterns like `../../../etc/passwd`
+- **System Directory Protection**: Prevents access to sensitive system directories
+- **Cross-Platform Security**: Consistent validation across Windows, macOS, and Linux
+
+**Validation Process:**
+```mermaid
+flowchart TD
+    A[Input Path] --> B{Relative?}
+    B -->|No| C[Security Check Absolute]
+    B -->|Yes| D[Resolve Relative to Config Dir]
+    D --> E[Security Boundary Validation]
+    C --> F{Within Allowed Roots?}
+    E --> F
+    F -->|Allowed| G[Normalized Path]
+    F -->|Blocked| H[Security Error]
+    G --> I[Accessibility Check]
+    I -->|Accessible| G
+    I -->|Inaccessible| J[Warning/Error]
+```
 
 ### Supported Path Types
 
-| Path Type | Example | Resolved |
-|-----------|---------|----------|
-| **Relative** | `data/file.parquet` | `/project/config/data/file.parquet` |
-| **Parent Directory** | `../shared/data.parquet` | `/project/shared/data.parquet` |
-| **Absolute** | `/absolute/path/file.parquet` | Unchanged |
-| **Windows** | `C:\data\file.parquet` | Unchanged |
-| **Remote URI** | `s3://bucket/file.parquet` | Unchanged |
-
-### Security Validation
-
-Path resolution includes comprehensive security validation:
-
-- **Directory Traversal Protection**: Blocks excessive parent directory navigation (`../../../etc/passwd`)
-- **Reasonable Traversal**: Allows limited parent directory access for legitimate use cases
-- **Dangerous Pattern Detection**: Prevents access to system directories (`/etc/`, `/usr/`, etc.)
-- **Cross-Platform Compatibility**: Handles Windows and Unix path conventions
+| Path Type | Example | Resolution Behavior | Security Validation |
+|-----------|---------|-------------------|-------------------|
+| **Relative** | `data/file.parquet` | `/config/dir/data/file.parquet` | ✅ Full validation |
+| **Parent Directory** | `../shared/data.parquet` | `/parent/dir/shared/data.parquet` | ✅ Boundary check |
+| **Absolute Unix** | `/absolute/path/file.parquet` | Unchanged | ✅ Boundary check |
+| **Absolute Windows** | `C:\data\file.parquet` | Unchanged | ✅ Boundary check |
+| **Remote URI** | `s3://bucket/file.parquet` | Unchanged | ✅ No path resolution |
+| **Dangerous Pattern** | `../../../etc/passwd` | ❌ Blocked | ❌ Security error |
 
 ## Configuration
 

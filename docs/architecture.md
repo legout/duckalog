@@ -94,18 +94,143 @@ graph TB
     end
 ```
 
-### 1. Configuration Module (`config.py`)
+## Path Security Architecture
+
+### Security Boundaries and Validation
+
+Duckalog implements comprehensive path security to prevent directory traversal attacks while maintaining usability:
+
+**Path Security Principles:**
+- **Rooted Resolution**: All relative paths are resolved relative to the configuration file location
+- **Traversal Protection**: Blocks attempts to escape the configuration directory tree
+- **Parent Directory Access**: Allows controlled access to parent directories for shared resource patterns
+- **Cross-Platform Security**: Consistent validation across Windows, macOS, and Linux
+
+**Security Validation Flow:**
+```mermaid
+flowchart TD
+    A[Path Input] --> B{Is Remote URI?}
+    B -->|Yes| C[Skip Path Resolution]
+    B -->|No| D{Is Absolute Path?}
+    D -->|Yes| E[Security Check]
+    D -->|No| F[Resolve Relative to Config Dir]
+    F --> G[Security Boundary Validation]
+    E --> H{Within Allowed Roots?}
+    G --> H
+    H -->|Yes| I[Normalized Path]
+    H -->|No| J[Security Error]
+    I --> K[File Accessibility Check]
+    J --> L[Reject Path]
+    K -->|Accessible| I
+    K -->|Inaccessible| M[Warning/Error]
+```
+
+**Path Resolution Behavior:**
+- **Relative Paths**: `data/file.parquet` → `/config/dir/data/file.parquet`
+- **Parent Access**: `../shared/data.parquet` → Allowed if within security bounds
+- **Security Blocks**: `../../../etc/passwd` → Security error
+- **Remote URIs**: `s3://bucket/file.parquet` → No local path resolution
+
+**Implementation Details:**
+- **`validate_path_security()`**: Core validation function
+- **`is_within_allowed_roots()`**: Checks path boundaries
+- **`normalize_path_for_sql()`**: SQL-safe path formatting
+- **`validate_file_accessibility()`**: Runtime accessibility verification
+
+### Secret Management Architecture
+
+**Canonical Secret Model:**
+Duckalog uses a unified `SecretConfig` model for all credential management:
+
+```mermaid
+graph TD
+    SECRET_CONFIG[SecretConfig Model] --> S3_SECRET[S3SecretConfig]
+    SECRET_CONFIG --> AZURE_SECRET[AzureSecretConfig]
+    SECRET_CONFIG --> GCS_SECRET[GCSSecretConfig]
+    SECRET_CONFIG --> HTTP_SECRET[HTTPSecretConfig]
+    SECRET_CONFIG --> POSTGRES_SECRET[PostgresSecretConfig]
+    
+    S3_SECRET --> CREATE_SECRET_S3[CREATE SECRET ...]
+    AZURE_SECRET --> CREATE_SECRET_AZURE[CREATE SECRET ...]
+    GCS_SECRET --> CREATE_SECRET_GCS[CREATE SECRET ...]
+    HTTP_SECRET --> CREATE_SECRET_HTTP[CREATE SECRET ...]
+    POSTGRES_SECRET --> CREATE_SECRET_PG[CREATE SECRET ...]
+```
+
+**Secret Types Supported:**
+- **S3**: Access keys, secret keys, regions, endpoints
+- **Azure**: Connection strings, tenant IDs, client credentials
+- **GCS**: Service account keys, JSON credentials
+- **HTTP**: Bearer tokens, custom headers
+- **PostgreSQL**: Connection strings, host/port/user/password
+
+**Security Features:**
+- **Environment Variable Integration**: `${env:VARIABLE_NAME}` substitution
+- **No Secrets in Config**: All sensitive data via environment variables
+- **Automatic Redaction**: Logging automatically hides sensitive information
+- **DuckDB Integration**: Direct mapping to DuckDB `CREATE SECRET` statements
+
+## Remote Configuration Architecture
+
+### Remote Access Support
+
+Duckalog supports loading configurations from remote sources using fsspec-compatible filesystems:
+
+**Supported Protocols:**
+- **S3**: `s3://bucket/config.yaml` with AWS credentials
+- **GCS**: `gs://bucket/config.yaml` with service account
+- **Azure**: `abfs://account@container/config.yaml` with connection string
+- **SFTP**: `sftp://server/path/config.yaml` with SSH keys
+- **HTTP/HTTPS**: `https://example.com/config.yaml` with tokens
+
+**Remote Loading Process:**
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Config
+    participant Remote
+    participant Filesystem
+    
+    User->>CLI: duckalog build s3://bucket/config.yaml
+    CLI->>Config: load_config(uri, filesystem)
+    Config->>Remote: is_remote_uri(path)
+    Remote-->>Config: True
+    Config->>Filesystem: Create fsspec filesystem
+    Filesystem-->>Config: Filesystem object
+    Config->>Filesystem: Open and read config
+    Filesystem-->>Config: Raw config content
+    Config->>Config: Parse YAML/JSON
+    Config->>Config: Environment interpolation
+    Config->>Config: Schema validation
+    Config-->>CLI: Validated Config object
+    CLI-->>User: Build complete
+```
+
+**Filesystem Integration:**
+- **CLI Shared Options**: All remote access options centralized via Typer callback
+- **Context Management**: Filesystem objects stored in `ctx.obj["filesystem"]`
+- **Credential Handling**: Secure credential management through environment variables
+- **Fallback Support**: Graceful degradation when remote dependencies unavailable
 
 **Responsibilities:**
-- Load YAML/JSON configuration files
-- Perform environment variable interpolation
-- Parse and prepare raw configuration data
-- Handle file I/O and error management
+- Load YAML/JSON configuration files with unified interface
+- Perform environment variable interpolation and path resolution
+- Validate configuration schema and security boundaries
+- Handle file I/O, remote access, and error management
+
+**Key Components:**
+- **`models.py`**: Pydantic models for configuration schema validation
+- **`loader.py`**: Core configuration loading functionality
+- **`interpolation.py`**: Environment variable substitution engine
+- **`validators.py`**: Path security validation and normalization
+- **`sql_integration.py`**: SQL file loading and template processing
 
 **Key Features:**
 - Supports both YAML and JSON formats
 - Environment variable substitution using `${env:VAR_NAME}` pattern
-- Recursive traversal of configuration structures
+- Automatic path resolution with security validation
+- Remote configuration loading via fsspec filesystems
 - Comprehensive error handling with descriptive messages
 
 **Example Flow:**
@@ -126,20 +251,22 @@ sequenceDiagram
     Config-->>CLI: Validated Config object
 ```
 
-### 2. Model Module (`model.py`)
+### 2. Configuration Models Package (`duckalog.config.models`)
 
 **Responsibilities:**
 - Define Pydantic models for configuration schema
-- Provide data validation and type checking
-- Ensure configuration consistency
-- Support extensibility for new configuration types
+- Provide comprehensive data validation and type checking
+- Ensure configuration consistency and business rule enforcement
+- Support extensibility for new configuration types including secrets
 
 **Core Models:**
-- `DuckDBConfig`: Database file and session settings
-- `AttachmentConfig`: External database connections (DuckDB, SQLite, Postgres)
-- `IcebergCatalogConfig`: Iceberg catalog connections
-- `ViewConfig`: Individual view definitions and source specifications
-- `Config`: Root configuration aggregating all components
+- **`Config`**: Root configuration aggregating all components
+- **`DuckDBConfig`**: Database file, session settings, and pragmas
+- **`SecretConfig`**: Canonical secret configuration for DuckDB CREATE SECRET statements
+- **`AttachmentsConfig`**: External database connections (DuckDB, SQLite, Postgres)
+- **`IcebergCatalogConfig`**: Iceberg catalog connections with authentication
+- **`ViewConfig`**: Individual view definitions and source specifications
+- **`SemanticModelConfig`**: Semantic layer definitions for analytics
 
 **Validation Flow:**
 ```mermaid
@@ -153,20 +280,21 @@ flowchart LR
     G --> H[Validated Config]
 ```
 
-### 3. SQL Generation Module (`sqlgen.py`)
+### 3. SQL Generation Module (`sql_generation.py`)
 
 **Responsibilities:**
 - Transform typed configuration objects into SQL statements
 - Generate `CREATE VIEW` statements for different source types
-- Handle SQL escaping and identifier quoting
+- Handle SQL escaping, identifier quoting, and secret management
 - Support complex view definitions with joins and aggregations
 
 **Source Types Supported:**
-- **Parquet**: S3-based Parquet file views
-- **Delta Lake**: Delta table references
-- **Iceberg**: Iceberg table and catalog views
-- **Database**: Attached DuckDB/SQLite/Postgres tables
-- **SQL**: Raw SQL query views
+- **Parquet**: S3-based Parquet file views with access credentials
+- **Delta Lake**: Delta table references with table options
+- **Iceberg**: Iceberg table and catalog views with authentication
+- **Database**: Attached DuckDB/SQLite/Postgres tables with connection details
+- **SQL**: Raw SQL query views with template processing
+- **Secrets**: DuckDB `CREATE SECRET` statements for credential management
 
 **SQL Generation Process:**
 ```mermaid
@@ -198,20 +326,29 @@ graph TD
     F -.-> L
 ```
 
-### 4. Engine Module (`engine.py`)
+### 4. Engine Module (`engine.py`) with CatalogBuilder Orchestration
 
 **Responsibilities:**
-- Manage DuckDB connections and sessions
-- Set up external attachments and catalogs
-- Execute generated SQL statements
-- Handle transaction management and error recovery
+- Orchestrate catalog building workflow through `CatalogBuilder` class
+- Manage DuckDB connections and sessions with proper lifecycle management
+- Set up external attachments and catalogs with security validation
+- Execute generated SQL statements with transaction management
+- Handle error recovery and cleanup operations
 
-**Key Operations:**
-- **Connection Management**: Open and maintain DuckDB connections
-- **Attachment Setup**: Configure DuckDB, SQLite, and Postgres connections
+**CatalogBuilder Workflow:**
+- **Connection Management**: Open and maintain DuckDB connections with proper cleanup
+- **Pragma Application**: Configure session settings and memory limits
+- **Attachment Setup**: Configure DuckDB, SQLite, and Postgres connections securely
 - **Catalog Configuration**: Set up Iceberg catalogs with proper authentication
+- **Secret Creation**: Apply DuckDB secrets from `SecretConfig` models
 - **View Execution**: Apply generated SQL to create views in the catalog
-- **Session Management**: Configure pragmas and session settings
+- **Remote Export**: Support exporting catalogs to remote storage systems
+
+**Engine Architecture Benefits:**
+- **Clear Method Boundaries**: Each operation is a separate, testable method
+- **Resource Management**: Automatic cleanup of connections and temporary files
+- **Error Isolation**: Failures don't leave system in inconsistent state
+- **Extensibility**: Easy to add new catalog building steps
 
 **Engine Workflow:**
 ```mermaid
@@ -242,15 +379,26 @@ sequenceDiagram
 ### 5. CLI Module (`cli.py`)
 
 **Responsibilities:**
-- Provide command-line interface for users
-- Parse command-line arguments and options
-- Dispatch to appropriate library functions
+- Provide command-line interface for users with shared filesystem options
+- Parse command-line arguments and dispatch to appropriate library functions
 - Handle user input validation and error reporting
+- Manage filesystem objects consistently across commands
+
+**Shared Filesystem Architecture:**
+- **Centralized Options**: All filesystem-related CLI options (--fs-protocol, --fs-key, etc.) are declared once at application level
+- **Context Management**: Filesystem objects are created by application callback and stored in `ctx.obj["filesystem"]`
+- **Command Simplicity**: Individual commands (build, generate-sql, validate) have clean signatures without filesystem parameter clutter
 
 **Available Commands:**
 - `build`: Create or update a DuckDB catalog from configuration
 - `generate-sql`: Generate SQL statements without executing them
 - `validate`: Validate configuration files for syntax and schema correctness
+- `init`: Initialize new configuration files from templates
+
+**Filesystem Support:**
+- **Cloud Storage**: S3, GCS, Azure Blob Storage with credential management
+- **Remote Access**: SFTP, GitHub, and HTTP-based configuration loading
+- **Authentication**: Multiple authentication methods including profiles, keys, and tokens
 
 ## Data Flow Architecture
 
@@ -295,48 +443,170 @@ Here's the complete end-to-end data flow from configuration file to functional D
 sequenceDiagram
     participant User
     participant CLI
-    participant Config
-    participant Model
-    participant SQLGen
-    participant Engine
+    participant ConfigPkg as duckalog.config Package
+    participant Models as Models Submodule
+    participant SQLGen as SQL Generation
+    participant Engine as Engine (CatalogBuilder)
     participant DuckDB
     participant External
     
     User->>CLI: duckalog build config.yaml
-    CLI->>Config: load_config()
-    Config->>External: Read file
-    Config->>External: Environment variables
-    Config->>Model: Raw config dict
+    CLI->>ConfigPkg: load_config() with filesystem
+    ConfigPkg->>External: Read file (local/remote)
+    ConfigPkg->>External: Environment variables
     
-    par Parallel Processing
-        Model->>Model: Schema validation
-        Model->>Model: Type conversion
-        Model->>Model: Business rule validation
+    par Schema Validation
+        ConfigPkg->>Models: Raw config dict for validation
+        Models->>Models: Pydantic validation
+        Models->>Models: Business rule validation
+        Models->>Models: Security boundary validation
     end
     
-    Model->>SQLGen: Validated ViewConfig list
+    Models->>SQLGen: Validated Config with SecretConfig
+    SQLGen->>SQLGen: Generate CREATE VIEW statements
+    SQLGen->>SQLGen: Generate CREATE SECRET statements
     
     par For Each View
-        SQLGen->>SQLGen: Detect source type
-        SQLGen->>SQLGen: Generate SQL statement
-        SQLGen->>SQLGen: Apply source-specific options
-        SQLGen->>Engine: SQL string
+        SQLGen->>SQLGen: Source type detection
+        SQLGen->>SQLGen: SQL generation with security
+        SQLGen->>Engine: SQL statements
     end
     
     Engine->>DuckDB: Open connection
     Engine->>DuckDB: Apply pragmas
     Engine->>External: Setup attachments (if any)
     Engine->>External: Setup catalogs (if any)
+    Engine->>DuckDB: Execute CREATE SECRET (if any)
     
     par For Each Generated SQL
         Engine->>DuckDB: Execute CREATE VIEW
         DuckDB-->>Engine: Success/Error
     end
     
-    Engine-->>Model: Completion status
-    Model-->>CLI: Success/Error
+    Engine-->>Models: Completion status
+    Models-->>CLI: Success/Error
     CLI-->>User: Operation complete
 ```
+
+## Path Security Architecture
+
+### Security Boundaries and Validation
+
+Duckalog implements comprehensive path security to prevent directory traversal attacks while maintaining usability:
+
+**Path Security Principles:**
+- **Rooted Resolution**: All relative paths are resolved relative to the configuration file location
+- **Traversal Protection**: Blocks attempts to escape the configuration directory tree
+- **Parent Directory Access**: Allows controlled access to parent directories for shared resource patterns
+- **Cross-Platform Security**: Consistent validation across Windows, macOS, and Linux
+
+**Security Validation Flow:**
+```mermaid
+flowchart TD
+    A[Path Input] --> B{Is Remote URI?}
+    B -->|Yes| C[Skip Path Resolution]
+    B -->|No| D{Is Absolute Path?}
+    D -->|Yes| E[Security Check]
+    D -->|No| F[Resolve Relative to Config Dir]
+    F --> G[Security Boundary Validation]
+    E --> H{Within Allowed Roots?}
+    G --> H
+    H -->|Yes| I[Normalized Path]
+    H -->|No| J[Security Error]
+    I --> K[File Accessibility Check]
+    J --> L[Reject Path]
+    K -->|Accessible| I
+    K -->|Inaccessible| M[Warning/Error]
+```
+
+**Path Resolution Behavior:**
+- **Relative Paths**: `data/file.parquet` → `/config/dir/data/file.parquet`
+- **Parent Access**: `../shared/data.parquet` → Allowed if within security bounds
+- **Security Blocks**: `../../../etc/passwd` → Security error
+- **Remote URIs**: `s3://bucket/file.parquet` → No local path resolution
+
+**Implementation Details:**
+- **`validate_path_security()`**: Core validation function
+- **`is_within_allowed_roots()`**: Checks path boundaries
+- **`normalize_path_for_sql()`**: SQL-safe path formatting
+- **`validate_file_accessibility()`**: Runtime accessibility verification
+
+## Secret Management Architecture
+
+### Canonical Secret Model
+
+Duckalog uses a unified `SecretConfig` model for all credential management:
+
+```mermaid
+graph TD
+    SECRET_CONFIG[SecretConfig Model] --> S3_SECRET[S3SecretConfig]
+    SECRET_CONFIG --> AZURE_SECRET[AzureSecretConfig]
+    SECRET_CONFIG --> GCS_SECRET[GCSSecretConfig]
+    SECRET_CONFIG --> HTTP_SECRET[HTTPSecretConfig]
+    SECRET_CONFIG --> POSTGRES_SECRET[PostgresSecretConfig]
+    
+    S3_SECRET --> CREATE_SECRET_S3[CREATE SECRET ...]
+    AZURE_SECRET --> CREATE_SECRET_AZURE[CREATE SECRET ...]
+    GCS_SECRET --> CREATE_SECRET_GCS[CREATE SECRET ...]
+    HTTP_SECRET --> CREATE_SECRET_HTTP[CREATE SECRET ...]
+    POSTGRES_SECRET --> CREATE_SECRET_PG[CREATE SECRET ...]
+```
+
+**Secret Types Supported:**
+- **S3**: Access keys, secret keys, regions, endpoints
+- **Azure**: Connection strings, tenant IDs, client credentials
+- **GCS**: Service account keys, JSON credentials
+- **HTTP**: Bearer tokens, custom headers
+- **PostgreSQL**: Connection strings, host/port/user/password
+
+**Security Features:**
+- **Environment Variable Integration**: `${env:VARIABLE_NAME}` substitution
+- **No Secrets in Config**: All sensitive data via environment variables
+- **Automatic Redaction**: Logging automatically hides sensitive information
+- **DuckDB Integration**: Direct mapping to DuckDB `CREATE SECRET` statements
+
+## Remote Configuration Architecture
+
+### Remote Access Support
+
+Duckalog supports loading configurations from remote sources using fsspec-compatible filesystems:
+
+**Supported Protocols:**
+- **S3**: `s3://bucket/config.yaml` with AWS credentials
+- **GCS**: `gs://bucket/config.yaml` with service account
+- **Azure**: `abfs://account@container/config.yaml` with connection string
+- **SFTP**: `sftp://server/path/config.yaml` with SSH keys
+- **HTTP/HTTPS**: `https://example.com/config.yaml` with tokens
+
+**Remote Loading Process:**
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Config
+    participant Remote
+    participant Filesystem
+    
+    User->>CLI: duckalog build s3://bucket/config.yaml
+    CLI->>Config: load_config(uri, filesystem)
+    Config->>Remote: is_remote_uri(path)
+    Remote-->>Config: True
+    Config->>Filesystem: Create fsspec filesystem
+    Filesystem-->>Config: Filesystem object
+    Config->>Filesystem: Open and read config
+    Filesystem-->>Config: Raw config content
+    Config->>Config: Parse YAML/JSON
+    Config->>Config: Environment interpolation
+    Config->>Config: Schema validation
+    Config-->>CLI: Validated Config object
+    CLI-->>User: Build complete
+```
+
+**Filesystem Integration:**
+- **CLI Shared Options**: All remote access options centralized via Typer callback
+- **Context Management**: Filesystem objects stored in `ctx.obj["filesystem"]`
+- **Credential Handling**: Secure credential management through environment variables
+- **Fallback Support**: Graceful degradation when remote dependencies unavailable
 
 ## Design Patterns and Architectural Decisions
 
@@ -421,27 +691,80 @@ Each layer depends only on the layer directly below it, ensuring clear dependenc
 
 ## Configuration Schema Architecture
 
-The configuration schema follows a hierarchical structure:
+The configuration schema follows a hierarchical structure with the unified `duckalog.config` package:
 
 ```mermaid
 graph TD
-    ROOT[Config Root<br/>version, duckdb, attachments, views] --> DB[DuckDB Config<br/>database, pragmas]
-    ROOT --> ATTACH[Attachments Config<br/>duckdb, sqlite, postgres]
-    ROOT --> ICEBERG[Iceberg Catalogs<br/>catalog configs]
+    ROOT[Config Root<br/>version, duckdb, secrets, attachments, iceberg_catalogs, views, semantic_models] 
+    ROOT --> DB[DuckDB Config<br/>database, pragmas, settings]
+    ROOT --> SECRETS[Secrets Config<br/>canonical secret definitions]
+    ROOT --> ATTACH[Attachments Config<br/>duckdb, sqlite, postgres, duckalog]
+    ROOT --> ICEBERG[Iceberg Catalogs<br/>catalog configs with auth]
+    ROOT --> SEMANTIC[Semantic Models<br/>dimensions, measures, joins]
     ROOT --> VIEWS[Views List<br/>view definitions]
+    
+    SECRETS --> S3_SECRET[S3 Secret<br/>key_id, secret, region]
+    SECRETS --> AZURE_SECRET[Azure Secret<br/>connection_string, credentials]
+    SECRETS --> GCS_SECRET[GCS Secret<br/>service_account_key]
+    SECRETS --> HTTP_SECRET[HTTP Secret<br/>bearer_token, headers]
+    SECRETS --> PG_SECRET[PostgreSQL Secret<br/>connection parameters]
     
     ATTACH --> DUCKDB_ATTACH[DuckDB Attachment<br/>alias, path, read_only]
     ATTACH --> SQLITE_ATTACH[SQLite Attachment<br/>alias, path]
-    ATTACH --> POSTGRES_ATTACH[Postgres Attachment<br/>alias, host, port, user, password]
+    ATTACH --> POSTGRES_ATTACH[PostgreSQL Attachment<br/>alias, host, port, user, password]
+    ATTACH --> DUCKALOG_ATTACH[Duckalog Attachment<br/>alias, config_path, database]
     
-    ICEBERG --> IC_CONFIG[Iceberg Catalog Config<br/>name, catalog_type, uri, warehouse]
+    ICEBERG --> IC_CONFIG[Iceberg Catalog Config<br/>name, catalog_type, uri, warehouse, options]
     
-    VIEWS --> PARQUET_VIEW[Parquet View<br/>source: parquet, uri, options]
-    VIEWS --> DELTA_VIEW[Delta View<br/>source: delta, uri]
+    SEMANTIC --> SEM_DIM[Semantic Dimensions<br/>hierarchies, attributes]
+    SEMANTIC --> SEM_MEAS[Semantic Measures<br/>aggregations, calculations]
+    SEMANTIC --> SEM_JOIN[Semantic Joins<br/>relationships, cardinalities]
+    
+    VIEWS --> PARQUET_VIEW[Parquet View<br/>source: parquet, uri, options, secrets_ref]
+    VIEWS --> DELTA_VIEW[Delta View<br/>source: delta, uri, options]
     VIEWS --> ICEBERG_VIEW[Iceberg View<br/>source: iceberg, catalog, table]
     VIEWS --> DB_VIEW[Database View<br/>source: duckdb/sqlite/postgres, database, table]
-    VIEWS --> SQL_VIEW[SQL View<br/>source: sql, query]
+    VIEWS --> SQL_VIEW[SQL View<br/>source: sql, query, file_ref]
 ```
+
+## Security Architecture
+
+### Comprehensive Security Model
+
+Duckalog implements a multi-layered security approach:
+
+**Security Layers:**
+1. **Configuration Validation**: Schema validation and business rule enforcement
+2. **Path Security**: Boundary validation and traversal protection
+3. **Secret Management**: Environment variable integration and credential isolation
+4. **SQL Generation Security**: Injection prevention and identifier quoting
+5. **Remote Access Security**: Filesystem authentication and secure protocols
+
+**Security Principles:**
+- **Zero Secrets in Config**: All sensitive data via environment variables only
+- **Principle of Least Privilege**: Minimal access required for each operation
+- **Defense in Depth**: Multiple security checks at different layers
+- **Secure by Default**: Conservative defaults that don't expose data
+
+### Security Implementation Details
+
+**Path Security Boundaries:**
+- Configuration directory and controlled parent directory access
+- Remote URI passthrough without local path resolution
+- Cross-platform path normalization and validation
+- Accessibility checks before operations
+
+**Secret Security:**
+- Automatic environment variable interpolation
+- Log redaction for sensitive information
+- Secure DuckDB secret creation
+- No secret persistence in configuration files
+
+**SQL Security:**
+- Identifier quoting for all table/view names
+- Literal escaping for string values
+- SQL injection prevention in template processing
+- Safe file loading with content validation
 
 ## Component Dependency Graph
 
@@ -450,23 +773,27 @@ Understanding the dependencies between components helps in maintenance and exten
 ```mermaid
 graph TD
     subgraph "Layer 1: Interface"
-        CLI[CLI Module<br/>Commands: build, validate, generate-sql]
+        CLI[CLI Module<br/>Commands: build, validate, generate-sql<br/>Shared filesystem options]
     end
     
-    subgraph "Layer 2: Configuration"
-        CONFIG[Config Module<br/>File loading & env interpolation]
+    subgraph "Layer 2: Configuration Package"
+        CONFIG_PKG[duckalog.config Package<br/>Unified configuration interface]
+        CONFIG_MODELS[Models Submodule<br/>Pydantic validation & types]
+        CONFIG_LOADER[Loader Submodule<br/>File loading & env interpolation]
+        CONFIG_VALIDATORS[Validators Submodule<br/>Path security & normalization]
+        CONFIG_SQL[SQL Integration<br/>Template processing]
     end
     
-    subgraph "Layer 3: Validation"
-        MODEL[Model Module<br/>Pydantic validation & types]
+    subgraph "Layer 3: Generation"
+        SQLGEN[SQL Generation<br/>Statement creation & secrets]
     end
     
-    subgraph "Layer 4: Generation"
-        SQLGEN[SQL Generation<br/>Statement creation]
+    subgraph "Layer 4: Orchestration"
+        ENGINE[Engine Module<br/>CatalogBuilder class]
     end
     
-    subgraph "Layer 5: Execution"
-        ENGINE[Engine Module<br/>DuckDB operations]
+    subgraph "Layer 5: Secret Management"
+        SECRETS[Secret Types<br/>Canonical secret models]
     end
     
     subgraph "External Dependencies"
@@ -474,17 +801,23 @@ graph TD
         YAML[YAML/JSON Parser]
         PYDANTIC[Pydantic Validator]
         TYPER[Typer CLI Framework]
+        FSSPEC[Remote Filesystems]
     end
     
-    CLI --> CONFIG
-    CONFIG --> MODEL
-    MODEL --> SQLGEN
+    CLI --> CONFIG_PKG
+    CONFIG_PKG --> CONFIG_MODELS
+    CONFIG_PKG --> CONFIG_LOADER
+    CONFIG_PKG --> CONFIG_VALIDATORS
+    CONFIG_PKG --> CONFIG_SQL
+    CONFIG_MODELS --> SQLGEN
     SQLGEN --> ENGINE
+    SECRETS --> SQLGEN
     
-    CONFIG -.-> YAML
-    MODEL -.-> PYDANTIC
-    CLI -.-> TYPER
     ENGINE -.-> DUCKDB
+    CONFIG_LOADER -.-> YAML
+    CONFIG_MODELS -.-> PYDANTIC
+    CLI -.-> TYPER
+    ENGINE -.-> FSSPEC
 ```
 
 ### Dependency Rules:

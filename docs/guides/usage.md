@@ -1,7 +1,159 @@
 # User Guide
 
-This guide explains how to structure Duckalog configuration files, common configuration patterns,
-and how to troubleshoot issues.
+This guide explains how to structure Duckalog configuration files, common configuration patterns, secret management, and how to troubleshoot issues.
+
+## Secret Management
+
+Duckalog provides comprehensive secret management through the canonical `SecretConfig` model, ensuring secure credential handling without storing sensitive data in configuration files.
+
+### Environment Variable Integration
+
+All sensitive configuration uses environment variables for security:
+
+```yaml
+# Basic environment variable usage
+duckdb:
+  database: catalog.duckdb
+  pragmas:
+    - "SET s3_access_key_id='${env:AWS_ACCESS_KEY_ID}'"
+    - "SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"
+    - "SET azure_connection_string='${env:AZURE_CONNECTION_STRING}'"
+
+attachments:
+  postgres:
+    - host: "${env:PG_HOST}"
+      user: "${env:PG_USER}"
+      password: "${env:PG_PASSWORD}"
+```
+
+### Canonical Secret Configuration
+
+Define secrets once and reference them across multiple views:
+
+```yaml
+secrets:
+  - name: s3_prod
+    type: s3
+    key_id: "${env:AWS_ACCESS_KEY_ID}"
+    secret: "${env:AWS_SECRET_ACCESS_KEY}"
+    region: "us-east-1"
+    endpoint: "https://s3.amazonaws.com"
+
+  - name: azure_storage
+    type: azure
+    connection_string: "${env:AZURE_STORAGE_CONNECTION_STRING}"
+    account_name: "${env:AZURE_STORAGE_ACCOUNT}"
+
+  - name: gcs_service
+    type: gcs
+    service_account_key: "${env:GCS_SERVICE_ACCOUNT_JSON}"
+
+  - name: http_api
+    type: http
+    bearer_token: "${env:API_BEARER_TOKEN}"
+    header: "Authorization"
+
+views:
+  - name: production_data
+    source: parquet
+    uri: "s3://prod-bucket/data/*.parquet"
+    secrets_ref: s3_prod
+
+  - name: azure_logs
+    source: parquet
+    uri: "abfs://logcontainer@storageaccount.dfs.core.windows.net/logs/*.parquet"
+    secrets_ref: azure_storage
+
+  - name: reference_tables
+    source: iceberg
+    catalog: main_catalog
+    table: analytics.reference_data
+    secrets_ref: gcs_service
+```
+
+### Secret Types and DuckDB Integration
+
+Each secret type maps to appropriate DuckDB `CREATE SECRET` statements:
+
+**S3 Secrets:**
+```sql
+CREATE SECRET s3_prod (
+    TYPE S3,
+    KEY_ID 'AKIA...',
+    SECRET 'secret...',
+    REGION 'us-east-1',
+    ENDPOINT 'https://s3.amazonaws.com'
+);
+```
+
+**Azure Secrets:**
+```sql
+CREATE SECRET azure_storage (
+    TYPE AZURE,
+    CONNECTION_STRING 'DefaultEndpointsProtocol=...'
+);
+```
+
+**PostgreSQL Secrets:**
+```sql
+CREATE SECRET postgres_creds (
+    TYPE POSTGRES,
+    CONNECTION_STRING 'postgresql://user:pass@host:5432/db'
+);
+```
+
+### Security Best Practices
+
+1. **Never commit secrets**: Use `.env` files or environment variables
+2. **Rotate credentials**: Regularly update access keys and tokens
+3. **Use principle of least privilege**: Grant minimal required permissions
+4. **Audit access**: Monitor which secrets are used where
+
+**Related:** [Architecture - Secret Management](architecture.md#secret-management-architecture)
+
+## Remote Configuration
+
+Duckalog supports loading configurations from remote sources using a unified filesystem interface:
+
+### Loading Remote Configurations
+
+```bash
+# S3 configuration
+duckalog build s3://my-bucket/catalog.yaml \
+    --fs-key "${AWS_ACCESS_KEY_ID}" \
+    --fs-secret "${AWS_SECRET_ACCESS_KEY}" \
+    --aws-profile my-profile
+
+# GCS configuration
+duckalog build gs://my-bucket/catalog.yaml \
+    --gcs-credentials-file /path/to/service-account.json
+
+# Azure Blob Storage
+duckalog build abfs://account@container/catalog.yaml \
+    --azure-connection-string "${AZURE_CONNECTION_STRING}"
+
+# GitHub repository
+duckalog build github://user/repo/catalog.yaml \
+    --fs-token "${GITHUB_TOKEN}"
+
+# SFTP server
+duckalog build sftp://server/path/catalog.yaml \
+    --sftp-host server.com \
+    --sftp-key-file ~/.ssh/id_rsa
+
+# HTTP/HTTPS
+duckalog build https://example.com/catalog.yaml \
+    --fs-token "${API_TOKEN}"
+```
+
+### Shared Filesystem Architecture
+
+All remote access options are centralized through the CLI's shared filesystem handler:
+
+- **Protocol Detection**: Automatic protocol inference from options
+- **Credential Management**: Secure handling of authentication details
+- **Context Management**: Filesystem objects shared across commands
+- **Error Handling**: Descriptive error messages for connection issues
 
 ## Configuration structure
 
@@ -14,6 +166,18 @@ duckdb:
   database: catalog.duckdb
   pragmas:
     - "SET memory_limit='1GB'"
+
+# Secure credential management
+secrets:
+  - name: s3_access
+    type: s3
+    key_id: "${env:AWS_ACCESS_KEY_ID}"
+    secret: "${env:AWS_SECRET_ACCESS_KEY}"
+    region: "us-east-1"
+  
+  - name: postgres_creds
+    type: postgres
+    connection_string: "${env:POSTGRES_CONNECTION_STRING}"
 
 attachments:
   duckdb:
@@ -45,6 +209,7 @@ views:
   - name: users
     source: parquet
     uri: "s3://my-bucket/data/users/*.parquet"
+    secrets_ref: s3_access
 
   - name: events_delta
     source: delta
@@ -65,6 +230,7 @@ views:
       SELECT *
       FROM users
       WHERE is_vip = TRUE
+      AND segment = 'premium'
 ```
 
 ## Path Resolution

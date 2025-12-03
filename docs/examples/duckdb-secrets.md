@@ -2,6 +2,19 @@
 
 This example demonstrates how to use DuckDB secrets in Duckalog to manage credentials for external services like S3, Azure, GCS, and databases. Secrets provide a secure way to handle authentication without hardcoding credentials in SQL.
 
+## Architecture Integration
+
+Duckalog's secret management is built on the canonical `SecretConfig` model that integrates with DuckDB's `CREATE SECRET` functionality. This provides:
+
+- **Unified Secret Handling**: Single configuration format across all secret types
+- **Environment Variable Integration**: Secure credential management through `${env:VARIABLE}` patterns
+- **DuckDB Native Integration**: Direct mapping to DuckDB `CREATE SECRET` statements
+- **Cross-Platform Security**: Consistent behavior across different deployment environments
+
+**Related Documentation:**
+- [Architecture - Secret Management](architecture.md#secret-management-architecture)
+- [User Guide - Secret Management](guides/usage.md#secret-management)
+
 ## When to Use Secrets
 
 Choose secrets when you need to:
@@ -26,21 +39,21 @@ duckdb:
   # Extensions required for S3 access
   install_extensions:
     - httpfs
-  
-  # Secrets for external services
-  secrets:
-    - type: s3
-      name: production_s3
-      key_id: AKIAIOSFODNN7EXAMPLE
-      secret: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-      region: us-west-2
-      endpoint: s3.amazonaws.com  # Optional: custom endpoint
+
+# Canonical secret configuration
+secrets:
+  - name: production_s3
+    type: s3
+    key_id: ${env:AWS_ACCESS_KEY_ID}
+    secret: ${env:AWS_SECRET_ACCESS_KEY}
+    region: us-west-2
+    endpoint: s3.amazonaws.com  # Optional: custom endpoint
 
 views:
   - name: sales_data
     source: parquet
     uri: "s3://my-production-bucket/sales/*.parquet"
-    description: "Sales data from S3 with secret authentication"
+    secrets_ref: production_s3
 ```
 
 ### Azure Storage Secret
@@ -53,23 +66,17 @@ duckdb:
   install_extensions:
     - httpfs
   
-  secrets:
-    - type: azure
-      name: azure_prod
-      provider: config
-      persistent: true
-      scope: 'prod/'
-      connection_string: DefaultEndpointsProtocol=https;AccountName=myaccount;AccountKey=mykey;EndpointSuffix=core.windows.net
-      # Alternative: Use tenant_id + account_name + secret
-      # tenant_id: my-tenant-id
-      # account_name: mystorageaccount
-      # secret: my-azure-secret
+secrets:
+  - name: azure_prod
+    type: azure
+    connection_string: ${env:AZURE_STORAGE_CONNECTION_STRING}
+    account_name: ${env:AZURE_STORAGE_ACCOUNT}
 
 views:
   - name: azure_logs
     source: parquet
-    uri: "azure://mycontainer/logs/*.parquet"
-    description: "Application logs from Azure storage"
+    uri: "abfs://mycontainer/logs/*.parquet"
+    secrets_ref: azure_prod
 ```
 
 ### GCS Secret
@@ -82,18 +89,16 @@ duckdb:
   install_extensions:
     - httpfs
   
-  secrets:
-    - type: gcs
-      name: gcs_service_account
-      key_id: my-service-account@project.iam.gserviceaccount.com
-      secret: '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKw...\n-----END PRIVATE KEY-----'
-      endpoint: storage.googleapis.com
+secrets:
+  - name: gcs_service_account
+    type: gcs
+    service_account_key: ${env:GCS_SERVICE_ACCOUNT_JSON}
 
 views:
   - name: gcs_data
     source: parquet
     uri: "gs://my-bucket/data/*.parquet"
-    description: "Data from Google Cloud Storage"
+    secrets_ref: gcs_service_account
 ```
 
 ## Advanced Secret Configurations
@@ -134,25 +139,22 @@ version: 1
 duckdb:
   database: pg_catalog.duckdb
   
-  secrets:
-    - type: postgres
-      name: analytics_db
-      provider: config
-      persistent: true
-      connection_string: postgresql://user:password@localhost:5432/analytics
-      # Alternative: Individual parameters
-      # host: localhost
-      # port: 5432
-      # database: analytics
-      # key_id: user
-      # secret: password
+secrets:
+  - name: analytics_db
+    type: postgres
+    connection_string: ${env:DATABASE_URL}
+    # Alternative: Individual parameters
+    # host: localhost
+    # port: 5432
+    # database: analytics
+    # user: ${env:PG_USER}
+    # password: ${env:PG_PASSWORD}
 
 views:
   - name: postgres_users
     source: postgres
     database: analytics_db
     table: users
-    description: "Users from PostgreSQL with secret authentication"
 ```
 
 #### MySQL Secret
@@ -163,17 +165,16 @@ version: 1
 duckdb:
   database: mysql_catalog.duckdb
   
-  secrets:
-    - type: mysql
-      name: webapp_db
-      connection_string: mysql://user:password@db.example.com:3306/webapp
+secrets:
+  - name: webapp_db
+    type: postgres  # MySQL uses postgres secret type in DuckDB
+    connection_string: ${env:MYSQL_DATABASE_URL}
 
 views:
   - name: mysql_products
-    source: mysql
+    source: postgres
     database: webapp_db
     table: products
-    description: "Products from MySQL with secret authentication"
 ```
 
 ### HTTP Basic Auth Secret

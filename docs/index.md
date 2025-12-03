@@ -200,11 +200,71 @@ The paths above are automatically resolved relative to the configuration file lo
 
 **Learn more:** [Path Resolution Guide](guides/path-resolution.md)
 
+## Secret Management
+
+Duckalog provides comprehensive secret management for secure credential handling:
+
+### Environment Variable Integration
+All sensitive configuration uses environment variables:
+
+```yaml
+duckdb:
+  pragmas:
+    - "SET s3_access_key_id='${env:AWS_ACCESS_KEY_ID}'"
+    - "SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"
+
+attachments:
+  postgres:
+    - host: "${env:PG_HOST}"
+      user: "${env:PG_USER}"
+      password: "${env:PG_PASSWORD}"
+```
+
+### Canonical Secret Configuration
+Define secrets once and reference them across views:
+
+```yaml
+secrets:
+  - name: s3_credentials
+    type: s3
+    key_id: "${env:AWS_ACCESS_KEY_ID}"
+    secret: "${env:AWS_SECRET_ACCESS_KEY}"
+    region: "us-east-1"
+
+views:
+  - name: sales_data
+    source: parquet
+    uri: "s3://my-bucket/sales/*.parquet"
+    secrets_ref: s3_credentials
+```
+
+## Remote Configuration
+
+Load configurations from remote sources:
+
+```bash
+# S3 configuration
+duckalog build s3://my-bucket/catalog.yaml --fs-key AKIA... --fs-secret...
+
+# GitHub repository
+duckalog build github://user/repo/catalog.yaml --fs-token ghp_...
+
+# Azure Blob Storage
+duckalog build abfs://account@container/catalog.yaml --azure-connection-string "..."
+```
+
+**Learn more:** [Architecture - Remote Configuration](architecture.md#remote-configuration-architecture)
+
 ## Quick Reference
 
 ### Documentation Structure
 
 - **[System Architecture](architecture.md)** - Understanding Duckalog's design, components, and patterns
+  - **[Config Package Structure](architecture.md#1-configuration-package-duckalogconfig)** - Unified configuration interface
+  - **[CatalogBuilder Orchestration](architecture.md#4-engine-module-enginepy-with-catalogbuilder-orchestration)** - Engine workflow management
+  - **[Path Security Architecture](architecture.md#path-security-architecture)** - Security boundaries and validation
+  - **[Secret Management](architecture.md#secret-management-architecture)** - Canonical secret models and DuckDB integration
+  - **[Remote Configuration](architecture.md#remote-configuration-architecture)** - Remote access and filesystem integration
 - **[Path Resolution Guide](guides/path-resolution.md)** - Automatic path resolution and security features
 - **[User Guide](guides/usage.md)** - Configuration patterns and troubleshooting
 
