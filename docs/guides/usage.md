@@ -109,7 +109,7 @@ CREATE SECRET postgres_creds (
 3. **Use principle of least privilege**: Grant minimal required permissions
 4. **Audit access**: Monitor which secrets are used where
 
-**Related:** [Architecture - Secret Management](architecture.md#secret-management-architecture)
+**Related:** [Architecture - Secret Management](../architecture.md#secret-management-architecture)
 
 ## Remote Configuration
 

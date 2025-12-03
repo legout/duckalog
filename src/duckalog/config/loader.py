@@ -23,7 +23,7 @@ import yaml
 from duckalog.errors import ConfigError
 
 
-def _interpolate_env(value):
+def _interpolate_env(value: Any) -> Any:
     """Simple stub for environment variable interpolation."""
     if isinstance(value, str):
         # Simple ${env:VAR} replacement (basic implementation)
@@ -32,7 +32,7 @@ def _interpolate_env(value):
 
         pattern = re.compile(r"\$\{env:([A-Za-z_][A-Za-z0-9_]*)\}")
 
-        def replace_env_match(match):
+        def replace_env_match(match: Any) -> str:
             var_name = match.group(1)
             try:
                 return os.environ[var_name]
@@ -49,7 +49,9 @@ def _interpolate_env(value):
     return value
 
 
-def _load_sql_files_from_config(config, config_path, sql_file_loader=None):
+def _load_sql_files_from_config(
+    config: Any, config_path: Path, sql_file_loader: Optional[Any] = None
+) -> Any:
     """Simple stub for SQL file loading."""
     # Check if any views have SQL file references
     has_sql_files = any(
@@ -68,12 +70,12 @@ def _load_sql_files_from_config(config, config_path, sql_file_loader=None):
     return config
 
 
-def log_info(message, **details):
+def log_info(message: str, **details: Any) -> None:
     """Simple logging stub."""
     print(f"INFO: {message} {details}")
 
 
-def log_debug(message, **details):
+def log_debug(message: str, **details: Any) -> None:
     """Simple logging stub."""
     print(f"DEBUG: {message} {details}")
 
@@ -87,7 +89,7 @@ def load_config(
     sql_file_loader: Optional[Any] = None,
     resolve_paths: bool = True,
     filesystem: Optional[Any] = None,
-):
+) -> Any:
     """Load, interpolate, and validate a Duckalog configuration file.
 
     This helper is the main entry point for turning a YAML or JSON file into a
@@ -171,7 +173,7 @@ def _load_config_from_local_file(
     sql_file_loader: Optional[Any] = None,
     resolve_paths: bool = True,
     filesystem: Optional[Any] = None,
-):
+) -> Any:
     """Load a configuration from a local file.
 
     This is an internal helper responsible for local file reading, environment

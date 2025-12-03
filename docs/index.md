@@ -198,7 +198,7 @@ views:
 
 The paths above are automatically resolved relative to the configuration file location when loaded.
 
-**Learn more:** [Path Resolution Guide](guides/path-resolution.md)
+**Learn more:** [Path Resolution Guide](path-resolution.md)
 
 ## Secret Management
 
@@ -260,12 +260,12 @@ duckalog build abfs://account@container/catalog.yaml --azure-connection-string "
 ### Documentation Structure
 
 - **[System Architecture](architecture.md)** - Understanding Duckalog's design, components, and patterns
-  - **[Config Package Structure](architecture.md#1-configuration-package-duckalogconfig)** - Unified configuration interface
+  - **[Config Package Structure](architecture.md#2-configuration-models-package-duckalogconfigmodels)** - Unified configuration interface
   - **[CatalogBuilder Orchestration](architecture.md#4-engine-module-enginepy-with-catalogbuilder-orchestration)** - Engine workflow management
   - **[Path Security Architecture](architecture.md#path-security-architecture)** - Security boundaries and validation
   - **[Secret Management](architecture.md#secret-management-architecture)** - Canonical secret models and DuckDB integration
   - **[Remote Configuration](architecture.md#remote-configuration-architecture)** - Remote access and filesystem integration
-- **[Path Resolution Guide](guides/path-resolution.md)** - Automatic path resolution and security features
+- **[Path Resolution Guide](path-resolution.md)** - Automatic path resolution and security features
 - **[User Guide](guides/usage.md)** - Configuration patterns and troubleshooting
 
 ### Install

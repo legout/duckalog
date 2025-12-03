@@ -12,8 +12,8 @@ Duckalog's secret management is built on the canonical `SecretConfig` model that
 - **Cross-Platform Security**: Consistent behavior across different deployment environments
 
 **Related Documentation:**
-- [Architecture - Secret Management](architecture.md#secret-management-architecture)
-- [User Guide - Secret Management](guides/usage.md#secret-management)
+- [Architecture - Secret Management](../architecture.md#secret-management-architecture)
+- [User Guide - Secret Management](../guides/usage.md#secret-management)
 
 ## When to Use Secrets
 

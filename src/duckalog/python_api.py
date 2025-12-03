@@ -6,6 +6,7 @@ import duckdb
 from contextlib import contextmanager
 from pathlib import Path
 from collections.abc import Generator
+from typing import Any
 
 from .config import ConfigError, load_config
 from .engine import build_catalog
@@ -64,7 +65,7 @@ def connect_to_catalog(
     config_path: str,
     database_path: str | None = None,
     read_only: bool = False,
-):
+) -> duckdb.DuckDBPyConnection:
     """Connect to an existing DuckDB database created by Duckalog.
 
     This function provides a direct connection to a DuckDB database that was previously
@@ -118,6 +119,10 @@ def connect_to_catalog(
     # Determine database path with precedence
     if database_path is None:
         database_path = config.duckdb.database
+
+    # Ensure database_path is not None after fallback
+    if database_path is None:
+        raise ConfigError("No database path specified and no default in config")
 
     # Validate database path exists (for existing catalogs)
     db_path = Path(database_path)
@@ -181,7 +186,7 @@ def connect_and_build_catalog(
     dry_run: bool = False,
     verbose: bool = False,
     read_only: bool = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> duckdb.DuckDBPyConnection | str | None:
     """Build a catalog and create a DuckDB connection in one operation.
 

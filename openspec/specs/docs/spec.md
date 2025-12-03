@@ -77,3 +77,51 @@ The dashboard documentation MUST describe how to launch the dashboard from the P
 - **THEN** the example clearly indicates that this CLI command may not be available in all installations
 - **AND** directs users to the Python API entry point if the CLI command is not present.
 
+### Requirement: Core Guides Navigation Coverage
+The navigation SHALL include entries for all core guides including User Guide usage, path resolution guides, and security documentation to ensure discoverability.
+
+#### Scenario: Security documentation is navigable
+- **GIVEN** users browsing the documentation site
+- **WHEN** they look for security-related information
+- **THEN** they can find the SECURITY.md page through clear navigation entry
+- **SO** security documentation is easily discoverable
+
+#### Scenario: Path resolution guides are navigable
+- **GIVEN** users learning about path resolution
+- **WHEN** they navigate through the User Guide section
+- **THEN** they can find all path resolution documentation including overview, best practices, examples, and migration guides
+- **SO** path resolution information is systematically accessible
+
+### Requirement: Complete Examples Navigation Coverage
+The navigation SHALL include entries for ALL maintained example pages under `docs/examples/` to provide comprehensive access to usage patterns and configurations.
+
+#### Scenario: All examples are discoverable
+- **GIVEN** users exploring example documentation
+- **WHEN** they navigate to the Examples section
+- **THEN** they can find all maintained examples including DuckDB secrets, DuckDB settings, environment variables, local attachments, multi-source analytics, path resolution examples, and simple parquet
+- **SO** users can discover and learn from comprehensive examples
+
+#### Scenario: Examples maintain alphabetical ordering
+- **GIVEN** the Examples section contains multiple pages
+- **WHEN** new example pages are added
+- **THEN** the navigation maintains alphabetical ordering within the Examples section
+- **AND** entries follow consistent formatting
+- **SO** the structure remains coherent and predictable
+
+### Requirement: API Documentation Quality Standards
+API reference pages included in the docs site SHALL build without mkdocstrings/Griffe warnings for public APIs to ensure high-quality generated documentation.
+
+#### Scenario: Type annotations prevent warnings
+- **GIVEN** public functions referenced in API documentation
+- **WHEN** mkdocstrings/Griffe processes the code
+- **THEN** all public functions have explicit return type annotations
+- **AND** any variadic parameters use acceptable annotation patterns or detailed docstring descriptions
+- **SO** no warnings are emitted during documentation generation
+
+#### Scenario: Config module API docs are clean
+- **GIVEN** functions from `src/duckalog/config/loader.py` are referenced in API docs
+- **WHEN** the documentation is generated
+- **THEN** all public loader functions have explicit return type annotations
+- **AND** no mkdocstrings/Griffe warnings are produced
+- **SO** the config module API documentation meets quality standards
+

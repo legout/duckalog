@@ -10,10 +10,30 @@ theme:
 nav:
   - Home: index.md
   - Architecture: architecture.md
+  - Security: SECURITY.md
   - Dashboard UI: guides/ui-dashboard.md
-  - User Guide: guides/index.md
-  - Examples: examples/index.md
-  - API Reference: reference/index.md
+  - User Guide:
+      - User Guide: guides/index.md
+      - Usage: guides/usage.md
+      - Path Resolution:
+          - Overview: path-resolution.md
+          - Guide: guides/path-resolution.md
+          - Best Practices: best-practices-path-management.md
+          - Configuration Examples: configuration-path-examples.md
+          - Migration Guide: migration-path-resolution.md
+          - Examples: path-resolution-examples.md
+  - Examples:
+      - Examples Index: examples/index.md
+      - DuckDB Secrets: examples/duckdb-secrets.md
+      - DuckDB Settings: examples/duckdb-settings.md
+      - Environment Variables: examples/environment-vars.md
+      - Local Attachments: examples/local-attachments.md
+      - Multi-Source Analytics: examples/multi-source-analytics.md
+      - Path Resolution Examples: examples/path-resolution-examples.md
+      - Simple Parquet: examples/simple-parquet.md
+  - API Reference:
+      - API Reference Index: reference/index.md
+      - Python API: reference/api.md
 
 plugins:
   - search
