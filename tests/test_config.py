@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from duckalog import ConfigError, load_config
+from duckalog.remote_config import is_remote_uri
 
 
 def _write(path: Path, content: str) -> Path:
@@ -1832,4 +1833,146 @@ def test_duckalog_attachment_database_override_path_resolution(tmp_path):
     config = load_config(str(config_path))
     attachment = config.attachments.duckalog[0]
     assert attachment.config_path == str(child_config_path.resolve())
-    assert attachment.database == str((tmp_path / "custom_databases" / "overridden.duckdb").resolve())
+    assert attachment.database == str(
+        (tmp_path / "custom_databases" / "overridden.duckdb").resolve()
+    )
+
+
+def test_load_config_delegates_to_local_helper_for_local_paths(monkeypatch, tmp_path):
+    """Test that load_config delegates to _load_config_from_local_file for local paths."""
+    from duckalog.config import _load_config_from_local_file
+
+    # Mock the local helper function
+    mock_local = monkeypatch.setattr(
+        _load_config_from_local_file,
+        "func",
+        lambda *args, **kwargs: "local_config_result",
+    )
+    monkeypatch.setattr(
+        _load_config_from_local_file, "return_value", "local_config_result"
+    )
+
+    # Write a simple config file
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    # Mock remote URI detection to return False
+    def mock_is_remote_uri(uri):
+        return False
+
+    monkeypatch.setattr("duckalog.config.is_remote_uri", mock_is_remote_uri)
+
+    # Call load_config with a local path
+    result = load_config(str(config_path))
+
+    # Should have delegated to local helper
+    assert result == "local_config_result"
+
+
+def test_load_config_delegates_to_remote_helper_for_remote_uris(monkeypatch, tmp_path):
+    """Test that load_config delegates to load_config_from_uri for remote URIs."""
+    from duckalog.remote_config import load_config_from_uri
+
+    # Mock the remote helper function
+    monkeypatch.setattr(
+        load_config_from_uri, "func", lambda *args, **kwargs: "remote_config_result"
+    )
+    monkeypatch.setattr(load_config_from_uri, "return_value", "remote_config_result")
+
+    # Mock remote URI detection to return True
+    def mock_is_remote_uri(uri):
+        return True
+
+    monkeypatch.setattr("duckalog.config.is_remote_uri", mock_is_remote_uri)
+
+    # Call load_config with a remote URI
+    result = load_config("s3://bucket/catalog.yaml")
+
+    # Should have delegated to remote helper
+    assert result == "remote_config_result"
+
+
+def test_load_config_filesystem_validation_for_local_files(tmp_path):
+    """Test that load_config validates filesystem interface for local file loading."""
+    from duckalog.config import _load_config_from_local_file, ConfigError
+
+    # Write a simple config file
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    # Test with None filesystem (should work)
+    config = _load_config_from_local_file(str(config_path), filesystem=None)
+    assert config is not None
+
+    # Test with invalid filesystem object (missing required methods)
+    class InvalidFilesystem:
+        pass
+
+    invalid_fs = InvalidFilesystem()
+    with pytest.raises(
+        ConfigError, match="filesystem object must provide 'open' and 'exists' methods"
+    ):
+        _load_config_from_local_file(str(config_path), filesystem=invalid_fs)
+
+    # Test with filesystem that exists but missing 'open' method
+    class MissingOpenFilesystem:
+        def exists(self, path):
+            return True
+
+    missing_open_fs = MissingOpenFilesystem()
+    with pytest.raises(
+        ConfigError, match="filesystem object must provide 'open' and 'exists' methods"
+    ):
+        _load_config_from_local_file(str(config_path), filesystem=missing_open_fs)
+
+    # Test with filesystem that has both methods
+    class ValidFilesystem:
+        def __init__(self, base_path):
+            self.base_path = base_path
+
+        def exists(self, path):
+            return True
+
+        def open(self, path, mode="r"):
+            return open(path, mode)
+
+    valid_fs = ValidFilesystem(tmp_path)
+    config = _load_config_from_local_file(str(config_path), filesystem=valid_fs)
+    assert config is not None
+
+
+def test_load_config_uri_detection(monkeypatch):
+    """Test URI detection for load_config dispatch."""
+    from duckalog.remote_config import is_remote_uri
+
+    # Test local paths (no scheme)
+    assert not is_remote_uri("catalog.yaml")
+    assert not is_remote_uri("./config/catalog.yaml")
+    assert not is_remote_uri("/absolute/path/catalog.yaml")
+    assert not is_remote_uri("folder/catalog.yaml")
+
+    # Test remote URIs (with schemes)
+    assert is_remote_uri("s3://bucket/catalog.yaml")
+    assert is_remote_uri("https://example.com/catalog.yaml")
+    assert is_remote_uri("http://example.com/catalog.yaml")
+    assert is_remote_uri("gcs://bucket/catalog.yaml")
+    assert is_remote_uri("abfs://container/catalog.yaml")
+    assert is_remote_uri("sftp://server/path/catalog.yaml")

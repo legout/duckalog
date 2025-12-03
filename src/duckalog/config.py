@@ -989,14 +989,66 @@ def load_config(
         # Remote functionality not available, continue with local loading
         pass
 
-    # Local file loading
+    # Local file loading - delegate to the dedicated helper
+    return _load_config_from_local_file(
+        path=path,
+        load_sql_files=load_sql_files,
+        sql_file_loader=sql_file_loader,
+        resolve_paths=resolve_paths,
+        filesystem=filesystem,
+    )
+
+
+def _load_config_from_local_file(
+    path: str,
+    load_sql_files: bool = True,
+    sql_file_loader: Optional["SQLFileLoader"] = None,
+    resolve_paths: bool = True,
+    filesystem: Any | None = None,
+) -> Config:
+    """Load a configuration from a local file.
+
+    This is an internal helper responsible for local file reading, environment
+    interpolation, path resolution, and validation. It treats `filesystem` as
+    an optional abstraction for local I/O when supplied (for example, fsspec-like
+    objects in tests).
+
+    Args:
+        path: Path to a local YAML or JSON config file.
+        load_sql_files: Whether to load and process SQL from external files.
+        sql_file_loader: Optional SQLFileLoader instance for loading SQL files.
+        resolve_paths: Whether to resolve relative paths to absolute paths.
+        filesystem: Optional filesystem object for file I/O operations.
+                   If None, uses default path-based file I/O.
+
+    Returns:
+        A validated :class:`Config` object.
+
+    Raises:
+        ConfigError: If the file cannot be read, is not valid YAML/JSON,
+            fails schema validation, contains unresolved
+            ``${env:VAR_NAME}`` placeholders, or if SQL file loading fails.
+    """
     config_path = Path(path)
     if not config_path.exists():
         raise ConfigError(f"Config file not found: {path}")
 
     log_info("Loading config", path=str(config_path))
     try:
-        raw_text = config_path.read_text()
+        if filesystem is not None:
+            # Use provided filesystem for I/O
+            if not hasattr(filesystem, "open") or not hasattr(filesystem, "exists"):
+                raise ConfigError(
+                    "filesystem object must provide 'open' and 'exists' methods "
+                    "for fsspec-compatible interface"
+                )
+            if not filesystem.exists(str(config_path)):
+                raise ConfigError(f"Config file not found: {path}")
+            with filesystem.open(str(config_path), "r") as f:
+                raw_text = f.read()
+        else:
+            # Use default path-based file I/O
+            raw_text = config_path.read_text()
     except OSError as exc:  # pragma: no cover - filesystem failures are rare
         raise ConfigError(f"Failed to read config file: {exc}") from exc
 

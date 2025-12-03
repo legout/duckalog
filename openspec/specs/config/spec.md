@@ -234,6 +234,67 @@ The system SHALL support loading Duckalog configs from remote URIs via a filesys
 - **THEN** the loader SHALL download it with TLS verification enabled by default
 - **AND** timeouts and HTTP errors SHALL surface clear messages.
 
+### Requirement: Config Loading API Contract
+The system SHALL provide clear, documented responsibilities for config loading functions with predictable dispatch behavior and filesystem abstraction support.
+
+#### Scenario: Public API entrypoint
+- **GIVEN** a user calls `load_config(path_or_uri, *, filesystem=None, ...)` with either a local path or remote URI
+- **WHEN** the function is invoked
+- **THEN** it SHALL determine whether `path_or_uri` is local or remote based on URI scheme detection
+- **AND** it SHALL delegate to the appropriate internal helper:
+  - `_load_config_from_local_file` for local paths (no scheme detected)
+  - `load_config_from_uri` for remote URIs (scheme like `s3://`, `http://`, etc. detected)
+
+#### Scenario: Local file loading helper
+- **GIVEN** `_load_config_from_local_file(path, *, filesystem=None, ...)` is called with a local file path
+- **WHEN** the function executes
+- **THEN** it SHALL be responsible for:
+  - Path resolution and validation per security requirements
+  - Reading YAML/JSON content from local disk or provided `filesystem` object
+  - Environment variable interpolation
+  - Pydantic model validation
+- **AND** if `filesystem` is provided, it SHALL use filesystem-based I/O instead of direct file access
+- **AND** if `filesystem` is `None`, it SHALL use default path-based file I/O
+
+#### Scenario: Remote URI loading helper
+- **GIVEN** `load_config_from_uri(uri, *, filesystem, ...)` is called with a remote URI
+- **WHEN** the function executes
+- **THEN** it SHALL be responsible for:
+  - URI scheme validation and parsing
+  - Remote content fetching using the provided `filesystem` or appropriate default
+  - Content validation and parsing (YAML/JSON)
+  - Environment variable interpolation and path resolution
+  - Pydantic model validation
+- **AND** it SHALL require a suitable `filesystem` object for protocols that need it
+- **AND** it SHALL be exported from `duckalog.config` for direct testing and patching
+
+#### Scenario: URI scheme detection
+- **GIVEN** any path or URI string
+- **WHEN** determining whether to use local or remote loading
+- **THEN** the system SHALL consider it a remote URI if it matches a `<scheme>://` pattern
+- **AND** common schemes SHALL include `s3://`, `http://`, `https://`, `gcs://`, `abfs://`, `sftp://`, and other fsspec-compatible protocols
+- **AND** strings without schemes SHALL be treated as local file paths
+
+#### Scenario: Filesystem interface requirements
+- **GIVEN** a `filesystem` object passed to any config loading function
+- **WHEN** the filesystem is used for I/O operations
+- **THEN** it SHALL provide an fsspec-compatible interface with at minimum:
+  - `open(path, mode='r')` method for reading file contents
+  - `exists(path)` method for checking file existence
+- **AND** for remote protocols, it SHALL understand the appropriate scheme and authentication methods
+- **AND** if the filesystem object lacks required methods, the function SHALL raise a clear error describing the missing interface
+
+#### Scenario: Filesystem parameter handling
+- **GIVEN** local file loading with `filesystem=None`
+- **WHEN** `_load_config_from_local_file` is called
+- **THEN** it SHALL use standard Python file I/O (`open()`, `os.path.exists()`, etc.)
+- **GIVEN** local file loading with a provided `filesystem` object
+- **WHEN** `_load_config_from_local_file` is called
+- **THEN** it SHALL use the filesystem's methods instead of direct file I/O
+- **GIVEN** remote URI loading
+- **WHEN** `load_config_from_uri` is called
+- **THEN** it SHALL require an appropriate filesystem for the protocol or use sensible defaults where possible
+
 ### Requirement: Optional dependencies and clear errors
 Remote loading SHALL not break local-only users.
 
