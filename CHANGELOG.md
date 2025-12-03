@@ -1,4 +1,40 @@
 # Changelog
+## [2025-12-03] - 0.3.0
+
+### Added
+- Feat: add comprehensive security regression tests for sql and path protection (a2489da)
+- Add comprehensive tests for root-based path security model (8dfe6a3)
+- Feat: implement root-based path security boundaries (ecdb4dc)
+- Feat: implement sql quoting and secrets safety improvements (34ddd67)
+- Feat: implement secrets creation functionality (24bff5c)
+- Feat: implement secrets creation functionality (514ec6f)
+- Docs: complete add-duckdb-connection-api proposal (299e221)
+- Feat: complete openspec change proposals (7016b94)
+- Feat: implement duckdb connection api functions (7b410e0)
+- Complete add-config-init change proposal tasks (7dcd7fe)
+
+### Fixed
+- Fix: eliminate documentation build warnings and improve navigation discoverability (1f5954f)
+
+### Changed
+- Update docs for refactored architecture (39a237e)
+- Plan documentation update after major refactor (293cbe2)
+- Archive completed specification changes to dated folders (16aacf8)
+- Refactor: consolidate cli filesystem options across commands (08d69de)
+- Docs: mark hierarchical dependency tests as completed (abf0fe2)
+- Refactor: simplify engine with catalogbuilder orchestration (c300d43)
+- Refactor: extract config into structured package (191f821)
+- Refactor: consolidate config layer - merge path_resolution, sql_file_loader, and logging_utils into config.py (277ed3a)
+- Update: clarify remote config api contract and responsibilities (9c95820)
+- Clarify: standardize python version support at 3.12+ (836de9d)
+- Refactor: simplify and standardize exception hierarchy (b78770a)
+- Docs: update implement-secrets-creation tasks.md with accurate completion status (f5073d3)
+- Docs: mark all path security tasks as completed (919aa27)
+- Move code review docs from plan to top level (f952376)
+- Docs: update project documentation and agents.md (d206b68)
+- Docs: update examples to use modern type annotations (b956586)
+- Refactor: modernize python type annotations (45299dc)
+- Docs: auto-update changelog.md for version 0.2.4 (55759ce)
 
 ## [Unreleased] - Secret Models Refactoring
 
