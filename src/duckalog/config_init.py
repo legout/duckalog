@@ -137,7 +137,7 @@ def _validate_template(template_data: dict[str, Any]) -> None:
         # Use the existing Config model to validate
         Config.model_validate(template_data)
     except Exception as exc:
-        from .config import ConfigError
+        from .errors import ConfigError
 
         raise ConfigError(f"Generated template is invalid: {exc}") from exc
 
@@ -203,7 +203,7 @@ def validate_generated_config(content: str, format: ConfigFormat = "yaml") -> No
         ConfigError: If the configuration cannot be loaded or is invalid.
     """
     from tempfile import NamedTemporaryFile
-    from .config import ConfigError
+    from .errors import ConfigError
 
     try:
         # Write content to a temporary file to test loading

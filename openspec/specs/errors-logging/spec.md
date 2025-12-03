@@ -1,7 +1,40 @@
 # errors-logging Specification
 
 ## Purpose
-TBD - created by archiving change add-error-and-logging. Update Purpose after archive.
+Define consistent exception handling patterns and logging behavior for Duckalog, ensuring all errors are properly categorized, logged, and propagated with appropriate context.
+
+## Exception Hierarchy
+
+### Requirement: Standardized Exception Types
+The system MUST use a consistent exception hierarchy based on `DuckalogError` as the base class for all library exceptions.
+
+#### Exception Hierarchy:
+- `DuckalogError`: Base exception for all Duckalog-specific errors
+- `ConfigError(DuckalogError)`: Configuration-related errors
+- `EngineError(DuckalogError)`: Catalog build/engine errors
+- `RemoteConfigError(ConfigError)`: Remote configuration loading errors
+- `SQLFileError(DuckalogError)`: SQL file loading/parsing errors
+
+#### Scenario: Exception inheritance and usage
+- **GIVEN** a failure occurs in the Duckalog library
+- **WHEN** the error is raised
+- **THEN** it MUST inherit from `DuckalogError` and include:
+  - A clear, descriptive error message
+  - Original exception context when wrapping lower-level errors
+  - Proper exception chaining using `raise ... from exc`
+
+### Requirement: Error Context and Logging
+All exceptions MUST be logged with appropriate context and MUST preserve the original exception chain.
+
+#### Scenario: Exception wrapping with context
+- **GIVEN** a lower-level exception occurs (e.g., file not found, network error)
+- **WHEN** it is caught and re-raised as a domain-specific exception
+- **THEN** the system MUST:
+  - Log the error with context using the logging utilities
+  - Raise the appropriate `DuckalogError` subclass
+  - Preserve the original traceback using `from exc`
+  - Provide a clear message about what operation failed
+
 ## Requirements
 ### Requirement: Error Types and Responsibilities
 The system MUST distinguish configuration-time failures from runtime/engine failures using dedicated exception types.
@@ -9,13 +42,35 @@ The system MUST distinguish configuration-time failures from runtime/engine fail
 #### Scenario: ConfigError for invalid configuration
 - **GIVEN** a config file that is missing required fields, has parse errors, or contains unresolved `${env:VAR}` placeholders
 - **WHEN** the configuration is loaded or validated
-- **THEN** a `ConfigError` is raised with a message that indicates the nature of the configuration problem.
+- **THEN** a `ConfigError` (inheriting from `DuckalogError`) is raised with a message that indicates the nature of the configuration problem.
 
 #### Scenario: EngineError for DuckDB or attachment failures
 - **GIVEN** a valid configuration
 - **AND** a failure occurs while opening DuckDB, attaching a database, configuring an Iceberg catalog, or executing a view SQL statement
 - **WHEN** the catalog build is attempted
-- **THEN** an `EngineError` is raised that wraps the underlying exception and includes context about which operation failed.
+- **THEN** an `EngineError` (inheriting from `DuckalogError`) is raised that wraps the underlying exception and includes context about which operation failed.
+
+#### Scenario: SQLFileError for SQL processing failures
+- **GIVEN** a SQL file that cannot be loaded, parsed, or processed
+- **WHEN** attempting to load or execute the SQL file
+- **THEN** a `SQLFileError` (inheriting from `DuckalogError`) is raised with a message indicating the specific SQL file and nature of the failure.
+
+#### Scenario: RemoteConfigError for remote configuration failures
+- **GIVEN** a remote configuration source that is unreachable or returns invalid data
+- **WHEN** attempting to load remote configuration
+- **THEN** a `RemoteConfigError` (inheriting from `ConfigError`) is raised with context about the remote source and failure reason.
+
+### Requirement: Error Handling Patterns
+All code MUST use consistent error handling patterns that avoid bare `except Exception` blocks and ensure proper exception chaining.
+
+#### Scenario: Wrapping lower-level exceptions
+- **GIVEN** a lower-level exception occurs during a Duckalog operation
+- **WHEN** the exception is caught
+- **THEN** the code MUST:
+  - Use targeted exception types where possible, OR
+  - Catch `Exception as exc:` and log context using logging utilities
+  - Raise an appropriate `DuckalogError` subclass with `from exc`
+  - Avoid silent `pass` blocks except in explicitly documented fallback cases
 
 ### Requirement: CLI Error Handling and Exit Codes
 CLI commands MUST surface errors with clear messages and appropriate exit codes.

@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from .config import Config, ConfigError
+from .config import Config
+from .errors import ConfigError, DuckalogError, RemoteConfigError
 from .logging_utils import log_debug, log_info
 
 # Optional imports for remote functionality
@@ -32,10 +33,6 @@ try:
 except ImportError:
     requests = None  # type: ignore
     REQUESTS_AVAILABLE = False
-
-
-class RemoteConfigError(ConfigError):
-    """Error raised when remote configuration loading fails."""
 
 
 # Supported URI schemes and their required dependencies
@@ -237,9 +234,7 @@ def _fetch_http_content(uri: str, timeout: int) -> str:
     return content
 
 
-def _fetch_fsspec_content(
-    uri: str, timeout: int, filesystem: Any | None = None
-) -> str:
+def _fetch_fsspec_content(uri: str, timeout: int, filesystem: Any | None = None) -> str:
     """Fetch content using fsspec for other remote URIs."""
     if not FSSPEC_AVAILABLE or fsspec is None:
         raise RemoteConfigError("fsspec library is not available")

@@ -3,7 +3,6 @@
 from .config import (
     AttachmentsConfig,
     Config,
-    ConfigError,
     DuckDBAttachment,
     DuckDBConfig,
     IcebergCatalogConfig,
@@ -13,7 +12,20 @@ from .config import (
     SecretConfig,
     load_config,
 )
-from .engine import EngineError, build_catalog
+from .engine import build_catalog
+from .errors import (
+    DuckalogError,
+    ConfigError,
+    EngineError,
+    PathResolutionError,
+    RemoteConfigError,
+    SQLFileError,
+    SQLFileNotFoundError,
+    SQLFilePermissionError,
+    SQLFileEncodingError,
+    SQLFileSizeError,
+    SQLTemplateError,
+)
 from .sql_generation import (
     generate_all_views_sql,
     generate_view_sql,

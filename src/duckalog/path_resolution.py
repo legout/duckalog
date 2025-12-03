@@ -416,17 +416,3 @@ def validate_file_accessibility(path: str) -> tuple[bool, str | None]:
 
     except (OSError, ValueError) as exc:
         return False, f"Invalid path: {exc}"
-
-
-class PathResolutionError(Exception):
-    """Raised when path resolution fails due to security or access issues."""
-
-    def __init__(
-        self,
-        message: str,
-        original_path: str | None = None,
-        resolved_path: str | None = None,
-    ):
-        super().__init__(message)
-        self.original_path = original_path
-        self.resolved_path = resolved_path

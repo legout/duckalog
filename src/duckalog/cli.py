@@ -16,12 +16,14 @@ try:
 except ImportError:
     fsspec = None  # Will be handled in the function
 
-from .config import ConfigError, load_config
+from .config import load_config
+from .errors import ConfigError
 
 # from .dashboard import create_app
 # from .dashboard.state import DashboardContext
 from .config_init import create_config_template, validate_generated_config
-from .engine import EngineError, build_catalog
+from .engine import build_catalog
+from .errors import EngineError
 from .logging_utils import log_error, log_info
 from .path_resolution import validate_file_accessibility
 from .sql_generation import generate_all_views_sql

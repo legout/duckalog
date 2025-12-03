@@ -25,7 +25,7 @@ The library MUST provide a `validate_config(config_path: str) -> None` function 
 #### Scenario: Invalid config raises ConfigError
 - **GIVEN** a config file path pointing to an invalid or incomplete config
 - **WHEN** `validate_config(config_path)` is called
-- **THEN** the function raises a `ConfigError` describing the problem
+- **THEN** the function raises a `ConfigError` (inheriting from `DuckalogError`) describing the problem
 - **AND** the exception can be caught by callers to handle validation failures.
 
 ### Requirement: No Side Effects for Convenience Functions

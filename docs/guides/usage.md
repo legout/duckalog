@@ -214,7 +214,7 @@ uri: ../../usr/local/data.parquet
 
 **Path resolution failed:**
 ```
-ConfigError: Path resolution failed: Path resolution violates security rules
+PathResolutionError: Path resolution failed: Path resolution violates security rules
 ```
 
 **Solutions:**
@@ -479,6 +479,85 @@ views:
       FROM raw_events e
       LEFT JOIN user_segments us ON e.user_id = us.user_id
       WHERE e.timestamp >= CURRENT_DATE - INTERVAL 30 DAYS
+```
+
+## Error Handling
+
+Duckalog provides a comprehensive exception hierarchy to help you handle errors gracefully in your applications.
+
+### Exception Hierarchy
+
+All Duckalog exceptions inherit from `DuckalogError`, making it easy to catch all library errors:
+
+```python
+from duckalog import DuckalogError, load_config, build_catalog
+
+try:
+    config = load_config("catalog.yaml")
+    build_catalog(config)
+except DuckalogError as e:
+    # Handle any Duckalog-specific error
+    print(f"Duckalog error: {e}")
+```
+
+### Specific Exception Types
+
+For more targeted error handling, catch specific exception types:
+
+```python
+from duckalog import (
+    ConfigError,        # Configuration issues
+    EngineError,        # Database/build failures  
+    PathResolutionError, # Path resolution problems
+    RemoteConfigError,  # Remote config loading failures
+    SQLFileError,       # SQL file processing issues
+)
+
+try:
+    config = load_config("catalog.yaml")
+except ConfigError as e:
+    print(f"Configuration error: {e}")
+except PathResolutionError as e:
+    print(f"Path resolution failed: {e}")
+    print(f"Original path: {e.original_path}")
+    print(f"Resolved path: {e.resolved_path}")
+except DuckalogError as e:
+    print(f"Other Duckalog error: {e}")
+```
+
+### Best Practices
+
+1. **Catch specific exceptions first**: Handle the most specific errors first, then catch more general ones
+2. **Use exception chaining**: Duckalog preserves original exceptions to help with debugging
+3. **Log with context**: Include relevant information when logging errors
+4. **Validate early**: Use `validate_config()` to catch configuration errors before building
+
+```python
+import logging
+from duckalog import ConfigError, EngineError, validate_config, build_catalog
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def create_catalog(config_path):
+    try:
+        # Validate configuration first
+        validate_config(config_path)
+        logger.info(f"Configuration {config_path} is valid")
+        
+        # Build catalog
+        build_catalog(config_path)
+        logger.info("Catalog built successfully")
+        
+    except ConfigError as e:
+        logger.error(f"Configuration error in {config_path}: {e}")
+        # Handle configuration issues (missing files, invalid syntax, etc.)
+    except EngineError as e:
+        logger.error(f"Engine error building catalog: {e}")
+        # Handle database issues (connection failures, SQL errors, etc.)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise  # Re-raise unexpected errors
 ```
 
 ## Troubleshooting

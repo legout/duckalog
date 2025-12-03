@@ -219,13 +219,7 @@ class ConfigDependencyGraph:
             self.visited.add(config_path)
 
 
-class EngineError(Exception):
-    """Engine-level error raised during catalog builds.
-
-    This exception wraps lower-level DuckDB errors, such as failures to
-    connect to the database, attach external systems, or execute generated
-    SQL statements.
-    """
+from .errors import EngineError, DuckalogError
 
 
 def build_catalog(

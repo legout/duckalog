@@ -32,7 +32,7 @@ config = load_config("catalog.yaml", load_sql_files=False)
 - `Config`: Validated configuration object
 
 **Raises:**
-- `ConfigError`: Configuration parsing or validation errors
+- `ConfigError`: Configuration parsing or validation errors (inherits from `DuckalogError`)
 
 ## Path Resolution API
 
@@ -382,9 +382,30 @@ sqlite_attach = SQLiteAttachment(
 
 ## Exception Classes
 
-### ConfigError
+Duckalog uses a consistent exception hierarchy based on `DuckalogError` as the base class for all library exceptions. This provides a unified error handling interface and makes it easy to catch all Duckalog-specific errors.
 
-Raised for configuration-related errors including path resolution failures.
+### Base Exception
+
+#### DuckalogError
+
+Base exception for all Duckalog-specific errors. You can catch this class to handle any Duckalog-related error, or catch more specific subclasses for targeted error handling.
+
+```python
+from duckalog import DuckalogError
+
+try:
+    config = load_config("catalog.yaml")
+    build_catalog(config)
+except DuckalogError as e:
+    # Handle any Duckalog-specific error
+    print(f"Duckalog error: {e}")
+```
+
+### Configuration Errors
+
+#### ConfigError
+
+Raised for configuration-related errors including parsing, validation, and path resolution failures. Inherits from `DuckalogError`.
 
 ```python
 from duckalog import load_config, ConfigError
@@ -395,12 +416,18 @@ except ConfigError as e:
     print(f"Configuration error: {e}")
 ```
 
-### PathResolutionError
+**Common scenarios:**
+- Missing required configuration fields
+- Invalid YAML/JSON syntax
+- Unresolved environment variable placeholders (`${env:VAR}`)
+- Invalid view definitions
 
-Raised specifically when path resolution fails due to security or access issues.
+#### PathResolutionError
+
+Raised specifically when path resolution fails due to security or access issues. Inherits from `ConfigError`.
 
 ```python
-from duckalog.path_resolution import PathResolutionError, resolve_relative_path
+from duckalog import PathResolutionError, resolve_relative_path
 from pathlib import Path
 
 try:
@@ -410,6 +437,80 @@ except PathResolutionError as e:
     print(f"Original path: {e.original_path}")
     print(f"Resolved path: {e.resolved_path}")
 ```
+
+#### RemoteConfigError
+
+Raised when remote configuration loading fails. Inherits from `ConfigError`.
+
+```python
+from duckalog import RemoteConfigError, load_config_from_uri
+
+try:
+    config = load_config_from_uri("s3://bucket/config.yaml")
+except RemoteConfigError as e:
+    print(f"Remote config error: {e}")
+```
+
+### SQL File Errors
+
+#### SQLFileError
+
+Base exception for SQL file-related errors. Inherits from `DuckalogError`.
+
+```python
+from duckalog import SQLFileError
+
+try:
+    # Operations that load SQL from files
+    pass
+except SQLFileError as e:
+    print(f"SQL file error: {e}")
+```
+
+**Subclasses for specific SQL file errors:**
+- `SQLFileNotFoundError`: Referenced SQL file does not exist
+- `SQLFilePermissionError`: SQL file cannot be read due to permissions
+- `SQLFileEncodingError`: SQL file has invalid encoding
+- `SQLFileSizeError`: SQL file exceeds size limits
+- `SQLTemplateError`: Template processing fails
+
+### Engine Errors
+
+#### EngineError
+
+Raised during catalog builds when DuckDB operations fail. Inherits from `DuckalogError`.
+
+```python
+from duckalog import EngineError, build_catalog
+
+try:
+    build_catalog("catalog.yaml")
+except EngineError as e:
+    print(f"Engine error: {e}")
+```
+
+**Common scenarios:**
+- DuckDB connection failures
+- SQL execution errors
+- Attachment setup failures
+- Extension installation/loading errors
+- Secret creation failures
+
+### Exception Chaining
+
+All Duckalog exceptions support proper exception chaining to preserve the original error context:
+
+```python
+from duckalog import EngineError
+
+try:
+    # Some operation that fails
+    raise ValueError("Original database connection failed")
+except ValueError as exc:
+    raise EngineError("Failed to connect to DuckDB") from exc
+```
+
+This preserves the full traceback and makes debugging much easier.
 
 ## Generated API Documentation
 

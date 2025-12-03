@@ -32,7 +32,7 @@ The CLI SHALL expose an `init` command that creates a new Duckalog configuration
 #### Scenario: CLI validates generated config
 - **WHEN** `duckalog init` creates a configuration file
 - **THEN** the generated file is immediately validated
-- **AND** if validation fails, an error is displayed and no file is created
+- **AND** if validation fails, a `ConfigError` (inheriting from `DuckalogError`) is displayed and no file is created
 - **AND** if validation succeeds, a success message is shown
 
 ### Requirement: CLI Init Command Options
@@ -43,7 +43,7 @@ The CLI init command SHALL support options for format, output path, and behavior
 - **THEN** a YAML file is created (default behavior)
 - **WHEN** `duckalog init --format json` is executed  
 - **THEN** a JSON file is created
-- **AND** invalid format values are rejected with an error message
+- **AND** invalid format values are rejected with a `ConfigError` (inheriting from `DuckalogError`)
 
 #### Scenario: Output path options
 - **WHEN** `duckalog init --output path/to/config.yaml` is executed

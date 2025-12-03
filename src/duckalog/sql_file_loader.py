@@ -9,43 +9,14 @@ import re
 from pathlib import Path
 from typing import Any, Optional, Union, Dict
 
-from .config import ConfigError
-
-
-class SQLFileError(ConfigError):
-    """Base exception for SQL file-related errors."""
-
-    pass
-
-
-class SQLFileNotFoundError(SQLFileError):
-    """Raised when a referenced SQL file does not exist."""
-
-    pass
-
-
-class SQLFilePermissionError(SQLFileError):
-    """Raised when a SQL file cannot be read due to permissions."""
-
-    pass
-
-
-class SQLFileEncodingError(SQLFileError):
-    """Raised when a SQL file has invalid encoding."""
-
-    pass
-
-
-class SQLFileSizeError(SQLFileError):
-    """Raised when a SQL file exceeds size limits."""
-
-    pass
-
-
-class SQLTemplateError(SQLFileError):
-    """Raised when template processing fails."""
-
-    pass
+from .errors import (
+    SQLFileError,
+    SQLFileNotFoundError,
+    SQLFilePermissionError,
+    SQLFileEncodingError,
+    SQLFileSizeError,
+    SQLTemplateError,
+)
 
 
 class TemplateProcessor:

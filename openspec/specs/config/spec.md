@@ -25,10 +25,10 @@ The system MUST support `${env:VAR_NAME}` placeholders in any string value and r
 
 #### Scenario: Missing environment variable causes error
 - **GIVEN** `AWS_SECRET_ACCESS_KEY` is NOT set in the environment
-- **AND** a config pragma value is `\"SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'\"`
+- **AND** a config pragma value is `"SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"`
 - **WHEN** the configuration is loaded
 - **THEN** configuration loading fails
-- **AND** a configuration error is raised indicating the missing environment variable.
+- **AND** a `ConfigError` (inheriting from `DuckalogError`) is raised indicating the missing environment variable.
 
 ### Requirement: View Definitions and Sources
 Each view definition MUST have a unique `name` and EITHER a `sql` field OR a `source` field with the required attributes for that source type.

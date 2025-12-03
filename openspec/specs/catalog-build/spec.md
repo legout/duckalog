@@ -42,7 +42,7 @@ The CLI MUST expose a `build` command that applies a config to a DuckDB catalog 
 #### Scenario: CLI build fails on engine error
 - **GIVEN** a config with an invalid view or attachment that causes SQL execution to fail
 - **WHEN** `duckalog build catalog.yaml` is executed
-- **THEN** the command prints a clear error message
+- **THEN** the command prints a clear error message derived from an `EngineError`
 - **AND** exits with a non-zero status code.
 
 ### Requirement: CLI Generate-SQL Command

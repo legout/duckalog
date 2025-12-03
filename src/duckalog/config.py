@@ -19,30 +19,15 @@ from pydantic import (
     model_validator,
 )
 
+from .errors import ConfigError, DuckalogError, PathResolutionError
 from .logging_utils import log_debug, log_info
 from .path_resolution import (
-    PathResolutionError,
     is_relative_path,
     resolve_relative_path,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - used for type checking only
     from .sql_file_loader import SQLFileLoader
-
-
-class ConfigError(Exception):
-    """Configuration-related error.
-
-    This exception is raised when a catalog configuration cannot be read,
-    parsed, interpolated, or validated according to the Duckalog schema.
-
-    Typical error conditions include:
-
-    * The config file does not exist or cannot be read.
-    * The file is not valid YAML/JSON.
-    * Required fields are missing or invalid.
-    * An environment variable placeholder cannot be resolved.
-    """
 
 
 EnvSource = Literal["parquet", "delta", "iceberg", "duckdb", "sqlite", "postgres"]
