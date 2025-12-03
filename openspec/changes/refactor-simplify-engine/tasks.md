@@ -9,7 +9,7 @@
 
 ## 3. Dependency resolution simplification
 - [x] 3.1 Replace or simplify existing dependency-graph logic with a DFS-based approach
-- [ ] 3.2 Add tests for simple trees, diamonds, and cycle detection
+- [x] 3.2 Add tests for simple trees, diamonds, and cycle detection (hierarchical functionality tests added)
 - [x] 3.3 Preserve existing semantics for attachment hierarchies and max depth
 
 ## 4. Testing and verification
