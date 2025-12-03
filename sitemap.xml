@@ -2,54 +2,90 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://legout.github.io/duckalog/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
+    </url>
+    <url>
+         <loc>https://legout.github.io/duckalog/SECURITY/</loc>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/architecture/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
+    </url>
+    <url>
+         <loc>https://legout.github.io/duckalog/best-practices-path-management/</loc>
+         <lastmod>2025-12-03</lastmod>
+    </url>
+    <url>
+         <loc>https://legout.github.io/duckalog/configuration-path-examples/</loc>
+         <lastmod>2025-12-03</lastmod>
+    </url>
+    <url>
+         <loc>https://legout.github.io/duckalog/migration-path-resolution/</loc>
+         <lastmod>2025-12-03</lastmod>
+    </url>
+    <url>
+         <loc>https://legout.github.io/duckalog/path-resolution-examples/</loc>
+         <lastmod>2025-12-03</lastmod>
+    </url>
+    <url>
+         <loc>https://legout.github.io/duckalog/path-resolution/</loc>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/examples/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/examples/duckdb-secrets/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/examples/duckdb-settings/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/examples/environment-vars/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/examples/local-attachments/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/examples/multi-source-analytics/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
+    </url>
+    <url>
+         <loc>https://legout.github.io/duckalog/examples/path-resolution-examples/</loc>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/examples/simple-parquet/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/guides/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
+    </url>
+    <url>
+         <loc>https://legout.github.io/duckalog/guides/path-resolution/</loc>
+         <lastmod>2025-12-03</lastmod>
+    </url>
+    <url>
+         <loc>https://legout.github.io/duckalog/guides/ui-dashboard/</loc>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/guides/usage/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/reference/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
     </url>
     <url>
          <loc>https://legout.github.io/duckalog/reference/api/</loc>
-         <lastmod>2025-11-20</lastmod>
+         <lastmod>2025-12-03</lastmod>
     </url>
 </urlset>

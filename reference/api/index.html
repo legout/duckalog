@@ -276,6 +276,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/ui-dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/" class="md-nav__link">
         
   
@@ -375,6 +402,514 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-configuration-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Configuration API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Configuration API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#load_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load_config()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#path-resolution-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path Resolution API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Path Resolution API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#path-detection-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path Detection Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Path Detection Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#is_relative_path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_relative_path()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detect_path_type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        detect_path_type()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-resolution-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path Resolution Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Path Resolution Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#resolve_relative_path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve_relative_path()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-validation-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Validation Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Validation Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validate_path_security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_path_security()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validate_file_accessibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_file_accessibility()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-normalization-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path Normalization Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Path Normalization Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#normalize_path_for_sql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        normalize_path_for_sql()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-based-path-security-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root-Based Path Security Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Root-Based Path Security Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#is_within_allowed_roots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_within_allowed_roots()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sql-generation-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SQL Generation API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SQL Generation API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sql-quoting-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SQL Quoting Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SQL Quoting Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quote_ident" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quote_ident()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quote_literal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quote_literal()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generate_view_sql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        generate_view_sql()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generate_secret_sql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        generate_secret_sql()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#viewconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ViewConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attachmentconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AttachmentConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exception-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exception Classes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Exception Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#base-exception" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Base Exception
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Base Exception">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalogerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DuckalogError
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Errors
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ConfigError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pathresolutionerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PathResolutionError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remoteconfigerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RemoteConfigError
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sql-file-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SQL File Errors
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SQL File Errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sqlfileerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SQLFileError
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#engine-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine Errors
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Engine Errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#engineerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EngineError
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exception-chaining" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exception Chaining
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generated-api-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generated API Documentation
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#duckalog" class="md-nav__link">
@@ -488,6 +1023,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#duckalog.SecretConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SecretConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#duckalog.ViewConfig" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -510,10 +1056,65 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#duckalog.connect_and_build_catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        connect_and_build_catalog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog.connect_to_catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        connect_to_catalog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog.connect_to_catalog_cm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        connect_to_catalog_cm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog.create_config_template" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create_config_template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#duckalog.generate_all_views_sql" class="md-nav__link">
     <span class="md-ellipsis">
       
         generate_all_views_sql
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog.generate_secret_sql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        generate_secret_sql
       
     </span>
   </a>
@@ -565,6 +1166,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#duckalog.quote_literal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quote_literal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#duckalog.render_options" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -580,6 +1192,17 @@
     <span class="md-ellipsis">
       
         validate_config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog.validate_generated_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_generated_config
       
     </span>
   </a>
@@ -612,6 +1235,381 @@
 
 
 <h1 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h1>
+<p>This section documents the core API functions and classes in Duckalog, with a focus on path resolution features.</p>
+<h2 id="core-configuration-api">Core Configuration API<a class="headerlink" href="#core-configuration-api" title="Permanent link">&para;</a></h2>
+<h3 id="load_config">load_config()<a class="headerlink" href="#load_config" title="Permanent link">&para;</a></h3>
+<p>Load, interpolate, and validate a Duckalog configuration file with optional path resolution.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_config</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Load with path resolution enabled (default)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">(</span><span class="s2">&quot;catalog.yaml&quot;</span><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># Load with explicit path resolution control</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">(</span><span class="s2">&quot;catalog.yaml&quot;</span><span class="p">,</span> <span class="n">resolve_paths</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">(</span><span class="s2">&quot;catalog.yaml&quot;</span><span class="p">,</span> <span class="n">resolve_paths</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># Load without processing SQL files (for validation)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="n">config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">(</span><span class="s2">&quot;catalog.yaml&quot;</span><span class="p">,</span> <span class="n">load_sql_files</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>path</code> (str): Path to YAML or JSON configuration file
+- <code>load_sql_files</code> (bool, optional): Whether to load SQL from external files. Default: True
+- <code>sql_file_loader</code> (SQLFileLoader, optional): Custom SQL file loader instance
+- <code>resolve_paths</code> (bool, optional): Whether to resolve relative paths. Default: True</p>
+<p><strong>Returns:</strong>
+- <code>Config</code>: Validated configuration object</p>
+<p><strong>Raises:</strong>
+- <code>ConfigError</code>: Configuration parsing or validation errors (inherits from <code>DuckalogError</code>)</p>
+<h2 id="path-resolution-api">Path Resolution API<a class="headerlink" href="#path-resolution-api" title="Permanent link">&para;</a></h2>
+<h3 id="path-detection-functions">Path Detection Functions<a class="headerlink" href="#path-detection-functions" title="Permanent link">&para;</a></h3>
+<h4 id="is_relative_path">is_relative_path()<a class="headerlink" href="#is_relative_path" title="Permanent link">&para;</a></h4>
+<p>Detect if a path is relative based on platform-specific rules.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog.path_resolution</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_relative_path</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Returns True for relative paths</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">assert</span> <span class="n">is_relative_path</span><span class="p">(</span><span class="s2">&quot;data/file.parquet&quot;</span><span class="p">)</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">assert</span> <span class="n">is_relative_path</span><span class="p">(</span><span class="s2">&quot;../shared/data.parquet&quot;</span><span class="p">)</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Returns False for absolute paths and URIs</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="k">assert</span> <span class="ow">not</span> <span class="n">is_relative_path</span><span class="p">(</span><span class="s2">&quot;/absolute/path/file.parquet&quot;</span><span class="p">)</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="k">assert</span> <span class="ow">not</span> <span class="n">is_relative_path</span><span class="p">(</span><span class="s2">&quot;s3://bucket/file.parquet&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>path</code> (str): Path string to check</p>
+<p><strong>Returns:</strong>
+- <code>bool</code>: True if path is relative, False otherwise</p>
+<h4 id="detect_path_type">detect_path_type()<a class="headerlink" href="#detect_path_type" title="Permanent link">&para;</a></h4>
+<p>Categorize paths by type for processing.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog.path_resolution</span><span class="w"> </span><span class="kn">import</span> <span class="n">detect_path_type</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">path_type</span> <span class="o">=</span> <span class="n">detect_path_type</span><span class="p">(</span><span class="s2">&quot;../data/file.parquet&quot;</span><span class="p">)</span>  <span class="c1"># Returns: &quot;relative&quot;</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">path_type</span> <span class="o">=</span> <span class="n">detect_path_type</span><span class="p">(</span><span class="s2">&quot;/absolute/file.parquet&quot;</span><span class="p">)</span>  <span class="c1"># Returns: &quot;absolute&quot;</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">path_type</span> <span class="o">=</span> <span class="n">detect_path_type</span><span class="p">(</span><span class="s2">&quot;s3://bucket/file.parquet&quot;</span><span class="p">)</span>  <span class="c1"># Returns: &quot;remote&quot;</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>path</code> (str): Path string to analyze</p>
+<p><strong>Returns:</strong>
+- <code>str</code>: One of "relative", "absolute", "remote", "invalid"</p>
+<h3 id="path-resolution-functions">Path Resolution Functions<a class="headerlink" href="#path-resolution-functions" title="Permanent link">&para;</a></h3>
+<h4 id="resolve_relative_path">resolve_relative_path()<a class="headerlink" href="#resolve_relative_path" title="Permanent link">&para;</a></h4>
+<p>Resolve a relative path to an absolute path relative to configuration directory.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog.path_resolution</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_relative_path</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">config_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/project/config&quot;</span><span class="p">)</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">resolved</span> <span class="o">=</span> <span class="n">resolve_relative_path</span><span class="p">(</span><span class="s2">&quot;data/file.parquet&quot;</span><span class="p">,</span> <span class="n">config_dir</span><span class="p">)</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="c1"># Returns: &quot;/project/config/data/file.parquet&quot;</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>path</code> (str): Path to resolve (relative or absolute)
+- <code>config_dir</code> (Path): Directory containing the configuration file</p>
+<p><strong>Returns:</strong>
+- <code>str</code>: Resolved absolute path</p>
+<p><strong>Raises:</strong>
+- <code>ValueError</code>: If path resolution fails or violates security rules</p>
+<h3 id="security-validation-functions">Security Validation Functions<a class="headerlink" href="#security-validation-functions" title="Permanent link">&para;</a></h3>
+<h4 id="validate_path_security">validate_path_security()<a class="headerlink" href="#validate_path_security" title="Permanent link">&para;</a></h4>
+<p>Validate that resolved paths don't violate security boundaries.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog.path_resolution</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_path_security</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">config_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/project/config&quot;</span><span class="p">)</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1"># Safe paths return True</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="k">assert</span> <span class="n">validate_path_security</span><span class="p">(</span><span class="s2">&quot;data/file.parquet&quot;</span><span class="p">,</span> <span class="n">config_dir</span><span class="p">)</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="k">assert</span> <span class="n">validate_path_security</span><span class="p">(</span><span class="s2">&quot;../shared/data.parquet&quot;</span><span class="p">,</span> <span class="n">config_dir</span><span class="p">)</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="c1"># Dangerous paths return False</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="k">assert</span> <span class="ow">not</span> <span class="n">validate_path_security</span><span class="p">(</span><span class="s2">&quot;../../../etc/passwd&quot;</span><span class="p">,</span> <span class="n">config_dir</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>path</code> (str): Path to validate (will be resolved if relative)
+- <code>config_dir</code> (Path): Directory containing the configuration file</p>
+<p><strong>Returns:</strong>
+- <code>bool</code>: True if path is safe, False otherwise</p>
+<h4 id="validate_file_accessibility">validate_file_accessibility()<a class="headerlink" href="#validate_file_accessibility" title="Permanent link">&para;</a></h4>
+<p>Validate that a file path is accessible and readable.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog.path_resolution</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_file_accessibility</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">accessible</span><span class="p">,</span> <span class="n">error</span> <span class="o">=</span> <span class="n">validate_file_accessibility</span><span class="p">(</span><span class="s2">&quot;/path/to/file.parquet&quot;</span><span class="p">)</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="k">if</span> <span class="n">accessible</span><span class="p">:</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;File is accessible&quot;</span><span class="p">)</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="k">else</span><span class="p">:</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File access error: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>path</code> (str): File path to validate</p>
+<p><strong>Returns:</strong>
+- <code>tuple[bool, str | None]</code>: (is_accessible, error_message)</p>
+<h3 id="path-normalization-functions">Path Normalization Functions<a class="headerlink" href="#path-normalization-functions" title="Permanent link">&para;</a></h3>
+<h4 id="normalize_path_for_sql">normalize_path_for_sql()<a class="headerlink" href="#normalize_path_for_sql" title="Permanent link">&para;</a></h4>
+<p>Normalize a path for use in SQL statements.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog.path_resolution</span><span class="w"> </span><span class="kn">import</span> <span class="n">normalize_path_for_sql</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">sql_path</span> <span class="o">=</span> <span class="n">normalize_path_for_sql</span><span class="p">(</span><span class="s2">&quot;/path/to/file.parquet&quot;</span><span class="p">)</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Returns: &quot;&#39;/path/to/file.parquet&#39;&quot;</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="n">sql_path</span> <span class="o">=</span> <span class="n">normalize_path_for_sql</span><span class="p">(</span><span class="s2">&quot;/path/file&#39;s_data.parquet&quot;</span><span class="p">)</span>  
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># Returns: &quot;&#39;/path/file&#39;&#39;s_data.parquet&#39;&quot; (properly escaped)</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>path</code> (str): Absolute path to normalize</p>
+<p><strong>Returns:</strong>
+- <code>str</code>: SQL-safe quoted path</p>
+<h3 id="root-based-path-security-functions">Root-Based Path Security Functions<a class="headerlink" href="#root-based-path-security-functions" title="Permanent link">&para;</a></h3>
+<h4 id="is_within_allowed_roots">is_within_allowed_roots()<a class="headerlink" href="#is_within_allowed_roots" title="Permanent link">&para;</a></h4>
+<p>Check if a resolved path is within any of the allowed root directories using robust cross-platform validation.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog.path_resolution</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_within_allowed_roots</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">config_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/project/config&quot;</span><span class="p">)</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">allowed_roots</span> <span class="o">=</span> <span class="p">[</span><span class="n">config_dir</span><span class="p">]</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># Check if a path is within allowed roots</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">is_safe</span> <span class="o">=</span> <span class="n">is_within_allowed_roots</span><span class="p">(</span><span class="s2">&quot;/project/config/data/file.parquet&quot;</span><span class="p">,</span> <span class="n">allowed_roots</span><span class="p">)</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="c1"># Returns: True</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="n">is_unsafe</span> <span class="o">=</span> <span class="n">is_within_allowed_roots</span><span class="p">(</span><span class="s2">&quot;/etc/passwd&quot;</span><span class="p">,</span> <span class="n">allowed_roots</span><span class="p">)</span>  
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="c1"># Returns: False</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="n">is_traversal_blocked</span> <span class="o">=</span> <span class="n">is_within_allowed_roots</span><span class="p">(</span><span class="s2">&quot;../../../etc/passwd&quot;</span><span class="p">,</span> <span class="n">allowed_roots</span><span class="p">)</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="c1"># Returns: False (path traversal blocked)</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>candidate_path</code> (str): The path to check (will be resolved to absolute)
+- <code>allowed_roots</code> (list[Path]): List of Path objects representing allowed root directories</p>
+<p><strong>Returns:</strong>
+- <code>bool</code>: True if the candidate path is within at least one allowed root, False otherwise</p>
+<p><strong>Raises:</strong>
+- <code>ValueError</code>: If the candidate path cannot be resolved (invalid path)</p>
+<p><strong>Security Features:</strong>
+- Uses <code>Path.resolve()</code> to follow symlinks and get canonical paths
+- Uses <code>os.path.commonpath()</code> for robust cross-platform path comparison<br />
+- Prevents all forms of path traversal attacks regardless of encoding or separators
+- Handles Windows drive letters and UNC paths correctly</p>
+<h2 id="sql-generation-api">SQL Generation API<a class="headerlink" href="#sql-generation-api" title="Permanent link">&para;</a></h2>
+<h3 id="sql-quoting-functions">SQL Quoting Functions<a class="headerlink" href="#sql-quoting-functions" title="Permanent link">&para;</a></h3>
+<h4 id="quote_ident">quote_ident()<a class="headerlink" href="#quote_ident" title="Permanent link">&para;</a></h4>
+<p>Quote a SQL identifier using double quotes with proper escaping.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">quote_ident</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># Quote simple identifiers</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="k">assert</span> <span class="n">quote_ident</span><span class="p">(</span><span class="s2">&quot;events&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;&quot;events&quot;&#39;</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># Quote identifiers with spaces</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="k">assert</span> <span class="n">quote_ident</span><span class="p">(</span><span class="s2">&quot;daily users&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;&quot;daily users&quot;&#39;</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1"># Quote identifiers with quotes (escapes embedded quotes)</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="k">assert</span> <span class="n">quote_ident</span><span class="p">(</span><span class="s1">&#39;user &quot;events&quot;&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;&quot;user &quot;&quot;events&quot;&quot;&quot;&#39;</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>identifier</code> (str): Identifier to quote</p>
+<p><strong>Returns:</strong>
+- <code>str</code>: Identifier wrapped in double quotes with proper escaping</p>
+<h4 id="quote_literal">quote_literal()<a class="headerlink" href="#quote_literal" title="Permanent link">&para;</a></h4>
+<p>Quote a SQL string literal using single quotes with proper escaping.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">quote_literal</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1"># Quote simple strings</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="k">assert</span> <span class="n">quote_literal</span><span class="p">(</span><span class="s2">&quot;user&#39;s data&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;&#39;user&#39;&#39;s data&#39;&quot;</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1"># Quote file paths</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="k">assert</span> <span class="n">quote_literal</span><span class="p">(</span><span class="s2">&quot;path/to/file.parquet&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;&#39;path/to/file.parquet&#39;&quot;</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="c1"># Quote SQL statements</span>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="k">assert</span> <span class="n">quote_literal</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM table&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;&#39;SELECT * FROM table&#39;&quot;</span>
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="c1"># Quote empty strings</span>
+</span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="k">assert</span> <span class="n">quote_literal</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;&#39;&#39;&quot;</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>value</code> (str): String literal to quote</p>
+<p><strong>Returns:</strong>
+- <code>str</code>: String wrapped in single quotes with proper escaping</p>
+<h4 id="generate_view_sql">generate_view_sql()<a class="headerlink" href="#generate_view_sql" title="Permanent link">&para;</a></h4>
+<p>Generate a <code>CREATE OR REPLACE VIEW</code> statement for a view configuration.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewConfig</span><span class="p">,</span> <span class="n">generate_view_sql</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">view</span> <span class="o">=</span> <span class="n">ViewConfig</span><span class="p">(</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;test_view&quot;</span><span class="p">,</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="n">source</span><span class="o">=</span><span class="s2">&quot;duckdb&quot;</span><span class="p">,</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">database</span><span class="o">=</span><span class="s2">&quot;my_db&quot;</span><span class="p">,</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="n">table</span><span class="o">=</span><span class="s2">&quot;users&quot;</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="p">)</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="n">sql</span> <span class="o">=</span> <span class="n">generate_view_sql</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="c1"># Returns: CREATE OR REPLACE VIEW &quot;test_view&quot; AS SELECT * FROM &quot;my_db&quot;.&quot;users&quot;;</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>view</code> (ViewConfig): View configuration to generate SQL for</p>
+<p><strong>Returns:</strong>
+- <code>str</code>: SQL statement creating the view with proper quoting</p>
+<h4 id="generate_secret_sql">generate_secret_sql()<a class="headerlink" href="#generate_secret_sql" title="Permanent link">&para;</a></h4>
+<p>Generate <code>CREATE SECRET</code> statement for a secret configuration with proper escaping.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">SecretConfig</span><span class="p">,</span> <span class="n">generate_secret_sql</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">secret</span> <span class="o">=</span> <span class="n">SecretConfig</span><span class="p">(</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;s3&quot;</span><span class="p">,</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;prod_s3&quot;</span><span class="p">,</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="n">provider</span><span class="o">=</span><span class="s2">&quot;config&quot;</span><span class="p">,</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="n">key_id</span><span class="o">=</span><span class="s2">&quot;user&#39;s key&quot;</span><span class="p">,</span>  <span class="c1"># Contains single quote</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    <span class="n">secret</span><span class="o">=</span><span class="s2">&quot;secret&#39;with&#39;quotes&quot;</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="p">)</span>
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>
+</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="n">sql</span> <span class="o">=</span> <span class="n">generate_secret_sql</span><span class="p">(</span><span class="n">secret</span><span class="p">)</span>
+</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="c1"># Returns: CREATE SECRET prod_s3 (TYPE S3, KEY_ID &#39;user&#39;&#39;s key&#39;, SECRET &#39;secret&#39;&#39;with&#39;&#39;quotes&#39;)</span>
+</span></code></pre></div>
+<p><strong>Parameters:</strong>
+- <code>secret</code> (SecretConfig): Secret configuration to generate SQL for</p>
+<p><strong>Returns:</strong>
+- <code>str</code>: SQL statement creating the secret with proper escaping</p>
+<p><strong>Note:</strong> This function enforces strict type checking for secret options and will raise <code>TypeError</code> for unsupported types (non-bool, int, float, or str values).</p>
+<h2 id="configuration-models">Configuration Models<a class="headerlink" href="#configuration-models" title="Permanent link">&para;</a></h2>
+<h3 id="config">Config<a class="headerlink" href="#config" title="Permanent link">&para;</a></h3>
+<p>Top-level configuration model with path resolution integration.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_config</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">(</span><span class="s2">&quot;catalog.yaml&quot;</span><span class="p">)</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="c1"># Access configuration properties</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">views</span><span class="p">))</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>
+</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="c1"># Views have resolved paths when resolution is enabled</span>
+</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">views</span><span class="p">:</span>
+</span><span id="__span-12-11"><a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;View: </span><span class="si">{</span><span class="n">view</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">, URI: </span><span class="si">{</span><span class="n">view</span><span class="o">.</span><span class="n">uri</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="viewconfig">ViewConfig<a class="headerlink" href="#viewconfig" title="Permanent link">&para;</a></h3>
+<p>Model for individual view definitions that may contain resolved paths.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewConfig</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="c1"># View with relative path (will be resolved during config loading)</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="n">view</span> <span class="o">=</span> <span class="n">ViewConfig</span><span class="p">(</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;events&quot;</span><span class="p">,</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    <span class="n">source</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span> 
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    <span class="n">uri</span><span class="o">=</span><span class="s2">&quot;data/events.parquet&quot;</span>  <span class="c1"># Relative path</span>
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="p">)</span>
+</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>
+</span><span id="__span-13-10"><a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="c1"># View with absolute path (unchanged during resolution)</span>
+</span><span id="__span-13-11"><a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="n">view</span> <span class="o">=</span> <span class="n">ViewConfig</span><span class="p">(</span>
+</span><span id="__span-13-12"><a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;remote_data&quot;</span><span class="p">,</span>
+</span><span id="__span-13-13"><a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>    <span class="n">source</span><span class="o">=</span><span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+</span><span id="__span-13-14"><a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>    <span class="n">uri</span><span class="o">=</span><span class="s2">&quot;s3://bucket/events.parquet&quot;</span>  <span class="c1"># Remote URI - unchanged</span>
+</span><span id="__span-13-15"><a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="attachmentconfig">AttachmentConfig<a class="headerlink" href="#attachmentconfig" title="Permanent link">&para;</a></h3>
+<p>Models for database attachments with path resolution support.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">DuckDBAttachment</span><span class="p">,</span> <span class="n">SQLiteAttachment</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="c1"># DuckDB attachment with relative path</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="n">duckdb_attach</span> <span class="o">=</span> <span class="n">DuckDBAttachment</span><span class="p">(</span>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="n">alias</span><span class="o">=</span><span class="s2">&quot;reference_db&quot;</span><span class="p">,</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    <span class="n">path</span><span class="o">=</span><span class="s2">&quot;./databases/reference.duckdb&quot;</span><span class="p">,</span>  <span class="c1"># Will be resolved</span>
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    <span class="n">read_only</span><span class="o">=</span><span class="kc">True</span>
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="p">)</span>
+</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>
+</span><span id="__span-14-10"><a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="c1"># SQLite attachment with relative path</span>
+</span><span id="__span-14-11"><a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="n">sqlite_attach</span> <span class="o">=</span> <span class="n">SQLiteAttachment</span><span class="p">(</span>
+</span><span id="__span-14-12"><a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>    <span class="n">alias</span><span class="o">=</span><span class="s2">&quot;legacy_db&quot;</span><span class="p">,</span> 
+</span><span id="__span-14-13"><a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>    <span class="n">path</span><span class="o">=</span><span class="s2">&quot;../legacy/system.db&quot;</span>  <span class="c1"># Will be resolved</span>
+</span><span id="__span-14-14"><a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="exception-classes">Exception Classes<a class="headerlink" href="#exception-classes" title="Permanent link">&para;</a></h2>
+<p>Duckalog uses a consistent exception hierarchy based on <code>DuckalogError</code> as the base class for all library exceptions. This provides a unified error handling interface and makes it easy to catch all Duckalog-specific errors.</p>
+<h3 id="base-exception">Base Exception<a class="headerlink" href="#base-exception" title="Permanent link">&para;</a></h3>
+<h4 id="duckalogerror">DuckalogError<a class="headerlink" href="#duckalogerror" title="Permanent link">&para;</a></h4>
+<p>Base exception for all Duckalog-specific errors. You can catch this class to handle any Duckalog-related error, or catch more specific subclasses for targeted error handling.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">DuckalogError</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="k">try</span><span class="p">:</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="n">config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">(</span><span class="s2">&quot;catalog.yaml&quot;</span><span class="p">)</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="n">build_catalog</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="k">except</span> <span class="n">DuckalogError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="c1"># Handle any Duckalog-specific error</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Duckalog error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="configuration-errors">Configuration Errors<a class="headerlink" href="#configuration-errors" title="Permanent link">&para;</a></h3>
+<h4 id="configerror">ConfigError<a class="headerlink" href="#configerror" title="Permanent link">&para;</a></h4>
+<p>Raised for configuration-related errors including parsing, validation, and path resolution failures. Inherits from <code>DuckalogError</code>.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_config</span><span class="p">,</span> <span class="n">ConfigError</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="k">try</span><span class="p">:</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    <span class="n">config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">(</span><span class="s2">&quot;catalog.yaml&quot;</span><span class="p">)</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="k">except</span> <span class="n">ConfigError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Configuration error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Common scenarios:</strong>
+- Missing required configuration fields
+- Invalid YAML/JSON syntax
+- Unresolved environment variable placeholders (<code>${env:VAR}</code>)
+- Invalid view definitions</p>
+<h4 id="pathresolutionerror">PathResolutionError<a class="headerlink" href="#pathresolutionerror" title="Permanent link">&para;</a></h4>
+<p>Raised specifically when path resolution fails due to security or access issues. Inherits from <code>ConfigError</code>.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">PathResolutionError</span><span class="p">,</span> <span class="n">resolve_relative_path</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="k">try</span><span class="p">:</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    <span class="n">resolved</span> <span class="o">=</span> <span class="n">resolve_relative_path</span><span class="p">(</span><span class="s2">&quot;../../../etc/passwd&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/project/config&quot;</span><span class="p">))</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="k">except</span> <span class="n">PathResolutionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Path resolution failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Original path: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">original_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resolved path: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">resolved_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<h4 id="remoteconfigerror">RemoteConfigError<a class="headerlink" href="#remoteconfigerror" title="Permanent link">&para;</a></h4>
+<p>Raised when remote configuration loading fails. Inherits from <code>ConfigError</code>.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">RemoteConfigError</span><span class="p">,</span> <span class="n">load_config_from_uri</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="k">try</span><span class="p">:</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>    <span class="n">config</span> <span class="o">=</span> <span class="n">load_config_from_uri</span><span class="p">(</span><span class="s2">&quot;s3://bucket/config.yaml&quot;</span><span class="p">)</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="k">except</span> <span class="n">RemoteConfigError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Remote config error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="sql-file-errors">SQL File Errors<a class="headerlink" href="#sql-file-errors" title="Permanent link">&para;</a></h3>
+<h4 id="sqlfileerror">SQLFileError<a class="headerlink" href="#sqlfileerror" title="Permanent link">&para;</a></h4>
+<p>Base exception for SQL file-related errors. Inherits from <code>DuckalogError</code>.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">SQLFileError</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="k">try</span><span class="p">:</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    <span class="c1"># Operations that load SQL from files</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    <span class="k">pass</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="k">except</span> <span class="n">SQLFileError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SQL file error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Subclasses for specific SQL file errors:</strong>
+- <code>SQLFileNotFoundError</code>: Referenced SQL file does not exist
+- <code>SQLFilePermissionError</code>: SQL file cannot be read due to permissions
+- <code>SQLFileEncodingError</code>: SQL file has invalid encoding
+- <code>SQLFileSizeError</code>: SQL file exceeds size limits
+- <code>SQLTemplateError</code>: Template processing fails</p>
+<h3 id="engine-errors">Engine Errors<a class="headerlink" href="#engine-errors" title="Permanent link">&para;</a></h3>
+<h4 id="engineerror">EngineError<a class="headerlink" href="#engineerror" title="Permanent link">&para;</a></h4>
+<p>Raised during catalog builds when DuckDB operations fail. Inherits from <code>DuckalogError</code>.</p>
+<div class="highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">EngineError</span><span class="p">,</span> <span class="n">build_catalog</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="k">try</span><span class="p">:</span>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    <span class="n">build_catalog</span><span class="p">(</span><span class="s2">&quot;catalog.yaml&quot;</span><span class="p">)</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="k">except</span> <span class="n">EngineError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Engine error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p><strong>Common scenarios:</strong>
+- DuckDB connection failures
+- SQL execution errors
+- Attachment setup failures
+- Extension installation/loading errors
+- Secret creation failures</p>
+<h3 id="exception-chaining">Exception Chaining<a class="headerlink" href="#exception-chaining" title="Permanent link">&para;</a></h3>
+<p>All Duckalog exceptions support proper exception chaining to preserve the original error context:</p>
+<div class="highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">duckalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">EngineError</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="k">try</span><span class="p">:</span>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>    <span class="c1"># Some operation that fails</span>
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Original database connection failed&quot;</span><span class="p">)</span>
+</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+</span><span id="__span-21-7"><a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>    <span class="k">raise</span> <span class="n">EngineError</span><span class="p">(</span><span class="s2">&quot;Failed to connect to DuckDB&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+</span></code></pre></div>
+<p>This preserves the full traceback and makes debugging much easier.</p>
+<h2 id="generated-api-documentation">Generated API Documentation<a class="headerlink" href="#generated-api-documentation" title="Permanent link">&para;</a></h2>
 <p>This section is generated from the Duckalog source code using mkdocstrings.</p>
 
 
@@ -681,7 +1679,7 @@
           <tr class="doc-section-item">
             <td><code><span title="duckalog.AttachmentsConfig.duckdb">duckdb</span></code></td>
             <td>
-                  <code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="DuckDBAttachment (duckalog.config.DuckDBAttachment)" href="#duckalog.DuckDBAttachment">DuckDBAttachment</a>]</code>
+                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="DuckDBAttachment (duckalog.config.models.DuckDBAttachment)" href="#duckalog.DuckDBAttachment">DuckDBAttachment</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -692,7 +1690,7 @@
           <tr class="doc-section-item">
             <td><code><span title="duckalog.AttachmentsConfig.sqlite">sqlite</span></code></td>
             <td>
-                  <code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="SQLiteAttachment (duckalog.config.SQLiteAttachment)" href="#duckalog.SQLiteAttachment">SQLiteAttachment</a>]</code>
+                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="SQLiteAttachment (duckalog.config.models.SQLiteAttachment)" href="#duckalog.SQLiteAttachment">SQLiteAttachment</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -703,11 +1701,22 @@
           <tr class="doc-section-item">
             <td><code><span title="duckalog.AttachmentsConfig.postgres">postgres</span></code></td>
             <td>
-                  <code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="PostgresAttachment (duckalog.config.PostgresAttachment)" href="#duckalog.PostgresAttachment">PostgresAttachment</a>]</code>
+                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="PostgresAttachment (duckalog.config.models.PostgresAttachment)" href="#duckalog.PostgresAttachment">PostgresAttachment</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
                 <p>Postgres attachment entries.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.AttachmentsConfig.duckalog">duckalog</span></code></td>
+            <td>
+                  <code><span title="list">list</span>[<span title="duckalog.config.models.DuckalogAttachment">DuckalogAttachment</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Duckalog config attachment entries.</p>
               </div>
             </td>
           </tr>
@@ -787,7 +1796,7 @@
           <tr class="doc-section-item">
             <td><code><span title="duckalog.Config.duckdb">duckdb</span></code></td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="DuckDBConfig (duckalog.config.DuckDBConfig)" href="#duckalog.DuckDBConfig">DuckDBConfig</a></code>
+                  <code><a class="autorefs autorefs-internal" title="DuckDBConfig (duckalog.config.models.DuckDBConfig)" href="#duckalog.DuckDBConfig">DuckDBConfig</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -798,7 +1807,7 @@
           <tr class="doc-section-item">
             <td><code><span title="duckalog.Config.views">views</span></code></td>
             <td>
-                  <code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="ViewConfig (duckalog.config.ViewConfig)" href="#duckalog.ViewConfig">ViewConfig</a>]</code>
+                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="ViewConfig (duckalog.config.models.ViewConfig)" href="#duckalog.ViewConfig">ViewConfig</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -809,7 +1818,7 @@
           <tr class="doc-section-item">
             <td><code><span title="duckalog.Config.attachments">attachments</span></code></td>
             <td>
-                  <code><a class="autorefs autorefs-internal" title="AttachmentsConfig (duckalog.config.AttachmentsConfig)" href="#duckalog.AttachmentsConfig">AttachmentsConfig</a></code>
+                  <code><a class="autorefs autorefs-internal" title="AttachmentsConfig (duckalog.config.models.AttachmentsConfig)" href="#duckalog.AttachmentsConfig">AttachmentsConfig</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -820,7 +1829,7 @@
           <tr class="doc-section-item">
             <td><code><span title="duckalog.Config.iceberg_catalogs">iceberg_catalogs</span></code></td>
             <td>
-                  <code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="IcebergCatalogConfig (duckalog.config.IcebergCatalogConfig)" href="#duckalog.IcebergCatalogConfig">IcebergCatalogConfig</a>]</code>
+                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="IcebergCatalogConfig (duckalog.config.models.IcebergCatalogConfig)" href="#duckalog.IcebergCatalogConfig">IcebergCatalogConfig</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -831,7 +1840,7 @@
           <tr class="doc-section-item">
             <td><code><span title="duckalog.Config.semantic_models">semantic_models</span></code></td>
             <td>
-                  <code><span title="typing.List">List</span>[<span title="duckalog.config.SemanticModelConfig">SemanticModelConfig</span>]</code>
+                  <code><span title="list">list</span>[<span title="duckalog.config.models.SemanticModelConfig">SemanticModelConfig</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -884,11 +1893,11 @@
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><span title="Exception">Exception</span></code></p>
+              Bases: <code><span title="duckalog.errors.DuckalogError">DuckalogError</span></code></p>
 
 
 
-        <p>Configuration-related error.</p>
+        <p>Configuration-related errors.</p>
 <p>This exception is raised when a catalog configuration cannot be read,
 parsed, interpolated, or validated according to the Duckalog schema.</p>
 <p>Typical error conditions include:</p>
@@ -906,6 +1915,23 @@ parsed, interpolated, or validated according to the Duckalog schema.</p>
 
 
 
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
 
     </div>
 
@@ -1051,7 +2077,7 @@ Defaults to <code>True</code> for safety.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.DuckDBConfig.install_extensions">install_extensions</span></code></td>
             <td>
-                  <code><span title="typing.List">List</span>[<span title="str">str</span>]</code>
+                  <code><span title="list">list</span>[<span title="str">str</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1062,7 +2088,7 @@ Defaults to <code>True</code> for safety.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.DuckDBConfig.load_extensions">load_extensions</span></code></td>
             <td>
-                  <code><span title="typing.List">List</span>[<span title="str">str</span>]</code>
+                  <code><span title="list">list</span>[<span title="str">str</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1073,7 +2099,7 @@ Defaults to <code>True</code> for safety.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.DuckDBConfig.pragmas">pragmas</span></code></td>
             <td>
-                  <code><span title="typing.List">List</span>[<span title="str">str</span>]</code>
+                  <code><span title="list">list</span>[<span title="str">str</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1085,7 +2111,7 @@ connecting and loading extensions.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.DuckDBConfig.settings">settings</span></code></td>
             <td>
-                  <code><span title="typing.Union">Union</span>[<span title="str">str</span>, <span title="typing.List">List</span>[<span title="str">str</span>], None]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Literal">Literal</span>[<span title="str">str</span>, <span title="list">list</span>[<span title="str">str</span>]]]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1097,7 +2123,7 @@ single string or list of strings.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.DuckDBConfig.secrets">secrets</span></code></td>
             <td>
-                  <code><span title="typing.List">List</span>[<span title="duckalog.config.SecretConfig">SecretConfig</span>]</code>
+                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="SecretConfig (duckalog.config.models.SecretConfig)" href="#duckalog.SecretConfig">SecretConfig</a>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1150,7 +2176,7 @@ single string or list of strings.</p>
 
     <div class="doc doc-contents ">
             <p class="doc doc-class-bases">
-              Bases: <code><span title="Exception">Exception</span></code></p>
+              Bases: <code><span title="duckalog.errors.DuckalogError">DuckalogError</span></code></p>
 
 
 
@@ -1166,6 +2192,23 @@ SQL statements.</p>
 
 
 
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
 
     </div>
 
@@ -1248,7 +2291,7 @@ SQL statements.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.IcebergCatalogConfig.options">options</span></code></td>
             <td>
-                  <code><span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1398,7 +2441,7 @@ SQL statements.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.PostgresAttachment.options">options</span></code></td>
             <td>
-                  <code><span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1526,6 +2569,332 @@ SQL statements.</p>
 
 
 
+<h3 id="duckalog.SecretConfig" class="doc doc-heading">
+            <code>SecretConfig</code>
+
+
+<a href="#duckalog.SecretConfig" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="pydantic.BaseModel">BaseModel</span></code></p>
+
+
+
+        <p>Configuration for a DuckDB secret.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.type">type</span></code></td>
+            <td>
+                  <code><span title="duckalog.config.models.SecretType">SecretType</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Secret type (s3, azure, gcs, http, postgres, mysql).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.name">name</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional name for the secret (defaults to type if not provided).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.provider">provider</span></code></td>
+            <td>
+                  <code><span title="duckalog.config.models.SecretProvider">SecretProvider</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Secret provider (config or credential_chain).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.persistent">persistent</span></code></td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to create a persistent secret. Defaults to False.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.scope">scope</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional scope prefix for the secret.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.key_id">key_id</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Access key ID or username for authentication.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.secret">secret</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Secret key or password for authentication.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.region">region</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Geographic region for cloud services.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.endpoint">endpoint</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Custom endpoint URL for cloud services.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.connection_string">connection_string</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Full connection string for databases.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.tenant_id">tenant_id</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Azure tenant ID for authentication.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.account_name">account_name</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Azure storage account name.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.client_id">client_id</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Azure client ID for authentication.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.client_secret">client_secret</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Azure client secret for authentication.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.service_account_key">service_account_key</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GCS service account key.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.json_key">json_key</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>GCS JSON key.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.bearer_token">bearer_token</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>HTTP bearer token for authentication.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.header">header</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>HTTP header for authentication.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.database">database</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Database name for database secrets.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.host">host</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Database host for database secrets.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.port">port</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="int">int</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Database port for database secrets.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.user">user</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Database username (alternative to key_id for database types).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.password">password</span></code></td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Database password (alternative to secret for database types).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="duckalog.SecretConfig.options">options</span></code></td>
+            <td>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional key-value options for the secret.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
 <h3 id="duckalog.ViewConfig" class="doc doc-heading">
             <code>ViewConfig</code>
 
@@ -1591,7 +2960,7 @@ SQL generation but are preserved for documentation and tooling.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.ViewConfig.sql_file">sql_file</span></code></td>
             <td>
-                  <code><span title="typing.Optional">Optional</span>[<span title="duckalog.config.SQLFileReference">SQLFileReference</span>]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="duckalog.config.models.SQLFileReference">SQLFileReference</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1602,7 +2971,7 @@ SQL generation but are preserved for documentation and tooling.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.ViewConfig.sql_template">sql_template</span></code></td>
             <td>
-                  <code><span title="typing.Optional">Optional</span>[<span title="duckalog.config.SQLFileReference">SQLFileReference</span>]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="duckalog.config.models.SQLFileReference">SQLFileReference</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1613,7 +2982,7 @@ SQL generation but are preserved for documentation and tooling.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.ViewConfig.source">source</span></code></td>
             <td>
-                  <code><span title="typing.Optional">Optional</span>[<span title="duckalog.config.EnvSource">EnvSource</span>]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="duckalog.config.models.EnvSource">EnvSource</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1668,7 +3037,7 @@ SQL generation but are preserved for documentation and tooling.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.ViewConfig.options">options</span></code></td>
             <td>
-                  <code><span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1690,7 +3059,7 @@ SQL generation but are preserved for documentation and tooling.</p>
           <tr class="doc-section-item">
             <td><code><span title="duckalog.ViewConfig.tags">tags</span></code></td>
             <td>
-                  <code><span title="typing.List">List</span>[<span title="str">str</span>]</code>
+                  <code><span title="list">list</span>[<span title="str">str</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1735,7 +3104,7 @@ SQL generation but are preserved for documentation and tooling.</p>
 
 
 <h3 id="duckalog.build_catalog" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">build_catalog</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">db_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">build_catalog</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">db_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">filesystem</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">include_secrets</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
 <a href="#duckalog.build_catalog" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -1781,11 +3150,12 @@ Iceberg catalogs, and creates or replaces configured views.</p>
                 <code>db_path</code>
             </td>
             <td>
-                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+                  <code><span title="str">str</span> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Optional override for <code>duckdb.database</code> in the config.</p>
+                <p>Optional override for <code>duckdb.database</code> in the config.
+Can be a local path or remote URI (s3://, gs://, gcs://, abfs://, adl://, sftp://).</p>
               </div>
             </td>
             <td>
@@ -1826,6 +3196,23 @@ logging module.</p>
                   <code>False</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>filesystem</code>
+            </td>
+            <td>
+                  <code><span title="typing.Any">Any</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional pre-configured fsspec filesystem object for remote export
+authentication. If not provided, default authentication will be used.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -1841,7 +3228,7 @@ logging module.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+                  <code><span title="str">str</span> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -1851,11 +3238,214 @@ logging module.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+                  <code><span title="str">str</span> | None</code>
             </td>
             <td>
               <div class="doc-md-description">
                 <p>otherwise <code>None</code> when the catalog is applied to DuckDB.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ConfigError (duckalog.errors.ConfigError)" href="#duckalog.ConfigError">ConfigError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the configuration file is invalid.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="EngineError (duckalog.errors.EngineError)" href="#duckalog.EngineError">EngineError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If connecting to DuckDB or executing SQL fails, or if remote export fails.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <p>Build a catalog in-place::</p>
+<div class="highlight"><pre><span></span><code>from duckalog import build_catalog
+
+build_catalog(&quot;catalog.yaml&quot;)
+</code></pre></div>
+<p>Build and export to remote storage::</p>
+<div class="highlight"><pre><span></span><code>build_catalog(&quot;catalog.yaml&quot;, db_path=&quot;s3://my-bucket/catalog.duckdb&quot;)
+</code></pre></div>
+<p>Generate SQL without modifying the database::</p>
+<div class="highlight"><pre><span></span><code>sql = build_catalog(&quot;catalog.yaml&quot;, dry_run=True)
+print(sql)
+</code></pre></div>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="duckalog.connect_and_build_catalog" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">connect_and_build_catalog</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">database_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">read_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+<a href="#duckalog.connect_and_build_catalog" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Build a catalog and create a DuckDB connection in one operation.</p>
+<p>This function combines catalog building with connection creation, providing a streamlined
+workflow for users who want to start working with their catalog immediately after creating it.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>config_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to the YAML/JSON configuration file.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>database_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional database path override.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dry_run</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, only validates configuration and returns SQL. If False,
+builds the catalog and creates a connection.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>verbose</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Enable verbose logging during build process.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>read_only</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Open the resulting connection in read-only mode.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>**kwargs</code>
+            </td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Additional keyword arguments.</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="duckdb.DuckDBPyConnection">DuckDBPyConnection</span> | <span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A DuckDB connection object for immediate use, or SQL string when dry_run=True.</p>
               </div>
             </td>
           </tr>
@@ -1884,11 +3474,21 @@ logging module.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-internal" title="EngineError (duckalog.engine.EngineError)" href="#duckalog.EngineError">EngineError</a></code>
+                  <code><a class="autorefs autorefs-internal" title="EngineError (duckalog.errors.EngineError)" href="#duckalog.EngineError">EngineError</a></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If connecting to DuckDB or executing SQL fails.</p>
+                <p>If catalog building or connection fails.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="FileNotFoundError">FileNotFoundError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the resulting database file doesn't exist (after build).</p>
               </div>
             </td>
           </tr>
@@ -1898,14 +3498,531 @@ logging module.</p>
 
 <details class="example" open>
   <summary>Example</summary>
-  <p>Build a catalog in-place::</p>
-<div class="highlight"><pre><span></span><code>from duckalog import build_catalog
-
-build_catalog(&quot;catalog.yaml&quot;)
+  <p>Build catalog and start querying immediately::</p>
+<div class="highlight"><pre><span></span><code>conn = connect_and_build_catalog(&quot;catalog.yaml&quot;)
+data = conn.execute(&quot;SELECT * FROM important_table&quot;).fetchall()
+print(f&quot;Found {len(data)} records&quot;)
+conn.close()
 </code></pre></div>
-<p>Generate SQL without modifying the database::</p>
-<div class="highlight"><pre><span></span><code>sql = build_catalog(&quot;catalog.yaml&quot;, dry_run=True)
-print(sql)
+<p>Validate only (dry run)::</p>
+<p>sql = connect_and_build_catalog("catalog.yaml", dry_run=True)
+print("SQL generation completed, no database created")</p>
+<p>Custom database path::</p>
+<div class="highlight"><pre><span></span><code>conn = connect_and_build_catalog(&quot;catalog.yaml&quot;, database_path=&quot;analytics.db&quot;)
+print(&quot;Connected to custom database: analytics.db&quot;)
+</code></pre></div>
+</details>        <p>If <code>dry_run=True</code>, the function only validates the configuration and returns the SQL script
+without creating any database files or connections.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="duckalog.connect_to_catalog" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">connect_to_catalog</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">database_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">read_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#duckalog.connect_to_catalog" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Connect to an existing DuckDB database created by Duckalog.</p>
+<p>This function provides a direct connection to a DuckDB database that was previously
+created using Duckalog. It simplifies the workflow for users who just want to start
+querying their catalog database.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>config_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to the YAML/JSON configuration file for an existing catalog.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>database_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional database path override. If not provided, uses the
+path from the configuration.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>read_only</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Open the connection in read-only mode for safety.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>An active DuckDB connection object ready for query execution.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ConfigError (duckalog.config.ConfigError)" href="#duckalog.ConfigError">ConfigError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the configuration file is invalid.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="FileNotFoundError">FileNotFoundError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the specified database file doesn't exist.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="duckdb.Error">Error</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If connection or queries fail.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <p>Connect to an existing catalog::</p>
+<div class="highlight"><pre><span></span><code>from duckalog import connect_to_catalog
+conn = connect_to_catalog(&quot;catalog.yaml&quot;)
+
+# Use the connection for queries
+result = conn.execute(&quot;SELECT * FROM some_table&quot;).fetchall()
+conn.close()
+</code></pre></div>
+<p>With path override::</p>
+<div class="highlight"><pre><span></span><code>conn = connect_to_catalog(&quot;catalog.yaml&quot;, database_path=&quot;analytics.db&quot;)
+</code></pre></div>
+<p>With read-only mode::</p>
+<div class="highlight"><pre><span></span><code>conn = connect_to_catalog(&quot;catalog.yaml&quot;, read_only=True)
+</code></pre></div>
+<p>With context manager::</p>
+<div class="highlight"><pre><span></span><code>from duckalog import connect_to_catalog_cm
+with connect_to_catalog_cm(&quot;catalog.yaml&quot;) as conn:
+    data = conn.execute(&quot;SELECT * FROM users&quot;).fetchall()
+    print(f&quot;Found {len(data)} records&quot;)
+# Connection automatically closed here
+</code></pre></div>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="duckalog.connect_to_catalog_cm" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">connect_to_catalog_cm</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="n">database_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">read_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#duckalog.connect_to_catalog_cm" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Context manager version of connect_to_catalog for automatic connection cleanup.</p>
+<p>Usage::</p>
+<div class="highlight"><pre><span></span><code>from duckalog import connect_to_catalog_cm
+with connect_to_catalog_cm(&quot;catalog.yaml&quot;) as conn:
+    data = conn.execute(&quot;SELECT * FROM users&quot;).fetchall()
+    print(f&quot;Found {len(data)} records&quot;)
+# Connection is automatically closed here
+</code></pre></div>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>config_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Path to the YAML/JSON configuration file for an existing catalog.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>database_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional database path override.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>read_only</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Open the connection in read-only mode for safety.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Yields:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="collections.abc.Generator">Generator</span>[<span title="duckdb.DuckDBPyConnection">DuckDBPyConnection</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>An active DuckDB connection that will be closed automatically.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ConfigError (duckalog.config.ConfigError)" href="#duckalog.ConfigError">ConfigError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the configuration file is invalid.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="FileNotFoundError">FileNotFoundError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the specified database file doesn't exist.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="duckdb.Error">Error</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If connection or queries fail.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="duckalog.create_config_template" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">create_config_template</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s1">&#39;yaml&#39;</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">database_name</span><span class="o">=</span><span class="s1">&#39;analytics_catalog.duckdb&#39;</span><span class="p">,</span> <span class="n">project_name</span><span class="o">=</span><span class="s1">&#39;my_analytics_project&#39;</span><span class="p">)</span></code>
+
+<a href="#duckalog.create_config_template" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Generate a basic, valid Duckalog configuration template.</p>
+<p>This function creates a configuration template with sensible defaults
+and educational example content that demonstrates key Duckalog features.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>format</code>
+            </td>
+            <td>
+                  <code><span title="duckalog.config_init.ConfigFormat">ConfigFormat</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Output format for the configuration ('yaml' or 'json').
+Defaults to 'yaml'.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;yaml&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>output_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional path to write the configuration file.
+If provided, the template is written to this path and the
+content is also returned as a string.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>database_name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Name for the DuckDB database file.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;analytics_catalog.duckdb&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>project_name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Name used in comments to personalize the template.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;my_analytics_project&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The generated configuration as a string.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If format is not 'yaml' or 'json'.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ConfigError (duckalog.errors.ConfigError)" href="#duckalog.ConfigError">ConfigError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the generated template fails validation.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="OSError">OSError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If writing to output_path fails.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <p>Generate a YAML template::</p>
+<div class="highlight"><pre><span></span><code>template = create_config_template(format=&#39;yaml&#39;)
+print(template)
+</code></pre></div>
+<p>Generate and save a JSON template::</p>
+<div class="highlight"><pre><span></span><code>template = create_config_template(
+    format=&#39;json&#39;,
+    output_path=&#39;my_config.json&#39;
+)
 </code></pre></div>
 </details>
 
@@ -1917,7 +4034,7 @@ print(sql)
 
 
 <h3 id="duckalog.generate_all_views_sql" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">generate_all_views_sql</span><span class="p">(</span><span class="n">config</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">generate_all_views_sql</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">include_secrets</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#duckalog.generate_all_views_sql" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -1957,6 +4074,22 @@ appear in the configuration.</p>
                 <em>required</em>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>include_secrets</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to include CREATE SECRET statements for secrets.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -1977,6 +4110,78 @@ appear in the configuration.</p>
             <td>
               <div class="doc-md-description">
                 <p>A multi-statement SQL script suitable for use as a catalog definition.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="duckalog.generate_secret_sql" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">generate_secret_sql</span><span class="p">(</span><span class="n">secret</span><span class="p">)</span></code>
+
+<a href="#duckalog.generate_secret_sql" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Generate CREATE SECRET statement for a DuckDB secret.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>secret</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="SecretConfig (duckalog.config.SecretConfig)" href="#duckalog.SecretConfig">SecretConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Secret configuration object.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>SQL CREATE SECRET statement.</p>
               </div>
             </td>
           </tr>
@@ -2185,7 +4390,7 @@ True</p>
 
 
 <h3 id="duckalog.load_config" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">load_config</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">load_sql_files</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sql_file_loader</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">load_config</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">load_sql_files</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">sql_file_loader</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resolve_paths</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">filesystem</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#duckalog.load_config" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -2218,7 +4423,7 @@ interpolation and enforces the configuration schema.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Path to a YAML or JSON config file.</p>
+                <p>Path to a YAML or JSON config file, or a remote URI.</p>
               </div>
             </td>
             <td>
@@ -2247,12 +4452,50 @@ interpolation and enforces the configuration schema.</p>
                 <code>sql_file_loader</code>
             </td>
             <td>
-                  <code><span title="typing.Optional">Optional</span>[&#39;SQLFileLoader&#39;]</code>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Any">Any</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
                 <p>Optional SQLFileLoader instance for loading SQL files.
             If None, a default loader will be created.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>resolve_paths</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to resolve relative paths to absolute paths.
+          If True, relative paths in view URIs and attachment paths
+          will be resolved relative to the config file's directory.
+          For remote configs, this defaults to False.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>filesystem</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Any">Any</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional fsspec filesystem object to use for remote operations.
+       If provided, this filesystem will be used instead of creating
+       a new one based on URI scheme. Useful for custom
+       authentication or advanced use cases.</p>
               </div>
             </td>
             <td>
@@ -2274,7 +4517,6 @@ interpolation and enforces the configuration schema.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-internal" title="Config (duckalog.config.Config)" href="#duckalog.Config">Config</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2297,7 +4539,7 @@ interpolation and enforces the configuration schema.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-internal" title="ConfigError (duckalog.config.ConfigError)" href="#duckalog.ConfigError">ConfigError</a></code>
+                  <code><a class="autorefs autorefs-internal" title="ConfigError (duckalog.errors.ConfigError)" href="#duckalog.ConfigError">ConfigError</a></code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2317,6 +4559,16 @@ fails schema validation, contains unresolved
 <div class="highlight"><pre><span></span><code>from duckalog import load_config
 
 config = load_config(&quot;catalog.yaml&quot;)
+print(len(config.views))
+</code></pre></div>
+<p>Load a catalog from S3::</p>
+<div class="highlight"><pre><span></span><code>config = load_config(&quot;s3://my-bucket/configs/catalog.yaml&quot;)
+print(len(config.views))
+</code></pre></div>
+<p>Load a catalog with custom filesystem::</p>
+<div class="highlight"><pre><span></span><code>import fsspec
+fs = fsspec.filesystem(&quot;s3&quot;, key=&quot;key&quot;, secret=&quot;secret&quot;, anon=False)
+config = load_config(&quot;s3://my-bucket/configs/catalog.yaml&quot;, filesystem=fs)
 print(len(config.views))
 </code></pre></div>
 </details>
@@ -2414,6 +4666,94 @@ double quotes according to SQL rules.</p>
 <div class="doc doc-object doc-function">
 
 
+<h3 id="duckalog.quote_literal" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">quote_literal</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+<a href="#duckalog.quote_literal" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Quote a SQL string literal using single quotes.</p>
+<p>This helper wraps a string in single quotes and escapes any embedded
+single quotes according to SQL rules.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>value</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>String literal to quote (for example, a file path, secret, or connection string).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The string wrapped in single quotes with proper escaping.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>quote_literal("path/to/file.parquet")
+"'path/to/file.parquet'"
+quote_literal("user's data")
+"'user''s data'"</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h3 id="duckalog.render_options" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">render_options</span><span class="p">(</span><span class="n">options</span><span class="p">)</span></code>
 
@@ -2443,7 +4783,7 @@ call. Keys are sorted alphabetically to keep output deterministic.</p>
                 <code>options</code>
             </td>
             <td>
-                  <code><span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
+                  <code><span title="dict">dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -2608,6 +4948,94 @@ validate_config("catalog.yaml")  # raises on invalid config</p>
 </blockquote>
 </blockquote>
 </details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="duckalog.validate_generated_config" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">validate_generated_config</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;yaml&#39;</span><span class="p">)</span></code>
+
+<a href="#duckalog.validate_generated_config" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Validate that generated configuration content can be loaded successfully.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>content</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Configuration content as string.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>format</code>
+            </td>
+            <td>
+                  <code><span title="duckalog.config_init.ConfigFormat">ConfigFormat</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Format of the content ('yaml' or 'json').</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;yaml&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ConfigError (duckalog.errors.ConfigError)" href="#duckalog.ConfigError">ConfigError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the configuration cannot be loaded or is invalid.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
 
     </div>
 
