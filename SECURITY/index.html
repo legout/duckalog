@@ -13,6 +13,10 @@
         <link rel="canonical" href="https://legout.github.io/duckalog/SECURITY/">
       
       
+        <link rel="prev" href="../architecture/">
+      
+      
+        <link rel="next" href="../guides/ui-dashboard/">
       
       
         
@@ -23,7 +27,7 @@
     
     
       
-        <title>Security Documentation - Duckalog</title>
+        <title>Security - Duckalog</title>
       
     
     
@@ -102,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Security Documentation
+              Security
             
           </span>
         </div>
@@ -273,6 +277,1031 @@
       
   
   
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sql-injection-protection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛡️ SQL Injection Protection
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🛡️ SQL Injection Protection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sql-quoting-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SQL Quoting Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SQL Quoting Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quote_ident-for-database-identifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quote_ident() - For Database Identifiers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quote_literal-for-string-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quote_literal() - For String Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#injection-attack-prevention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Injection Attack Prevention
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Injection Attack Prevention">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#view-sql-injection-protection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        View SQL Injection Protection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#secret-sql-injection-protection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secret SQL Injection Protection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-sql-injection-protection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path SQL Injection Protection
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#strict-type-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strict Type Enforcement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-guarantees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Guarantees
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-based-path-resolution-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔒 Root-Based Path Resolution Security
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔒 Root-Based Path Resolution Security">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#root-based-security-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root-Based Security Model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Root-Based Security Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-security-principle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Security Principle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-threats-mitigated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Threats Mitigated
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#allowed-usage-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Allowed Usage Patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reasonable-traversal-allowed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reasonable Traversal Allowed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#technical-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technical Implementation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Technical Implementation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#robust-cross-platform-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Robust Cross-Platform Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#path-type-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Path Type Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-validation-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Validation Process
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Error Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-best-practices-for-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Best Practices for Paths
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Best Practices for Paths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#project-structure-recommendations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project Structure Recommendations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#secure-configuration-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secure Configuration Patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-specific-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment-Specific Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-testing_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Testing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Testing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manual-security-testing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Security Testing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#automated-security-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automated Security Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-auditing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Auditing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Auditing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Monitoring
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read-only-sql-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛡️ Read-Only SQL Enforcement
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🛡️ Read-Only SQL Enforcement">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sql-query-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SQL Query Validation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SQL Query Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#allowed-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Allowed Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blocked-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blocked Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-error-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Error Messages
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication-and-authorization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔐 Authentication and Authorization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔐 Authentication and Authorization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#admin-token-protection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Admin Token Protection
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Admin Token Protection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#protected-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protected Endpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-mode-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local Mode (Development)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#token-security-best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token Security Best Practices
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cors-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 CORS Policy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🌐 CORS Policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Default Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#allowed-origins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Allowed Origins
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cross-origin-protection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Origin Protection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Customization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📁 Configuration Security
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📁 Configuration Security">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#format-preservation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Format Preservation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#atomic-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Atomic Operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#in-memory-reload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        In-Memory Reload
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#background-task-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ⚡ Background Task Security
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚡ Background Task Security">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#task-isolation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task Isolation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#task-result-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task Result Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#concurrent-operation-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrent Operation Safety
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-monitoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔍 Security Monitoring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔍 Security Monitoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request Logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#production-deployment-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚀 Production Deployment Security
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🚀 Production Deployment Security">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#network-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reverse-proxy-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reverse Proxy Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-testing_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔧 Security Testing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🚨 Security Considerations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🚨 Security Considerations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#database-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-privacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Privacy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operational-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operational Security
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#incident-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🆘 Incident Response
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🆘 Incident Response">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-incident-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Incident Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contact-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contact Information
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
   
   
     <li class="md-nav__item">
@@ -302,6 +1331,53 @@
   
   
   
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../guides/" class="md-nav__link">
         
@@ -322,15 +1398,231 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
   
     <li class="md-nav__item">
-      <a href="../examples/" class="md-nav__link">
+      <a href="../guides/usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_3" id="__nav_5_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Path Resolution
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Path Resolution
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../best-practices-path-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Best Practices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration-path-examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration-path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../path-resolution-examples/" class="md-nav__link">
         
   
   
@@ -349,6 +1641,22 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
@@ -356,9 +1664,298 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../reference/" class="md-nav__link">
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/duckdb-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DuckDB Secrets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/duckdb-settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DuckDB Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/environment-vars/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/local-attachments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Attachments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/multi-source-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Source Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/path-resolution-examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Path Resolution Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/simple-parquet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simple Parquet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -372,7 +1969,79 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference Index
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
