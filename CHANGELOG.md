@@ -1,5 +1,12 @@
 # Changelog
-## [2025-12-03] - 0.3.1
+## [2025-12-03] - 0.3.2
+
+### Added
+- Feat: adopt loguru logging abstraction (d6dd68d)
+
+### Changed
+- Docs: auto-update changelog.md for version 0.3.1 (323023c)
+
 
 ### Changed
 - Docs: auto-update changelog.md for version 0.3.0 (509dcb1)
