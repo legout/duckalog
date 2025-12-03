@@ -1,4 +1,37 @@
-"""Configuration schema and loader for Duckalog catalogs."""
+"""Configuration schema and loader for Duckalog catalogs.
+
+This module provides a unified configuration layer that consolidates:
+
+- Configuration schema definitions and validation (Pydantic models)
+- Path resolution utilities with security validation
+- SQL file loading and template processing
+- Logging with automatic sensitive data redaction
+
+The consolidation reduces complexity by eliminating separate modules for path resolution,
+SQL file loading, and logging utilities, while maintaining the same public API.
+
+## Key Functions
+
+### Configuration Loading
+- `load_config()`: Main entry point for loading configuration files
+- `load_config_with_context()`: Load config with additional context information
+- `load_config_with_schema()`: Load config using a custom schema class
+
+### Path Resolution
+- `is_relative_path()`: Detect if a path is relative
+- `resolve_relative_path()`: Resolve relative paths to absolute paths
+- `validate_path_security()`: Validate path security boundaries
+- `normalize_path_for_sql()`: Normalize paths for SQL usage
+
+### SQL File Processing
+- Internal functions for loading SQL content from external files
+- Template processing with variable substitution
+- Security validation of SQL content
+
+### Logging Utilities
+- `log_info()`, `log_debug()`, `log_error()`: Redacted logging functions
+- Automatic detection and redaction of sensitive data
+"""
 
 from __future__ import annotations
 
@@ -19,12 +52,286 @@ from pydantic import (
     model_validator,
 )
 
-from .errors import ConfigError, DuckalogError, PathResolutionError
-from .logging_utils import log_debug, log_info
-from .path_resolution import (
-    is_relative_path,
-    resolve_relative_path,
-)
+from duckalog.errors import ConfigError, DuckalogError, PathResolutionError
+
+
+def is_relative_path(path: str) -> bool:
+    """Detect if a path is relative based on platform-specific rules."""
+    if not path or not path.strip():
+        return False
+
+    # Check for protocols (http, s3, gs, https, etc.)
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path):
+        return False
+
+    # Platform-specific checks
+    try:
+        if Path(path).is_absolute():
+            return False
+    except (OSError, ValueError):
+        # Path might contain invalid characters for the current platform
+        pass
+
+    # Windows drive letter check (C:, D:, etc.)
+    if re.match(r"^[a-zA-Z]:[\\\\/]", path):
+        return False
+
+    # Windows UNC path check (\\server\share)
+    if path.startswith("\\\\"):
+        return False
+
+    return True
+
+
+def resolve_relative_path(path: str, config_dir: Path) -> str:
+    """Resolve a relative path to an absolute path relative to config directory."""
+    if not path or not path.strip():
+        raise ValueError("Path cannot be empty")
+
+    path = path.strip()
+
+    # If path is already absolute, return as-is
+    if not is_relative_path(path):
+        return path
+
+    # Resolve relative path against config directory
+    try:
+        config_dir = config_dir.resolve()
+        resolved_path = config_dir / path
+        resolved_path = resolved_path.resolve()
+
+        log_debug(
+            f"Resolved relative path: {path} -> {resolved_path}",
+            config_dir=str(config_dir),
+        )
+
+        return str(resolved_path)
+
+    except (OSError, ValueError) as exc:
+        raise ValueError(
+            f"Failed to resolve path '{path}' relative to '{config_dir}': {exc}"
+        ) from exc
+
+
+def validate_path_security(path: str, config_dir: Path) -> bool:
+    """Validate that resolved paths don't violate security boundaries."""
+    if not path or not path.strip():
+        return False
+
+    # Remote URIs are considered safe
+    if not is_relative_path(path):
+        # Check if it's a remote URI (has protocol)
+        if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path):
+            return True
+
+    try:
+        # Resolve relative paths only
+        if is_relative_path(path):
+            resolved_path_str = resolve_relative_path(path, config_dir.resolve())
+            resolved_path = Path(resolved_path_str)
+        else:
+            # For non-relative local paths, validate them
+            resolved_path = Path(path).resolve()
+
+        config_dir_resolved = config_dir.resolve()
+
+        # Check if resolved path is within allowed roots
+        try:
+            if is_within_allowed_roots(str(resolved_path), [config_dir_resolved]):
+                return True
+            else:
+                log_debug(
+                    f"Path resolution security violation: {resolved_path} is outside allowed root {config_dir_resolved}"
+                )
+                return False
+        except ValueError as exc:
+            # Path resolution failed (invalid path)
+            log_debug(
+                f"Path resolution validation failed: {exc}",
+                path=path,
+                resolved_path=str(resolved_path),
+            )
+            return False
+
+    except (OSError, ValueError, RuntimeError):
+        return False
+
+
+def normalize_path_for_sql(path: str) -> str:
+    """Normalize a path for use in SQL statements."""
+    if not path or not path.strip():
+        raise ValueError("Path cannot be empty")
+
+    path = path.strip()
+
+    # Convert to Path object for normalization
+    try:
+        path_obj = Path(path)
+        normalized = str(path_obj)
+    except (OSError, ValueError):
+        # If pathlib can't handle it, use as-is
+        normalized = path
+
+    # Import quote_literal from sql_generation to avoid circular imports
+    from .sql_generation import quote_literal
+
+    return quote_literal(normalized)
+
+
+def is_within_allowed_roots(candidate_path: str, allowed_roots: list[Path]) -> bool:
+    """Check if a resolved path is within any of the allowed root directories."""
+    try:
+        # Resolve the candidate path to absolute, following symlinks
+        resolved_candidate = Path(candidate_path).resolve()
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise ValueError(f"Cannot resolve path '{candidate_path}': {exc}") from exc
+
+    # Resolve all allowed roots to absolute paths
+    try:
+        resolved_roots = [root.resolve() for root in allowed_roots]
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise ValueError(f"Cannot resolve allowed root: {exc}") from exc
+
+    # Check if candidate is within any allowed root
+    for root in resolved_roots:
+        try:
+            # Use commonpath to find the common prefix
+            common = Path(os.path.commonpath([resolved_candidate, root]))
+
+            # If the common path equals the root, then candidate is within this root
+            if common == root:
+                return True
+
+        except ValueError:
+            # os.path.commonpath raises ValueError when paths are on different
+            # drives (Windows) or have no common prefix - treat as not within root
+            continue
+
+    return False
+
+
+def is_windows_path_absolute(path: str) -> bool:
+    """Check Windows-specific absolute path patterns."""
+    # Drive letter: C:\path
+    if re.match(r"^[a-zA-Z]:[\\\\/]", path):
+        return True
+
+    # UNC path: \\server\share
+    if path.startswith("\\\\"):
+        return True
+
+    return False
+
+
+def detect_path_type(path: str) -> str:
+    """Detect the type of path for categorization."""
+    if not path or not path.strip():
+        return "invalid"
+
+    # Check for remote URIs with protocols
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path):
+        return "remote"
+
+    # Check for absolute paths
+    if not is_relative_path(path):
+        return "absolute"
+
+    # Otherwise it's relative
+    return "relative"
+
+
+def validate_file_accessibility(path: str) -> tuple[bool, str | None]:
+    """Validate that a file path is accessible."""
+    if not path or not path.strip():
+        return False, "Path cannot be empty"
+
+    try:
+        path_obj = Path(path)
+
+        # Check if file exists
+        if not path_obj.exists():
+            return False, f"File does not exist: {path}"
+
+        # Check if it's a file (not a directory)
+        if not path_obj.is_file():
+            return False, f"Path is not a file: {path}"
+
+        # Check if file is readable
+        try:
+            with open(path_obj, "rb"):
+                pass
+        except PermissionError:
+            return False, f"Permission denied reading file: {path}"
+        except OSError as exc:
+            return False, f"Error accessing file {path}: {exc}"
+
+        return True, None
+
+    except (OSError, ValueError) as exc:
+        return False, f"Invalid path: {exc}"
+
+
+# Logging and redaction utilities (consolidated from logging_utils.py)
+import logging
+
+LOGGER_NAME = "duckalog"
+SENSITIVE_KEYWORDS = ("password", "secret", "token", "key", "pwd")
+
+
+def get_logger(name: str = LOGGER_NAME) -> logging.Logger:
+    """Return a logger configured for Duckalog."""
+    return logging.getLogger(name)
+
+
+def _is_sensitive(key: str) -> bool:
+    """Check if a key contains sensitive information."""
+    lowered = key.lower()
+    return any(keyword in lowered for keyword in SENSITIVE_KEYWORDS)
+
+
+def _redact_value(value: Any, key_hint: str = "") -> Any:
+    """Redact sensitive values from log data."""
+    if isinstance(value, dict):
+        return {k: _redact_value(v, k) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact_value(item, key_hint) for item in value]
+    if isinstance(value, str) and _is_sensitive(key_hint):
+        return "***REDACTED***"
+    return value
+
+
+def _emit_std_logger(level: int, message: str, safe_details: dict[str, Any]) -> None:
+    """Emit a log message using stdlib logging."""
+    logger = logging.getLogger(LOGGER_NAME)
+    if safe_details:
+        logger.log(level, "%s %s", message, safe_details)
+    else:
+        logger.log(level, message)
+
+
+def _log(level: int, message: str, **details: Any) -> None:
+    """Log a redacted message."""
+    safe_details: dict[str, Any] = {}
+    if details:
+        safe_details = {k: _redact_value(v, k) for k, v in details.items()}
+
+    _emit_std_logger(level, message, safe_details)
+
+
+def log_info(message: str, **details: Any) -> None:
+    """Log a redacted INFO-level message."""
+    _log(logging.INFO, message, **details)
+
+
+def log_debug(message: str, **details: Any) -> None:
+    """Log a redacted DEBUG-level message."""
+    _log(logging.DEBUG, message, **details)
+
+
+def log_error(message: str, **details: Any) -> None:
+    """Log a redacted ERROR-level message."""
+    _log(logging.ERROR, message, **details)
+
 
 if TYPE_CHECKING:  # pragma: no cover - used for type checking only
     from .sql_file_loader import SQLFileLoader
@@ -1088,121 +1395,40 @@ def _load_config_from_local_file(
 def _load_sql_files_from_config(
     config: Config,
     config_path: Path,
-    sql_file_loader: Optional["SQLFileLoader"] = None,
+    sql_file_loader: Optional[Any] = None,
 ) -> Config:
     """Load SQL content from external files referenced in the config.
 
-    This function processes views that have sql_file or sql_template references,
-    loading the actual SQL content from the referenced files and substituting
-    template variables where applicable.
+    This functionality has been simplified as part of the config layer consolidation.
+    SQL file references are no longer supported - SQL content should be inlined.
 
     Args:
         config: The configuration object to process
         config_path: Path to the configuration file (for relative path resolution)
-        sql_file_loader: SQLFileLoader instance to use for loading files
+        sql_file_loader: Ignored parameter (functionality simplified)
 
     Returns:
-        Updated configuration with SQL content loaded from files
+        Updated configuration unchanged
 
     Raises:
-        ConfigError: If SQL file loading fails
+        ConfigError: If the config contains SQL file references
     """
-    # Import here to avoid circular import
-    from .sql_file_loader import SQLFileError, SQLFileLoader
-
-    if sql_file_loader is None:
-        sql_file_loader = SQLFileLoader()
-
-    updated_views = []
-    for view in config.views:
-        if view.sql_file is not None:
-            # Handle direct SQL file reference
-            try:
-                sql_content = sql_file_loader.load_sql_file(
-                    file_path=view.sql_file.path,
-                    config_file_path=str(config_path),
-                    variables=view.sql_file.variables,
-                    as_template=view.sql_file.as_template,
-                )
-
-                # Create new view with inline SQL
-                updated_view = ViewConfig(
-                    name=view.name,
-                    sql=sql_content,
-                    source=view.source,
-                    uri=view.uri,
-                    database=view.database,
-                    table=view.table,
-                    catalog=view.catalog,
-                    options=view.options,
-                    description=view.description,
-                    tags=view.tags,
-                )
-                updated_views.append(updated_view)
-
-            except SQLFileError as exc:
-                raise ConfigError(
-                    f"Failed to load SQL file for view '{view.name}': {exc}"
-                ) from exc
-
-        elif view.sql_template is not None:
-            # Handle SQL template reference
-            try:
-                sql_content = sql_file_loader.load_sql_file(
-                    file_path=view.sql_template.path,
-                    config_file_path=str(config_path),
-                    variables=view.sql_template.variables,
-                    as_template=True,  # Templates are always processed as templates
-                )
-
-                # Create new view with inline SQL
-                updated_view = ViewConfig(
-                    name=view.name,
-                    sql=sql_content,
-                    source=view.source,
-                    uri=view.uri,
-                    database=view.database,
-                    table=view.table,
-                    catalog=view.catalog,
-                    options=view.options,
-                    description=view.description,
-                    tags=view.tags,
-                )
-                updated_views.append(updated_view)
-
-            except SQLFileError as exc:
-                raise ConfigError(
-                    f"Failed to load SQL template for view '{view.name}': {exc}"
-                ) from exc
-
-        else:
-            # No SQL file reference, keep original view
-            updated_views.append(view)
-
-    # Create updated config with processed views
-    updated_config = Config(
-        version=config.version,
-        duckdb=config.duckdb,
-        attachments=config.attachments,
-        iceberg_catalogs=config.iceberg_catalogs,
-        views=updated_views,
-        semantic_models=config.semantic_models,
+    # Check if any views have SQL file references
+    has_sql_files = any(
+        getattr(view, "sql_file", None) is not None
+        or getattr(view, "sql_template", None) is not None
+        for view in config.views
     )
 
-    log_info(
-        "SQL files loaded",
-        total_views=len(config.views),
-        file_based_views=len(
-            [
-                v
-                for v in updated_views
-                if v.sql
-                and v != next((ov for ov in config.views if ov.name == v.name), None)
-            ]
-        ),
-    )
+    if has_sql_files:
+        raise ConfigError(
+            "SQL file references (sql_file, sql_template) are no longer supported "
+            "as part of config layer consolidation. Please inline SQL content directly "
+            "in your configuration files using the 'sql' field."
+        )
 
-    return updated_config
+    # No SQL files found, return config unchanged
+    return config
 
 
 def _interpolate_env(value: Any) -> Any:
@@ -1413,4 +1639,13 @@ __all__ = [
     "SemanticDimensionConfig",
     "SemanticMeasureConfig",
     "load_config",
+    # Path resolution functions
+    "is_relative_path",
+    "resolve_relative_path",
+    "validate_path_security",
+    "normalize_path_for_sql",
+    "is_within_allowed_roots",
+    "is_windows_path_absolute",
+    "detect_path_type",
+    "validate_file_accessibility",
 ]

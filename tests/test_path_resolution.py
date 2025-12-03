@@ -8,9 +8,12 @@ from typing import List
 import pytest
 import yaml
 
-from duckalog.config import Config, ConfigError, load_config
-from duckalog.path_resolution import (
-    PathResolutionError,
+from duckalog.config import (
+    Config,
+    load_config,
+)
+from duckalog.errors import ConfigError, PathResolutionError
+from duckalog.config import (
     detect_path_type,
     is_relative_path,
     is_windows_path_absolute,
@@ -18,16 +21,8 @@ from duckalog.path_resolution import (
     resolve_relative_path,
     validate_file_accessibility,
     validate_path_security,
+    is_within_allowed_roots,
 )
-
-# Import the new root-based validation function
-try:
-    from duckalog.path_resolution import is_within_allowed_roots
-except ImportError:
-    # Fallback for older Python versions or incomplete implementations
-    def is_within_allowed_roots(candidate_path: str, allowed_roots: list) -> bool:
-        """Placeholder function if not available."""
-        return True
 
 
 class TestPathDetection:

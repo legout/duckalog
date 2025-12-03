@@ -16,16 +16,14 @@ try:
 except ImportError:
     fsspec = None  # Will be handled in the function
 
-from .config import load_config
-from .errors import ConfigError
+from .config import load_config, validate_file_accessibility
 
 # from .dashboard import create_app
 # from .dashboard.state import DashboardContext
 from .config_init import create_config_template, validate_generated_config
 from .engine import build_catalog
-from .errors import EngineError
-from .logging_utils import log_error, log_info
-from .path_resolution import validate_file_accessibility
+from .errors import ConfigError, EngineError
+from .config import log_error, log_info
 from .sql_generation import generate_all_views_sql
 
 app = typer.Typer(help="Duckalog CLI for building and inspecting DuckDB catalogs.")
@@ -727,7 +725,7 @@ def show_paths(
                 typer.echo(f"  Original: {view.uri}")
                 # For file-based views, show what would be resolved
                 if view.source in ("parquet", "delta"):
-                    from .path_resolution import is_relative_path, resolve_relative_path
+                    from .config import is_relative_path, resolve_relative_path
 
                     if is_relative_path(view.uri):
                         resolved = resolve_relative_path(view.uri, config_dir)
@@ -785,7 +783,7 @@ def validate_paths(
     if config.views:
         for view in config.views:
             if view.uri and view.source in ("parquet", "delta"):
-                from .path_resolution import is_relative_path, resolve_relative_path
+                from .config import is_relative_path, resolve_relative_path
 
                 path_to_check = view.uri
                 if is_relative_path(view.uri):
