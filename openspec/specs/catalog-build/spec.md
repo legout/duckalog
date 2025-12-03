@@ -199,6 +199,32 @@ The system MUST provide canonical functions for SQL construction that serve as t
 - **AND** attachment aliases, database names, table names, and view names MUST be passed through `quote_ident`
 - **AND** file paths, connection strings, secret values, and other string literals MUST be passed through `quote_literal`
 
+### Engine Structure
+
+The catalog build system uses a `CatalogBuilder` orchestration class to manage the build process:
+
+#### CatalogBuilder Design
+- **Purpose**: Encapsulates the entire catalog build workflow into a single, testable class
+- **Single Responsibility**: Each private method handles one specific aspect of the build process
+- **Resource Management**: Ensures proper cleanup of temporary files and database connections
+- **Error Handling**: Provides consistent error handling with clear context
+
+#### CatalogBuilder Methods
+- `_create_connection()`: Creates and configures DuckDB connection
+- `_apply_pragmas()`: Installs extensions, loads extensions, applies pragmas and settings
+- `_setup_attachments()`: Sets up DuckDB, SQLite, and Postgres attachments
+- `_create_secrets()`: Creates configured DuckDB secrets
+- `_create_views()`: Creates or replaces all configured views
+- `_cleanup()`: Handles cleanup of temporary resources and connections
+
+#### Dependency Resolution
+The engine uses a depth-limited Depth-First Search (DFS) approach for config dependency resolution:
+
+- **Cycle Detection**: Maintains a `visited` set of resolved config paths to detect cycles during traversal
+- **Maximum Depth**: Enforces a configurable maximum depth (default: 5) to prevent runaway recursion
+- **Path Tracking**: Tracks visited config paths to prevent rebuilding the same dependency multiple times within a single run
+- **Hierarchical Semantics**: Preserves existing attachment hierarchy behavior where child configs are built before parent attachments
+
 ### Security Regression Tests
 
 The catalog build process MUST include comprehensive regression tests to ensure that security vulnerabilities cannot be re-introduced through future changes to SQL generation and path resolution logic.
