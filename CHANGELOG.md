@@ -1,5 +1,9 @@
 # Changelog
-## [2025-12-03] - 0.3.0
+## [2025-12-03] - 0.3.1
+
+### Changed
+- Docs: auto-update changelog.md for version 0.3.0 (509dcb1)
+
 
 ### Added
 - Feat: add comprehensive security regression tests for sql and path protection (a2489da)
