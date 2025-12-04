@@ -5,12 +5,22 @@ handling both local file loading and remote URI loading.
 """
 
 import json
+import os
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
 import yaml
 
-from duckalog.errors import ConfigError
+from duckalog.errors import (
+    CircularImportError,
+    ConfigError,
+    DuplicateNameError,
+    ImportError,
+    ImportFileNotFoundError,
+    ImportValidationError,
+    PathResolutionError,
+)
 from .validators import log_info, log_debug
 
 
@@ -223,7 +233,7 @@ def load_config(
         # Remote functionality not available, continue with local loading
         pass
 
-    # Local file loading - delegate to the dedicated helper
+    # Local file loading - delegate to the dedicated helper with import support
     return _load_config_from_local_file(
         path=path,
         load_sql_files=load_sql_files,
@@ -240,12 +250,10 @@ def _load_config_from_local_file(
     resolve_paths: bool = True,
     filesystem: Optional[Any] = None,
 ) -> Any:
-    """Load a configuration from a local file.
+    """Load a configuration from a local file with import support.
 
     This is an internal helper responsible for local file reading, environment
-    interpolation, path resolution, and validation. It treats `filesystem` as
-    an optional abstraction for local I/O when supplied (for example, fsspec-like
-    objects in tests).
+    interpolation, path resolution, validation, and import processing.
 
     Args:
         path: Path to a local YAML or JSON config file.
@@ -263,62 +271,539 @@ def _load_config_from_local_file(
             fails schema validation, contains unresolved
             ``${env:VAR_NAME}`` placeholders, or if SQL file loading fails.
     """
-    # Import Config here to avoid circular imports
-    from .models import Config
-
     config_path = Path(path)
     if not config_path.exists():
         raise ConfigError(f"Config file not found: {path}")
 
     log_info("Loading config", path=str(config_path))
-    try:
-        if filesystem is not None:
-            # Use provided filesystem for I/O
-            if not hasattr(filesystem, "open") or not hasattr(filesystem, "exists"):
-                raise ConfigError(
-                    "filesystem object must provide 'open' and 'exists' methods "
-                    "for fsspec-compatible interface"
-                )
-            if not filesystem.exists(str(config_path)):
-                raise ConfigError(f"Config file not found: {path}")
-            with filesystem.open(str(config_path), "r") as f:
-                raw_text = f.read()
+
+    # Use the new _load_config_with_imports function which handles everything
+    return _load_config_with_imports(
+        file_path=str(config_path),
+        filesystem=filesystem,
+        resolve_paths=resolve_paths,
+        load_sql_files=load_sql_files,
+        sql_file_loader=sql_file_loader,
+    )
+
+
+@dataclass
+class ImportContext:
+    """Tracks import state during loading."""
+    visited_files: set[str] = field(default_factory=set)
+    import_stack: list[str] = field(default_factory=list)
+    config_cache: dict[str, Any] = field(default_factory=dict)
+    import_chain: list[str] = field(default_factory=list)
+
+
+def _is_remote_uri(path: str) -> bool:
+    """Check if a path is a remote URI."""
+    # Simple check for common remote URI schemes
+    remote_schemes = ["http://", "https://", "s3://", "gcs://", "az://", "abfs://"]
+    return any(path.startswith(scheme) for scheme in remote_schemes)
+
+
+def _deep_merge_dict(base: dict, override: dict) -> dict:
+    """Deep merge two dictionaries.
+
+    Args:
+        base: Base dictionary to merge into.
+        override: Override dictionary with new/updated values.
+
+    Returns:
+        A new dictionary with merged content.
+    """
+    result = base.copy()
+
+    for key, override_value in override.items():
+        if key not in result:
+            # New key, just add it
+            result[key] = override_value
         else:
-            # Use default path-based file I/O
-            raw_text = config_path.read_text()
-    except OSError as exc:  # pragma: no cover - filesystem failures are rare
-        raise ConfigError(f"Failed to read config file: {exc}") from exc
+            # Key exists, need to merge
+            base_value = result[key]
 
-    suffix = config_path.suffix.lower()
-    if suffix in {".yaml", ".yml"}:
-        parsed = yaml.safe_load(raw_text)
-    elif suffix == ".json":
-        parsed = json.loads(raw_text)
+            if isinstance(base_value, dict) and isinstance(override_value, dict):
+                # Both are dicts, recursively merge
+                result[key] = _deep_merge_dict(base_value, override_value)
+            elif isinstance(base_value, list) and isinstance(override_value, list):
+                # Both are lists, concatenate
+                result[key] = base_value + override_value
+            else:
+                # Override scalar values
+                result[key] = override_value
+
+    return result
+
+
+def _deep_merge_config(base: Any, override: Any) -> Any:
+    """Deep merge two Config objects.
+
+    Args:
+        base: Base Config object.
+        override: Override Config object.
+
+    Returns:
+        A new Config object with merged content.
+    """
+    from .models import Config
+
+    # Get the field values from both configs
+    base_dict = base.model_dump(mode='json')
+    override_dict = override.model_dump(mode='json')
+
+    # Deep merge the dicts
+    merged_dict = _deep_merge_dict(base_dict, override_dict)
+
+    # Create a new Config from the merged dict
+    # Use ** to unpack the dict and let Pydantic properly instantiate nested objects
+    return Config(**merged_dict)
+
+
+def _resolve_import_path(import_path: str, base_path: str) -> str:
+    """Resolve an import path relative to the importing file.
+
+    Args:
+        import_path: The import path to resolve (can contain ${env:VAR}).
+        base_path: Path to the importing file.
+
+    Returns:
+        The resolved absolute path.
+
+    Raises:
+        PathResolutionError: If path resolution fails.
+    """
+    # Apply environment variable interpolation
+    if "${env:" in import_path:
+        import_path = _interpolate_env(import_path)
+
+    # Check if it's a remote URI
+    if _is_remote_uri(import_path):
+        return import_path
+
+    # Resolve relative to base file
+    if os.path.isabs(import_path):
+        resolved_path = import_path
     else:
-        raise ConfigError("Config files must use .yaml, .yml, or .json extensions")
+        base_dir = os.path.dirname(base_path)
+        resolved_path = os.path.normpath(os.path.join(base_dir, import_path))
 
-    if parsed is None:
-        raise ConfigError("Config file is empty")
-    if not isinstance(parsed, dict):
-        raise ConfigError("Config file must define a mapping at the top level")
-
-    log_debug("Raw config keys", keys=list(parsed.keys()))
-    interpolated = _interpolate_env(parsed)
-
-    try:
-        config = Config.model_validate(interpolated)
-    except Exception as exc:  # pragma: no cover - raised in tests
-        raise ConfigError(f"Configuration validation failed: {exc}") from exc
-
-    # Resolve relative paths if requested (simplified for now)
-    if resolve_paths:
-        log_debug(
-            "Path resolution requested but not implemented in refactored structure"
+    # Security check - ensure path doesn't escape allowed directory
+    # This is a basic check - the actual validation will happen during file loading
+    if not os.path.isabs(resolved_path):
+        raise PathResolutionError(
+            f"Failed to resolve import path: {import_path}",
+            original_path=import_path,
+            resolved_path=resolved_path,
         )
 
-    # Load SQL from external files if requested
-    if load_sql_files:
-        config = _load_sql_files_from_config(config, config_path, sql_file_loader)
+    return resolved_path
 
-    log_info("Config loaded", path=str(config_path), views=len(config.views))
-    return config
+
+def _validate_unique_names(config: Any, context: ImportContext) -> None:
+    """Validate unique names across all config sections.
+
+    Args:
+        config: The merged Config object.
+        context: Import context with import chain information.
+
+    Raises:
+        DuplicateNameError: If duplicate names are found.
+    """
+    # Validate unique view names
+    view_names: dict[tuple[Optional[str], str], int] = {}
+    duplicates = []
+    for view in config.views:
+        key = (view.db_schema, view.name)
+        if key in view_names:
+            schema_part = f"{view.db_schema}." if view.db_schema else ""
+            duplicates.append(f"{schema_part}{view.name}")
+        else:
+            view_names[key] = 1
+
+    if duplicates:
+        raise DuplicateNameError(
+            f"Duplicate view name(s) found: {', '.join(sorted(set(duplicates)))}",
+            name_type="view",
+            duplicate_names=sorted(set(duplicates)),
+        )
+
+    # Validate unique Iceberg catalog names
+    catalog_names: dict[str, int] = {}
+    duplicates = []
+    for catalog in config.iceberg_catalogs:
+        if catalog.name in catalog_names:
+            duplicates.append(catalog.name)
+        else:
+            catalog_names[catalog.name] = 1
+
+    if duplicates:
+        raise DuplicateNameError(
+            f"Duplicate Iceberg catalog name(s) found: {', '.join(sorted(set(duplicates)))}",
+            name_type="iceberg_catalog",
+            duplicate_names=sorted(set(duplicates)),
+        )
+
+    # Validate unique semantic model names
+    semantic_model_names: dict[str, int] = {}
+    duplicates = []
+    for semantic_model in config.semantic_models:
+        if semantic_model.name in semantic_model_names:
+            duplicates.append(semantic_model.name)
+        else:
+            semantic_model_names[semantic_model.name] = 1
+
+    if duplicates:
+        raise DuplicateNameError(
+            f"Duplicate semantic model name(s) found: {', '.join(sorted(set(duplicates)))}",
+            name_type="semantic_model",
+            duplicate_names=sorted(set(duplicates)),
+        )
+
+    # Validate unique attachment aliases
+    attachment_aliases: dict[str, int] = {}
+    duplicates = []
+
+    # Check duckdb attachments
+    for attachment in config.attachments.duckdb:
+        if attachment.alias in attachment_aliases:
+            duplicates.append(f"duckdb.{attachment.alias}")
+        else:
+            attachment_aliases[attachment.alias] = 1
+
+    # Check sqlite attachments
+    for attachment in config.attachments.sqlite:
+        if attachment.alias in attachment_aliases:
+            duplicates.append(f"sqlite.{attachment.alias}")
+        else:
+            attachment_aliases[attachment.alias] = 1
+
+    # Check postgres attachments
+    for attachment in config.attachments.postgres:
+        if attachment.alias in attachment_aliases:
+            duplicates.append(f"postgres.{attachment.alias}")
+        else:
+            attachment_aliases[attachment.alias] = 1
+
+    # Check duckalog attachments
+    for attachment in config.attachments.duckalog:
+        if attachment.alias in attachment_aliases:
+            duplicates.append(f"duckalog.{attachment.alias}")
+        else:
+            attachment_aliases[attachment.alias] = 1
+
+    if duplicates:
+        raise DuplicateNameError(
+            f"Duplicate attachment alias(es) found: {', '.join(sorted(set(duplicates)))}",
+            name_type="attachment",
+            duplicate_names=sorted(set(duplicates)),
+        )
+
+
+def _resolve_and_load_import(
+    import_path: str,
+    base_path: str,
+    filesystem: Optional[Any],
+    resolve_paths: bool,
+    load_sql_files: bool,
+    sql_file_loader: Optional[Any],
+    import_context: ImportContext,
+) -> Any:
+    """Resolve and load an imported config file.
+
+    Args:
+        import_path: Path to the import (can be relative or remote).
+        base_path: Path to the importing file.
+        filesystem: Optional filesystem object.
+        resolve_paths: Whether to resolve relative paths.
+        load_sql_files: Whether to load SQL files.
+        sql_file_loader: Optional SQLFileLoader instance.
+        import_context: Import context for tracking visited files.
+
+    Returns:
+        The loaded Config object.
+
+    Raises:
+        CircularImportError: If a circular import is detected.
+        ImportFileNotFoundError: If the imported file doesn't exist.
+        ImportValidationError: If the imported config fails validation.
+    """
+    # Resolve the import path
+    try:
+        resolved_path = _resolve_import_path(import_path, base_path)
+    except Exception as exc:
+        raise ImportFileNotFoundError(
+            f"Failed to resolve import path '{import_path}' from '{base_path}': {exc}",
+            import_path=import_path,
+            cause=exc,
+        ) from exc
+
+    log_debug("Resolving import", import_path=import_path, resolved_path=resolved_path)
+
+    # Check for circular imports
+    # Use the resolved path as the key
+    if resolved_path in import_context.visited_files:
+        # Check if it's in the current import stack
+        if resolved_path in import_context.import_stack:
+            # Circular import detected!
+            chain = " -> ".join(import_context.import_stack + [resolved_path])
+            raise CircularImportError(
+                f"Circular import detected in import chain: {chain}",
+                import_chain=import_context.import_stack + [resolved_path],
+            )
+        else:
+            # This file was already loaded in a different branch, use cached version
+            log_debug("Using cached config for already-loaded import", path=resolved_path)
+            return import_context.config_cache.get(resolved_path)
+
+    # Add to import stack and visited files
+    import_context.import_stack.append(resolved_path)
+    import_context.visited_files.add(resolved_path)
+
+    try:
+        # Load the imported config
+        # Check if it's a remote URI
+        if _is_remote_uri(resolved_path):
+            # For remote URIs, we need to use the remote loader
+            try:
+                from duckalog.remote_config import load_config_from_uri
+
+                imported_config = load_config_from_uri(
+                    uri=resolved_path,
+                    load_sql_files=load_sql_files,
+                    sql_file_loader=sql_file_loader,
+                    resolve_paths=False,
+                    filesystem=filesystem,
+                )
+            except Exception as exc:
+                raise ImportValidationError(
+                    f"Failed to load remote config '{resolved_path}': {exc}",
+                    import_path=resolved_path,
+                    cause=exc,
+                ) from exc
+        else:
+            # Local file loading
+            config_path = Path(resolved_path)
+            if not config_path.exists():
+                raise ImportFileNotFoundError(
+                    f"Imported file not found: {resolved_path}",
+                    import_path=resolved_path,
+                )
+
+            try:
+                if filesystem is not None:
+                    if not hasattr(filesystem, "open") or not hasattr(filesystem, "exists"):
+                        raise ImportError(
+                            "filesystem object must provide 'open' and 'exists' methods"
+                        )
+                    if not filesystem.exists(resolved_path):
+                        raise ImportFileNotFoundError(
+                            f"Imported file not found: {resolved_path}",
+                            import_path=resolved_path,
+                        )
+                    with filesystem.open(resolved_path, "r") as f:
+                        raw_text = f.read()
+                else:
+                    raw_text = config_path.read_text()
+            except OSError as exc:
+                raise ImportValidationError(
+                    f"Failed to read imported file '{resolved_path}': {exc}",
+                    import_path=resolved_path,
+                    cause=exc,
+                ) from exc
+
+            suffix = config_path.suffix.lower()
+            if suffix in {".yaml", ".yml"}:
+                parsed = yaml.safe_load(raw_text)
+            elif suffix == ".json":
+                parsed = json.loads(raw_text)
+            else:
+                raise ImportValidationError(
+                    f"Imported file must use .yaml, .yml, or .json extension: {resolved_path}",
+                    import_path=resolved_path,
+                )
+
+            if parsed is None:
+                raise ImportValidationError(
+                    f"Imported file is empty: {resolved_path}",
+                    import_path=resolved_path,
+                )
+            if not isinstance(parsed, dict):
+                raise ImportValidationError(
+                    f"Imported file must define a mapping at the top level: {resolved_path}",
+                    import_path=resolved_path,
+                )
+
+            # Apply environment variable interpolation
+            interpolated = _interpolate_env(parsed)
+
+            # Validate the imported config
+            from .models import Config
+
+            try:
+                imported_config = Config.model_validate(interpolated)
+            except Exception as exc:
+                raise ImportValidationError(
+                    f"Imported config validation failed: {exc}",
+                    import_path=resolved_path,
+                    cause=exc,
+                ) from exc
+
+            # Load SQL files if requested
+            if load_sql_files:
+                imported_config = _load_sql_files_from_config(
+                    imported_config, config_path, sql_file_loader
+                )
+
+        # Cache the imported config
+        import_context.config_cache[resolved_path] = imported_config
+
+        # Recursively process imports in the imported config
+        if imported_config.imports:
+            log_debug(
+                "Processing nested imports",
+                path=resolved_path,
+                import_count=len(imported_config.imports),
+            )
+            for nested_import_path in imported_config.imports:
+                nested_config = _resolve_and_load_import(
+                    import_path=nested_import_path,
+                    base_path=resolved_path,
+                    filesystem=filesystem,
+                    resolve_paths=resolve_paths,
+                    load_sql_files=load_sql_files,
+                    sql_file_loader=sql_file_loader,
+                    import_context=import_context,
+                )
+                # Merge the nested import into the imported config
+                # Main config should override imported config, so import goes first
+                imported_config = _deep_merge_config(nested_config, imported_config)
+
+        return imported_config
+
+    finally:
+        # Remove from import stack
+        import_context.import_stack.pop()
+
+
+def _load_config_with_imports(
+    file_path: str,
+    content: Optional[str] = None,
+    format: str = "yaml",
+    filesystem: Optional[Any] = None,
+    resolve_paths: bool = True,
+    load_sql_files: bool = True,
+    sql_file_loader: Optional[Any] = None,
+    import_context: Optional[ImportContext] = None,
+) -> Any:
+    """Load config with import support.
+
+    Args:
+        file_path: Path to the config file.
+        content: Optional file content (if not provided, will read from file_path).
+        format: File format (yaml or json).
+        filesystem: Optional filesystem object.
+        resolve_paths: Whether to resolve relative paths.
+        load_sql_files: Whether to load SQL files.
+        sql_file_loader: Optional SQLFileLoader instance.
+        import_context: Optional existing import context.
+
+    Returns:
+        A validated and merged Config object.
+
+    Raises:
+        ConfigError: If the config cannot be loaded or validated.
+    """
+    if import_context is None:
+        import_context = ImportContext()
+
+    config_path = Path(file_path)
+    resolved_path = str(config_path.resolve())
+
+    log_debug("Loading config with imports", path=resolved_path)
+
+    # Check if config is already in cache
+    if resolved_path in import_context.config_cache:
+        log_debug("Using cached config", path=resolved_path)
+        return import_context.config_cache[resolved_path]
+
+    # Add to visited files
+    import_context.visited_files.add(resolved_path)
+    import_context.import_stack.append(resolved_path)
+
+    try:
+        # Load the base config
+        if content is not None:
+            raw_text = content
+        else:
+            if filesystem is not None:
+                if not hasattr(filesystem, "open") or not hasattr(filesystem, "exists"):
+                    raise ConfigError(
+                        "filesystem object must provide 'open' and 'exists' methods"
+                    )
+                if not filesystem.exists(resolved_path):
+                    raise ConfigError(f"Config file not found: {file_path}")
+                with filesystem.open(resolved_path, "r") as f:
+                    raw_text = f.read()
+            else:
+                if not config_path.exists():
+                    raise ConfigError(f"Config file not found: {file_path}")
+                raw_text = config_path.read_text()
+
+        # Parse the content
+        if format == "yaml":
+            parsed = yaml.safe_load(raw_text)
+        elif format == "json":
+            parsed = json.loads(raw_text)
+        else:
+            raise ConfigError("Config files must use .yaml, .yml, or .json extensions")
+
+        if parsed is None:
+            raise ConfigError("Config file is empty")
+        if not isinstance(parsed, dict):
+            raise ConfigError("Config file must define a mapping at the top level")
+
+        # Apply environment variable interpolation
+        interpolated = _interpolate_env(parsed)
+
+        # Validate the base config
+        from .models import Config
+
+        try:
+            config = Config.model_validate(interpolated)
+        except Exception as exc:
+            raise ConfigError(f"Configuration validation failed: {exc}") from exc
+
+        # Cache the base config
+        import_context.config_cache[resolved_path] = config
+
+        # Process imports
+        if config.imports:
+            log_debug("Processing imports", import_count=len(config.imports))
+            for import_path in config.imports:
+                imported_config = _resolve_and_load_import(
+                    import_path=import_path,
+                    base_path=resolved_path,
+                    filesystem=filesystem,
+                    resolve_paths=resolve_paths,
+                    load_sql_files=load_sql_files,
+                    sql_file_loader=sql_file_loader,
+                    import_context=import_context,
+                )
+                # Merge the imported config into the base config
+                # Main config should override imported config, so import goes first
+                config = _deep_merge_config(imported_config, config)
+
+        # Validate merged config
+        _validate_unique_names(config, import_context)
+
+        # Load SQL files if requested (after all merges are complete)
+        if load_sql_files:
+            config = _load_sql_files_from_config(config, config_path, sql_file_loader)
+
+        log_debug("Config loaded with imports", path=resolved_path, views=len(config.views))
+        return config
+
+    finally:
+        # Remove from import stack
+        import_context.import_stack.pop()

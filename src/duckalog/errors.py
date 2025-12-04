@@ -100,6 +100,67 @@ class SQLFileNotFoundError(SQLFileError):
     pass
 
 
+class ImportError(ConfigError):
+    """Base class for import-related errors."""
+
+    def __init__(self, message: str, cause: Exception | None = None):
+        super().__init__(message, cause)
+
+
+class CircularImportError(ImportError):
+    """Circular import detected."""
+
+    def __init__(
+        self,
+        message: str,
+        import_chain: list[str] | None = None,
+        cause: Exception | None = None,
+    ):
+        super().__init__(message, cause)
+        self.import_chain = import_chain or []
+
+
+class ImportFileNotFoundError(ImportError):
+    """Imported file not found."""
+
+    def __init__(
+        self,
+        message: str,
+        import_path: str | None = None,
+        cause: Exception | None = None,
+    ):
+        super().__init__(message, cause)
+        self.import_path = import_path
+
+
+class ImportValidationError(ImportError):
+    """Imported file validation failed."""
+
+    def __init__(
+        self,
+        message: str,
+        import_path: str | None = None,
+        cause: Exception | None = None,
+    ):
+        super().__init__(message, cause)
+        self.import_path = import_path
+
+
+class DuplicateNameError(ImportError):
+    """Duplicate name across imported configs."""
+
+    def __init__(
+        self,
+        message: str,
+        name_type: str | None = None,
+        duplicate_names: list[str] | None = None,
+        cause: Exception | None = None,
+    ):
+        super().__init__(message, cause)
+        self.name_type = name_type
+        self.duplicate_names = duplicate_names or []
+
+
 class SQLFilePermissionError(SQLFileError):
     """Raised when a SQL file cannot be read due to permissions."""
 
