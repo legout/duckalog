@@ -3,7 +3,7 @@
 ## Purpose
 Enable modular Duckalog configuration by allowing configuration files to import and merge content from other configuration files. This allows users to split large configuration files into smaller, more manageable pieces organized by domain, environment, or team.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Import Syntax
 The system MUST support an optional `imports` field at the top level of a configuration file that lists other configuration files to import and merge.

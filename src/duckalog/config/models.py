@@ -823,6 +823,7 @@ class Config(BaseModel):
         attachments: Optional attachments to external databases.
         iceberg_catalogs: Optional Iceberg catalog definitions.
         semantic_models: Optional semantic model definitions for business metadata.
+        imports: Optional list of additional config files to import and merge.
     """
 
     version: int
@@ -831,6 +832,7 @@ class Config(BaseModel):
     attachments: AttachmentsConfig = Field(default_factory=AttachmentsConfig)
     iceberg_catalogs: list[IcebergCatalogConfig] = Field(default_factory=list)
     semantic_models: list[SemanticModelConfig] = Field(default_factory=list)
+    imports: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 

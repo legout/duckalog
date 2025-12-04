@@ -1,7 +1,11 @@
 # Design: Config Imports Implementation
 
 ## Overview
-This document outlines the technical design for implementing config imports in Duckalog, allowing configuration files to import and merge content from other files.
+This document outlines the technical design for implementing **core config imports** in Duckalog,
+allowing configuration files to import and merge content from other local files. Advanced
+capabilities such as remote imports, selective imports, glob patterns, and dedicated CLI tooling
+are intentionally deferred to follow-up changes so that this change can focus on a small, robust
+core.
 
 ## Architecture
 

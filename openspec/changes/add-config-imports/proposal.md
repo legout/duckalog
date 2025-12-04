@@ -14,15 +14,14 @@ The existing hierarchical attachment system (`attachments.duckalog[]`) allows bu
 
 Add an `imports` field to the top-level configuration that allows importing other configuration files and merging their contents. This provides a clean way to split configuration across multiple files while maintaining backward compatibility.
 
-### Key Features
+### Key Features (Core Scope)
 
-1. **Explicit imports**: Users explicitly list files to import
-2. **Flexible merging**: Support for different merging strategies
-3. **Path resolution**: Relative paths resolved relative to importing file
-4. **Remote imports**: Support importing from remote URIs (S3, HTTP, etc.)
-5. **Environment variable support**: Use `${env:VAR}` in import paths
-6. **Cycle detection**: Prevent infinite import loops
-7. **Backward compatibility**: Single-file configs continue to work unchanged
+1. **Explicit imports**: Users explicitly list local files to import.
+2. **Flexible merging**: Deep-merge strategy with list concatenation so sections from multiple files combine into a single config.
+3. **Path resolution**: Relative paths resolved relative to the importing file's directory.
+4. **Environment variable support**: Use `${env:VAR}` in import paths for local files.
+5. **Cycle detection**: Prevent infinite import loops through circular-import detection.
+6. **Backward compatibility**: Single-file configs continue to work unchanged when `imports` is omitted or empty.
 
 ## Design
 
@@ -74,12 +73,15 @@ The default merging strategy is **deep merge with list concatenation**:
 - **Duplicate attachment aliases**: Error by default
 - **Duplicate iceberg catalog names**: Error by default
 
-### 5. Advanced Features (Future)
+### 5. Advanced Features (Future, Out of Scope for This Change)
 
-- **Selective imports**: `imports: {views: "./views.yaml", settings: "./settings.yaml"}`
-- **Import overrides**: `imports: {"./base.yaml": {override: true}}`
-- **Glob patterns**: `imports: ["./views/*.yaml"]`
-- **Exclude patterns**: `imports: ["./configs/*.yaml", "!./configs/secrets.yaml"]`
+The following capabilities are intentionally deferred to follow-up OpenSpec changes so that
+`add-config-imports` can focus on a small, robust core:
+
+- **Remote imports**: Importing configuration from URIs such as `s3://` or `https://`.
+- **Selective imports**: Syntax like `imports: {views: "./views.yaml", settings: "./settings.yaml"}`.
+- **Import overrides**: Per-import override flags such as `override: true/false`.
+- **Glob patterns and excludes**: Patterns such as `imports: ["./views/*.yaml", "!./views/legacy.yaml"]`.
 
 ## Implementation Plan
 
