@@ -43,7 +43,28 @@ def _interpolate_env(value: Any) -> Any:
 def _load_sql_files_from_config(
     config: Any, config_path: Path, sql_file_loader: Optional[Any] = None
 ) -> Any:
-    """Simple stub for SQL file loading."""
+    """Load SQL content from external files referenced in the config.
+
+    This function processes views that reference external SQL files or templates
+    and inlines the SQL content into the configuration.
+
+    Args:
+        config: The configuration object to process
+        config_path: Path to the configuration file (for relative path resolution)
+        sql_file_loader: Optional SQLFileLoader instance for loading SQL files
+
+    Returns:
+        Updated configuration with SQL content inlined
+
+    Raises:
+        ConfigError: If the config contains SQL file references that cannot be loaded
+    """
+    # Import here to avoid circular import
+    from ..sql_file_loader import SQLFileError, SQLFileLoader
+
+    if sql_file_loader is None:
+        sql_file_loader = SQLFileLoader()
+
     # Check if any views have SQL file references
     has_sql_files = any(
         getattr(view, "sql_file", None) is not None
@@ -51,14 +72,81 @@ def _load_sql_files_from_config(
         for view in config.views
     )
 
-    if has_sql_files:
-        raise ConfigError(
-            "SQL file references (sql_file, sql_template) are no longer supported "
-            "as part of config layer consolidation. Please inline SQL content directly "
-            "in your configuration files using the 'sql' field."
-        )
+    if not has_sql_files:
+        # No SQL files to process
+        return config
 
-    return config
+    log_info("Loading SQL files", total_views=len(config.views))
+
+    updated_views = []
+    for view in config.views:
+        if view.sql_file is not None:
+            # Handle direct SQL file reference
+            try:
+                sql_content = sql_file_loader.load_sql_file(
+                    file_path=view.sql_file.path,
+                    config_file_path=str(config_path),
+                    variables=view.sql_file.variables,
+                    as_template=view.sql_file.as_template,
+                )
+
+                # Create new view with inline SQL
+                updated_view = view.model_copy(
+                    update={"sql": sql_content, "sql_file": None}
+                )
+                updated_views.append(updated_view)
+                log_debug("Loaded SQL file for view", view_name=view.name)
+
+            except SQLFileError as exc:
+                raise ConfigError(
+                    f"Failed to load SQL file for view '{view.name}': {exc}"
+                ) from exc
+
+        elif view.sql_template is not None:
+            # Handle SQL template reference
+            try:
+                sql_content = sql_file_loader.load_sql_file(
+                    file_path=view.sql_template.path,
+                    config_file_path=str(config_path),
+                    variables=view.sql_template.variables,
+                    as_template=True,  # Templates are always processed as templates
+                )
+
+                # Create new view with inline SQL
+                updated_view = view.model_copy(
+                    update={"sql": sql_content, "sql_template": None}
+                )
+                updated_views.append(updated_view)
+                log_debug("Loaded SQL template for view", view_name=view.name)
+
+            except SQLFileError as exc:
+                raise ConfigError(
+                    f"Failed to load SQL template for view '{view.name}': {exc}"
+                ) from exc
+
+        else:
+            # No SQL file reference, keep original view
+            updated_views.append(view)
+
+    # Create updated config with processed views
+    updated_config = config.model_copy(update={"views": updated_views})
+
+    file_based_views = len(
+        [
+            v
+            for v in updated_views
+            if v.sql
+            and v != next((ov for ov in config.views if ov.name == v.name), None)
+        ]
+    )
+
+    log_info(
+        "SQL files loaded",
+        total_views=len(config.views),
+        file_based_views=file_based_views,
+    )
+
+    return updated_config
 
 
 def load_config(

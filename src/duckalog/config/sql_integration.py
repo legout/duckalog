@@ -17,33 +17,21 @@ def _load_sql_files_from_config(
 ) -> Any:
     """Load SQL content from external files referenced in the config.
 
-    This functionality has been simplified as part of the config layer consolidation.
-    SQL file references are no longer supported - SQL content should be inlined.
+    This function delegates to the loader module's implementation
+    for SQL file loading.
 
     Args:
         config: The configuration object to process
         config_path: Path to the configuration file (for relative path resolution)
-        sql_file_loader: Ignored parameter (functionality simplified)
+        sql_file_loader: Optional SQLFileLoader instance for loading SQL files
 
     Returns:
-        Updated configuration unchanged
+        Updated configuration with SQL content inlined
 
     Raises:
         ConfigError: If the config contains SQL file references
     """
-    # Check if any views have SQL file references
-    has_sql_files = any(
-        getattr(view, "sql_file", None) is not None
-        or getattr(view, "sql_template", None) is not None
-        for view in config.views
-    )
+    # Delegate to the loader module's implementation
+    from .loader import _load_sql_files_from_config as load_sql_files
 
-    if has_sql_files:
-        raise ConfigError(
-            "SQL file references (sql_file, sql_template) are no longer supported "
-            "as part of config layer consolidation. Please inline SQL content directly "
-            "in your configuration files using the 'sql' field."
-        )
-
-    # No SQL files found, return config unchanged
-    return config
+    return load_sql_files(config, config_path, sql_file_loader)

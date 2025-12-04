@@ -451,6 +451,18 @@ def _load_sql_files_from_remote_config(
     parsed_uri = urlparse(config_uri)
     base_path = Path(parsed_uri.path).parent
 
+    # Check if any views have SQL file references
+    has_sql_files = any(
+        view.sql_file is not None or view.sql_template is not None
+        for view in config.views
+    )
+
+    if not has_sql_files:
+        # No SQL files to process
+        return config
+
+    log_info("Loading SQL files from remote config", uri=config_uri)
+
     updated_views = []
     for view in config.views:
         if view.sql_file is not None:
@@ -462,15 +474,12 @@ def _load_sql_files_from_remote_config(
                 # Load from remote URI
                 try:
                     sql_content = fetch_remote_content(file_path, filesystem=filesystem)
+
+                    # Process as template if needed
                     if view.sql_file.as_template:
-                        # For templates, we'd need to process variables
-                        # This is a simplified implementation
-                        if view.sql_file.variables:
-                            # Simple variable substitution
-                            for key, value in (view.sql_file.variables or {}).items():
-                                sql_content = sql_content.replace(
-                                    f"{{{{{key}}}}}", str(value)
-                                )
+                        sql_content = sql_file_loader._process_template(
+                            sql_content, view.sql_file.variables or {}, file_path
+                        )
                 except Exception as exc:
                     raise RemoteConfigError(
                         f"Failed to load remote SQL file for view '{view.name}': {exc}"
@@ -507,11 +516,9 @@ def _load_sql_files_from_remote_config(
                 try:
                     sql_content = fetch_remote_content(file_path, filesystem=filesystem)
                     # Process template variables
-                    if view.sql_template.variables:
-                        for key, value in (view.sql_template.variables or {}).items():
-                            sql_content = sql_content.replace(
-                                f"{{{{{key}}}}}", str(value)
-                            )
+                    sql_content = sql_file_loader._process_template(
+                        sql_content, view.sql_template.variables or {}, file_path
+                    )
                 except Exception as exc:
                     raise RemoteConfigError(
                         f"Failed to load remote SQL template for view '{view.name}': {exc}"
@@ -523,7 +530,7 @@ def _load_sql_files_from_remote_config(
                         file_path=file_path,
                         config_file_path=fake_config_path,
                         variables=view.sql_template.variables,
-                        as_template=True,
+                        as_template=True,  # Templates are always processed as templates
                     )
                 except SQLFileError as exc:
                     raise RemoteConfigError(
@@ -543,17 +550,20 @@ def _load_sql_files_from_remote_config(
     # Create updated config with processed views
     updated_config = config.model_copy(update={"views": updated_views})
 
+    file_based_views = len(
+        [
+            v
+            for v in updated_views
+            if v.sql
+            and v != next((ov for ov in config.views if ov.name == v.name), None)
+        ]
+    )
+
     log_info(
         "SQL files loaded from remote config",
+        uri=config_uri,
         total_views=len(config.views),
-        file_based_views=len(
-            [
-                v
-                for v in updated_views
-                if v.sql
-                and v != next((ov for ov in config.views if ov.name == v.name), None)
-            ]
-        ),
+        file_based_views=file_based_views,
     )
 
     return updated_config

@@ -27,6 +27,7 @@ from .errors import (
     SQLFileSizeError,
     SQLTemplateError,
 )
+from .sql_file_loader import SQLFileLoader
 from .sql_generation import (
     generate_all_views_sql,
     generate_view_sql,
@@ -72,4 +73,11 @@ __all__ = [
     "create_config_template",
     "validate_generated_config",
     "ConfigFormat",
+    "SQLFileLoader",
+    "SQLFileError",
+    "SQLFileNotFoundError",
+    "SQLFilePermissionError",
+    "SQLFileEncodingError",
+    "SQLFileSizeError",
+    "SQLTemplateError",
 ]
