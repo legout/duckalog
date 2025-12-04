@@ -1,0 +1,11 @@
+# DuckDB Attachment - Duckalog Configuration
+# This example shows how to attach existing DuckDB databases
+
+duckdb:
+  database: catalog.duckdb
+
+attachments:
+  duckdb:
+    - alias: reference
+      path: "data/reference.duckdb"
+      read_only: true

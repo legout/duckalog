@@ -1976,3 +1976,169 @@ def test_load_config_uri_detection(monkeypatch):
     assert is_remote_uri("gcs://bucket/catalog.yaml")
     assert is_remote_uri("abfs://container/catalog.yaml")
     assert is_remote_uri("sftp://server/path/catalog.yaml")
+
+
+def test_view_with_schema_field(tmp_path):
+    """Test that views can have an optional db_schema field."""
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: analytics_view
+            db_schema: analytics
+            sql: "SELECT 1 as id"
+          - name: default_view
+            sql: "SELECT 2 as id"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert len(config.views) == 2
+    assert config.views[0].name == "analytics_view"
+    assert config.views[0].db_schema == "analytics"
+    assert config.views[1].name == "default_view"
+    assert config.views[1].db_schema is None
+
+
+def test_view_schema_field_validation(tmp_path):
+    """Test that empty schema field is rejected."""
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: test_view
+            db_schema: ""
+            sql: "SELECT 1"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "View db_schema cannot be empty" in str(exc.value)
+
+
+def test_duplicate_schema_name_combination_rejected(tmp_path):
+    """Test that duplicate (schema, name) combinations are rejected."""
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: same_name
+            db_schema: same_schema
+            sql: "SELECT 1"
+          - name: same_name
+            db_schema: same_schema
+            sql: "SELECT 2"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    assert "Duplicate view name(s) found" in str(exc.value)
+    assert "same_schema.same_name" in str(exc.value)
+
+
+def test_same_name_different_schemas_allowed(tmp_path):
+    """Test that views with same name but different schemas are allowed."""
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: same_name
+            db_schema: schema1
+            sql: "SELECT 1"
+          - name: same_name
+            db_schema: schema2
+            sql: "SELECT 2"
+          - name: same_name
+            sql: "SELECT 3"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert len(config.views) == 3
+    # Views should be distinguished by their schema
+    view_schemas = [(v.name, v.db_schema) for v in config.views]
+    assert ("same_name", "schema1") in view_schemas
+    assert ("same_name", "schema2") in view_schemas
+    assert ("same_name", None) in view_schemas
+
+
+def test_semantic_model_with_schema_qualified_base_view(tmp_path):
+    """Test that semantic models can reference schema-qualified base views."""
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: base_view
+            db_schema: analytics
+            sql: "SELECT id FROM table1"
+        semantic_models:
+          - name: test_model
+            base_view: analytics.base_view
+            dimensions:
+              - name: id
+                expression: id
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert len(config.semantic_models) == 1
+    assert config.semantic_models[0].base_view == "analytics.base_view"
+
+
+def test_semantic_model_with_ambiguous_view_reference(tmp_path):
+    """Test that semantic models with ambiguous view references are rejected."""
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: catalog.duckdb
+        views:
+          - name: ambiguous_view
+            db_schema: schema1
+            sql: "SELECT 1"
+          - name: ambiguous_view
+            db_schema: schema2
+            sql: "SELECT 2"
+        semantic_models:
+          - name: test_model
+            base_view: schema1.ambiguous_view
+            joins:
+              - to_view: ambiguous_view
+                type: inner
+                on_condition: "1 = 1"
+            dimensions:
+              - name: test
+                expression: "1"
+        """,
+    )
+
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(config_path))
+
+    error_msg = str(exc.value)
+    assert "ambiguous" in error_msg.lower()
+    assert "test_model" in error_msg
+    assert "ambiguous_view" in error_msg

@@ -1,0 +1,11 @@
+# Parquet Basics - Duckalog Configuration
+# This is the simplest possible catalog with a single Parquet file source
+
+duckdb:
+  database: catalog.duckdb
+
+views:
+  - name: users
+    source: parquet
+    uri: "data/users.parquet"
+    description: "User data from Parquet file"

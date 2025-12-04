@@ -17,6 +17,7 @@ from duckalog import (
     quote_literal,
     render_options,
     SecretConfig,
+    IcebergCatalogConfig,
 )
 
 
@@ -461,3 +462,123 @@ def test_generate_secret_sql_default_name():
 
     expected = "CREATE SECRET s3 (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456')"
     assert sql == expected
+
+
+def test_generate_view_sql_with_schema():
+    """Test that generate_view_sql produces schema-qualified identifiers when db_schema is provided."""
+    view = ViewConfig(
+        name="test_view", db_schema="analytics", sql="SELECT * FROM table"
+    )
+
+    sql = generate_view_sql(view)
+
+    # Should produce schema-qualified view name
+    expected = 'CREATE OR REPLACE VIEW "analytics"."test_view" AS\nSELECT * FROM table;'
+    assert sql == expected
+
+
+def test_generate_view_sql_without_schema():
+    """Test that generate_view_sql produces unqualified identifiers when db_schema is None."""
+    view = ViewConfig(name="test_view", sql="SELECT * FROM table")
+
+    sql = generate_view_sql(view)
+
+    # Should produce unqualified view name
+    expected = 'CREATE OR REPLACE VIEW "test_view" AS\nSELECT * FROM table;'
+    assert sql == expected
+
+
+def test_generate_view_sql_with_special_characters_in_schema():
+    """Test that view names with special characters in both schema and name are properly quoted."""
+    view = ViewConfig(
+        name='user "events"', db_schema="my schema", sql="SELECT * FROM table"
+    )
+
+    sql = generate_view_sql(view)
+
+    # Both schema and name should be properly quoted
+    expected = (
+        'CREATE OR REPLACE VIEW "my schema"."user ""events""" AS\nSELECT * FROM table;'
+    )
+    assert sql == expected
+
+
+def test_generate_all_views_sql_with_mixed_schemas():
+    """Test that generate_all_views_sql handles views with and without schemas correctly."""
+    config = Config(
+        version=1,
+        duckdb=DuckDBConfig(),
+        views=[
+            ViewConfig(name="view_with_schema", db_schema="analytics", sql="SELECT 1"),
+            ViewConfig(name="view_without_schema", sql="SELECT 2"),
+            ViewConfig(
+                name="another_with_schema", db_schema="reporting", sql="SELECT 3"
+            ),
+        ],
+    )
+
+    sql = generate_all_views_sql(config)
+
+    lines = sql.split("\n")
+
+    # Check that schema-qualified and unqualified views are handled correctly
+    assert '"analytics"."view_with_schema"' in sql
+    assert '"view_without_schema"' in sql
+    assert '"reporting"."another_with_schema"' in sql
+
+    # Should have CREATE OR REPLACE VIEW statements for each
+    create_statements = [
+        line for line in lines if line.startswith("CREATE OR REPLACE VIEW")
+    ]
+    assert len(create_statements) == 3
+
+
+def test_generate_all_views_sql_parquet_source_with_schema():
+    """Test SQL generation for parquet source views with schema qualification."""
+    config = Config(
+        version=1,
+        duckdb=DuckDBConfig(),
+        views=[
+            ViewConfig(
+                name="parquet_view",
+                db_schema="data",
+                source="parquet",
+                uri="s3://bucket/file.parquet",
+            ),
+        ],
+    )
+
+    sql = generate_all_views_sql(config)
+
+    expected_view_name = '"data"."parquet_view"'
+    assert expected_view_name in sql
+    assert "CREATE OR REPLACE VIEW" in sql
+    assert "parquet_scan" in sql
+    assert "s3://bucket/file.parquet" in sql
+
+
+def test_generate_all_views_sql_iceberg_source_with_schema():
+    """Test SQL generation for iceberg source views with schema qualification."""
+    config = Config(
+        version=1,
+        duckdb=DuckDBConfig(),
+        views=[
+            ViewConfig(
+                name="iceberg_view",
+                db_schema="warehouse",
+                source="iceberg",
+                catalog="prod_catalog",
+                table="sales",
+            ),
+        ],
+        iceberg_catalogs=[
+            IcebergCatalogConfig(name="prod_catalog", catalog_type="rest"),
+        ],
+    )
+
+    sql = generate_all_views_sql(config)
+
+    expected_view_name = '"warehouse"."iceberg_view"'
+    assert expected_view_name in sql
+    assert "CREATE OR REPLACE VIEW" in sql
+    assert "iceberg_scan" in sql

@@ -112,7 +112,12 @@ def generate_view_sql(view: ViewConfig) -> str:
         A single SQL statement that creates or replaces the view.
     """
 
-    view_name = quote_ident(view.name)
+    # Generate schema-qualified view name if db_schema is provided
+    if view.db_schema:
+        view_name = f"{quote_ident(view.db_schema)}.{quote_ident(view.name)}"
+    else:
+        view_name = quote_ident(view.name)
+
     if view.sql:
         body = view.sql
     else:

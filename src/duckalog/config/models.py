@@ -373,6 +373,7 @@ class ViewConfig(BaseModel):
 
     Attributes:
         name: Unique view name within the config.
+        schema: Optional schema name for organizing views in DuckDB schemas.
         sql: Raw SQL text defining the view body.
         sql_file: Direct reference to a SQL file.
         sql_template: Reference to a SQL template file with variable substitution.
@@ -387,6 +388,7 @@ class ViewConfig(BaseModel):
     """
 
     name: str
+    db_schema: Optional[str] = None
     sql: Optional[str] = None
     sql_file: Optional[SQLFileReference] = None
     sql_template: Optional[SQLFileReference] = None
@@ -407,6 +409,22 @@ class ViewConfig(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("View name cannot be empty")
+        return value
+
+    @field_validator("db_schema")
+    @classmethod
+    def _validate_db_schema(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("View db_schema cannot be empty")
+        return value
+
+    def _validate_schema(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("View schema cannot be empty")
         return value
 
     @model_validator(mode="after")
@@ -825,13 +843,15 @@ class Config(BaseModel):
 
     @model_validator(mode="after")
     def _validate_uniqueness(self) -> "Config":
-        seen: dict[str, int] = {}
+        seen: dict[tuple[Optional[str], str], int] = {}
         duplicates: list[str] = []
         for index, view in enumerate(self.views):
-            if view.name in seen:
-                duplicates.append(view.name)
+            key = (view.db_schema, view.name)
+            if key in seen:
+                schema_part = f"{view.db_schema}." if view.db_schema else ""
+                duplicates.append(f"{schema_part}{view.name}")
             else:
-                seen[view.name] = index
+                seen[key] = index
         if duplicates:
             dup_list = ", ".join(sorted(set(duplicates)))
             raise ValueError(f"Duplicate view name(s) found: {dup_list}")
@@ -875,14 +895,49 @@ class Config(BaseModel):
             dup_list = ", ".join(sorted(set(duplicates)))
             raise ValueError(f"Duplicate semantic model name(s) found: {dup_list}")
 
+        # Helper function to resolve view references
+        def resolve_view_reference(reference: str) -> tuple[Optional[str], str]:
+            """Resolve a view reference to (schema, name) tuple."""
+            if "." in reference:
+                parts = reference.split(".", 1)
+                return (parts[0], parts[1])
+            return (None, reference)
+
+        # Create lookup dictionaries for view resolution
+        view_by_name: dict[str, ViewConfig] = {view.name: view for view in self.views}
+        view_by_schema_name: dict[tuple[Optional[str], str], ViewConfig] = {
+            (view.db_schema, view.name): view for view in self.views
+        }
+
         # Validate that semantic model base views exist
-        view_names = {view.name for view in self.views}
         missing_base_views: list[str] = []
+        ambiguous_base_views: list[str] = []
         for semantic_model in self.semantic_models:
-            if semantic_model.base_view not in view_names:
+            schema, name = resolve_view_reference(semantic_model.base_view)
+
+            # Check for exact schema-qualified match first
+            if (schema, name) in view_by_schema_name:
+                continue
+
+            # If no schema specified, check for name-only matches
+            if schema is None:
+                matching_views = [v for v in self.views if v.name == name]
+                if not matching_views:
+                    missing_base_views.append(
+                        f"{semantic_model.name} -> {semantic_model.base_view}"
+                    )
+                elif len(matching_views) > 1:
+                    schema_list = ", ".join(
+                        f"'{v.db_schema or 'default'}'" for v in matching_views
+                    )
+                    ambiguous_base_views.append(
+                        f"{semantic_model.name} -> {semantic_model.base_view} (found in schemas: {schema_list})"
+                    )
+            else:
                 missing_base_views.append(
                     f"{semantic_model.name} -> {semantic_model.base_view}"
                 )
+
         if missing_base_views:
             details = ", ".join(missing_base_views)
             raise ValueError(
@@ -890,17 +945,53 @@ class Config(BaseModel):
                 f"{details}. Define each view under `views`."
             )
 
+        if ambiguous_base_views:
+            details = ", ".join(ambiguous_base_views)
+            raise ValueError(
+                "Semantic model(s) have ambiguous base view references: "
+                f"{details}. Use schema-qualified view names to disambiguate."
+            )
+
         # Validate that semantic model joins reference existing views
         missing_join_views: list[str] = []
+        ambiguous_join_views: list[str] = []
         for semantic_model in self.semantic_models:
             for join in semantic_model.joins:
-                if join.to_view not in view_names:
+                schema, name = resolve_view_reference(join.to_view)
+
+                # Check for exact schema-qualified match first
+                if (schema, name) in view_by_schema_name:
+                    continue
+
+                # If no schema specified, check for name-only matches
+                if schema is None:
+                    matching_views = [v for v in self.views if v.name == name]
+                    if not matching_views:
+                        missing_join_views.append(
+                            f"{semantic_model.name}.{join.to_view}"
+                        )
+                    elif len(matching_views) > 1:
+                        schema_list = ", ".join(
+                            f"'{v.db_schema or 'default'}'" for v in matching_views
+                        )
+                        ambiguous_join_views.append(
+                            f"{semantic_model.name}.{join.to_view} (found in schemas: {schema_list})"
+                        )
+                else:
                     missing_join_views.append(f"{semantic_model.name}.{join.to_view}")
+
         if missing_join_views:
             details = ", ".join(missing_join_views)
             raise ValueError(
                 "Semantic model join(s) reference undefined view(s): "
                 f"{details}. Define each view under `views`."
+            )
+
+        if ambiguous_join_views:
+            details = ", ".join(ambiguous_join_views)
+            raise ValueError(
+                "Semantic model join(s) have ambiguous view references: "
+                f"{details}. Use schema-qualified view names to disambiguate."
             )
 
         return self

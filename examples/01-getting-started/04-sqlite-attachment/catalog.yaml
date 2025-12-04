@@ -1,0 +1,10 @@
+# SQLite Attachment - Duckalog Configuration
+# This example shows how to attach SQLite databases
+
+duckdb:
+  database: catalog.duckdb
+
+attachments:
+  sqlite:
+    - alias: legacy
+      path: "data/legacy.db"

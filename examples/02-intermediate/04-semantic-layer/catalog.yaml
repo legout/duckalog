@@ -1,0 +1,44 @@
+# Semantic Layer (v1) - Duckalog Configuration
+# This example shows basic semantic model configuration
+
+duckdb:
+  database: catalog.duckdb
+
+views:
+  - name: customers
+    source: parquet
+    uri: "data/customers.parquet"
+
+  - name: sales
+    source: parquet
+    uri: "data/sales.parquet"
+
+  - name: revenue_summary
+    sql: |
+      SELECT
+        c.country,
+        COUNT(DISTINCT c.id) AS total_customers,
+        COUNT(DISTINCT CASE WHEN s.order_id IS NOT NULL THEN c.id END) AS active_customers,
+        COALESCE(SUM(s.total_amount), 0) AS total_revenue,
+        COUNT(s.order_id) AS total_orders,
+        COALESCE(AVG(s.total_amount), 0) AS avg_order_value
+      FROM customers c
+      LEFT JOIN sales s ON c.id = s.customer_id
+      GROUP BY c.country
+      ORDER BY total_revenue DESC
+
+semantic_models:
+  - name: customer_analytics
+    base_view: customers
+    dimensions:
+      - name: country
+        type: string
+      - name: signup_date
+        type: date
+    measures:
+      - name: total_customers
+        expression: "COUNT(*)"
+        agg: count
+      - name: active_customers
+        expression: "COUNT(DISTINCT CASE WHEN s.order_id IS NOT NULL THEN c.id END)"
+        agg: count_distinct

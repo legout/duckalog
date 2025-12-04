@@ -1,0 +1,18 @@
+duckdb:
+  database: catalog.duckdb
+
+attachments:
+  postgres:
+    - alias: production
+      host: localhost
+      port: 5432
+      database: demo
+      user: duckalog
+      password: duckalog
+
+views:
+  - name: pg_customers
+    sql: "SELECT * FROM production.customers"
+
+  - name: pg_orders
+    sql: "SELECT * FROM production.orders"

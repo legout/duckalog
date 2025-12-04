@@ -1,0 +1,23 @@
+# External SQL Files - Duckalog Configuration
+# This example shows how to reference external SQL files
+
+duckdb:
+  database: catalog.duckdb
+
+views:
+  - name: users
+    source: parquet
+    uri: "data/users.parquet"
+
+  - name: events
+    source: parquet
+    uri: "data/events.parquet"
+
+  - name: customer_report
+    sql_file: "sql/report.sql"
+
+  - name: template_report
+    sql_file: "sql/template.sql"
+    properties:
+      start_date: "2024-01-01"
+      end_date: "2024-12-31"

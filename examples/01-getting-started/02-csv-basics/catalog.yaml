@@ -1,0 +1,13 @@
+# CSV Basics - Duckalog Configuration
+# This example shows how to configure CSV file sources
+
+duckdb:
+  database: catalog.duckdb
+
+views:
+  - name: customers
+    source: csv
+    uri: "data/customers.csv"
+    description: "Customer data from CSV file"
+    settings:
+      SAMPLE_SIZE: 1000000
