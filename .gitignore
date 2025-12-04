@@ -12,6 +12,7 @@ site/
 .claude
 .opencode
 .github/prompts
+.factory
 **/data/
 **/datasets/
 **/*.duckdb
@@ -23,3 +24,4 @@ openspec/archive-2025-12-02-validation.md
 **/*.csv
 **/*.json
 dev/
+code_review
