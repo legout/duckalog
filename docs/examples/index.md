@@ -24,6 +24,13 @@ Use this guide to find the right example for your use case:
 - Real-world analytics workflow
 - Complex joins and business logic
 
+### I need to organize my configuration across multiple files
+→ **Use**: [Config Imports Example](config-imports.md)
+- Split config by domain (views, settings, secrets)
+- Share common configuration across projects
+- Modular configuration for team ownership
+- Environment-specific configs
+
 ### I need to deploy configs across different environments
 → **Read**: [Environment Variables Example](environment-vars.md)
 - Secure credential management
@@ -50,6 +57,7 @@ Use this guide to find the right example for your use case:
 | | [Simple Parquet](simple-parquet.md) | 🟢 Beginner | Parquet files | Basic configuration and S3 setup |
 | | [Local Attachments](local-attachments.md) | 🟡 Intermediate | DuckDB/SQLite | Database attachments and cross-database joins |
 | | [Multi-Source Analytics](multi-source-analytics.md) | 🔴 Advanced | Multiple sources | Complex analytics and business logic |
+| | [Config Imports](config-imports.md) | 🟢 Beginner | Any | Configuration organization and modularity |
 | | [Environment Variables](environment-vars.md) | 🟡 Intermediate | Any | Security and deployment patterns |
 | | [DuckDB Settings](duckdb-settings.md) | 🟡 Intermediate | Any | Performance tuning and session configuration |
 | | [DuckDB Secrets](duckdb-secrets.md) | 🟡 Intermediate | Any | Credential management and secure access |
@@ -107,7 +115,12 @@ Use this guide to find the right example for your use case:
 - [Local Attachments](local-attachments.md) - Local data unification
 - [Multi-Source Analytics](multi-source-analytics.md) - Cloud + local integration
 
+**Configuration Management**
+- [Config Imports](config-imports.md) - Modular configuration patterns
+- [Environment Variables](environment-vars.md) - Environment-specific settings
+
 **Development & Deployment**
+- [Config Imports](config-imports.md) - Configuration organization and modularity
 - [Environment Variables](environment-vars.md) - Environment-specific configs
 - [Multi-Source Analytics](multi-source-analytics.md) - Production deployment patterns
 
