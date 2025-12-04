@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from .config import Config, ViewConfig, SecretConfig
+from .config import Config, SecretConfig, ViewConfig
 from .secret_types import (
-    S3SecretConfig,
     AzureSecretConfig,
     GCSSecretConfig,
     HTTPSecretConfig,
-    PostgresSecretConfig,
     MySQLSecretConfig,
+    PostgresSecretConfig,
+    S3SecretConfig,
 )
 
 
