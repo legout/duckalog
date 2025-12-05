@@ -519,6 +519,7 @@ def build_catalog(
             logging module.
         filesystem: Optional pre-configured fsspec filesystem object for remote export
             authentication. If not provided, default authentication will be used.
+        include_secrets: If ``True``, include secret creation statements in the output.
 
     Returns:
         The generated SQL script as a string when ``dry_run`` is ``True``,

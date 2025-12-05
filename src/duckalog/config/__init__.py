@@ -96,12 +96,52 @@ def load_config(
     sql_file_loader: Optional[Any] = None,
     resolve_paths: bool = True,
     filesystem: Optional[Any] = None,
-):
+) -> Config:
     """Load, interpolate, and validate a Duckalog configuration file.
 
     This helper is the main entry point for turning a YAML or JSON file into a
     validated :class:`Config` instance. It applies environment-variable
     interpolation and enforces the configuration schema.
+
+    Args:
+        path: Path to the YAML or JSON configuration file. Can be a local path
+            or remote URI (s3://, gs://, abfs://, https://, sftp://).
+        load_sql_files: Whether to load and inline SQL file references in the
+            configuration. Defaults to True.
+        sql_file_loader: Optional custom SQL file loader. If None, uses the
+            default SQLFileLoader.
+        resolve_paths: Whether to resolve relative paths to absolute paths.
+            Always False for remote URIs. Defaults to True.
+        filesystem: Optional fsspec-compatible filesystem object for remote
+            configuration loading.
+
+    Returns:
+        A validated Config instance with all environment variables interpolated
+        and SQL files loaded (if load_sql_files=True).
+
+    Raises:
+        ConfigError: If the configuration file is not found, invalid, or contains
+            syntax errors.
+        SQLFileError: If SQL file loading fails (when load_sql_files=True).
+
+    Example:
+        Basic configuration loading:
+        ```python
+        from duckalog import load_config
+
+        config = load_config("catalog.yaml")
+        print(f"Loaded {len(config.views)} views")
+        ```
+
+        Remote configuration loading:
+        ```python
+        import fsspec
+        from duckalog import load_config
+
+        # Load from S3
+        fs = fsspec.filesystem("s3", key="...", secret="...")
+        config = load_config("s3://bucket/config.yaml", filesystem=fs)
+        ```
     """
     # Check if this is a remote URI
     try:
