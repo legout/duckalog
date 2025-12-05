@@ -30,7 +30,6 @@ Previously, filesystem-related CLI options (protocol, credentials, endpoints, et
 - Filesystem options now appear at application level in help output
 - Commands have cleaner signatures without filesystem parameter clutter
 - Consistent filesystem behavior across all commands
-
 ## Requirements
 ### Requirement: CLI Init Command
 The CLI SHALL expose an `init` command that creates a new Duckalog configuration file.
@@ -85,4 +84,19 @@ The CLI init command SHALL support options for format, output path, and behavior
 - **THEN** the command prompts for basic customization options
 - **AND** users can specify database name, view names, and other basic settings
 - **AND** the generated config reflects the user's input choices
+
+### Requirement: CLI Import Inspection
+The Duckalog CLI MUST provide commands or options to inspect configuration imports without building a catalog.
+
+#### Scenario: Show import graph
+- **GIVEN** a catalog configuration that uses `imports` to pull in other files
+- **WHEN** a user runs a CLI command such as `duckalog show-imports config.yaml`
+- **THEN** the CLI SHALL display a tree or graph of imports starting from `config.yaml`
+- **AND** the output SHALL include each imported file or URI at least once.
+
+#### Scenario: Show merged configuration
+- **GIVEN** a catalog configuration that uses imports
+- **WHEN** a user runs a CLI command or option to preview the merged configuration
+- **THEN** the CLI SHALL resolve all imports and output the resulting merged configuration or a clear summary of it
+- **AND** the output SHALL reflect the same configuration that would be used by catalog build commands.
 

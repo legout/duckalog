@@ -520,3 +520,572 @@ The configuration API MUST provide a clear contract for loading configs from loc
 - **AND** applies the same environment interpolation, path resolution, and validation rules as local config loading
 - **AND** is exposed from the `duckalog.config` module so that tests and advanced callers can patch or call it explicitly.
 
+### Requirement: Import Syntax
+The system MUST support an optional `imports` field at the top level of a configuration file that lists other configuration files to import and merge.
+
+#### Scenario: Basic imports with relative paths
+- **GIVEN** a configuration file `main.yaml` with:
+  ```yaml
+  imports:
+    - ./settings.yaml
+    - ./views/users.yaml
+    - ./views/products.yaml
+  
+  duckdb:
+    database: catalog.duckdb
+  ```
+- **AND** the imported files exist and contain valid configuration
+- **WHEN** the configuration is loaded
+- **THEN** all imported files are loaded and their contents are merged into the main configuration
+- **AND** relative paths are resolved relative to the importing file's directory
+- **AND** the resulting configuration contains all sections from all imported files
+
+#### Scenario: Imports with environment variables
+- **GIVEN** a configuration file with:
+  ```yaml
+  imports:
+    - ./secrets/${env:ENVIRONMENT}.yaml
+    - ./config/${env:REGION}/settings.yaml
+  ```
+- **AND** the environment variables `ENVIRONMENT` and `REGION` are set
+- **WHEN** the configuration is loaded
+- **THEN** environment variables are interpolated in import paths before loading
+- **AND** the resolved paths are used to locate the imported files
+
+#### Scenario: Remote imports
+- **GIVEN** a configuration file with:
+  ```yaml
+  imports:
+    - s3://my-bucket/shared/settings.yaml
+    - https://example.com/config/views.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** remote files are fetched using the same filesystem abstraction as remote config loading
+- **AND** authentication follows the same rules as remote config loading
+
+#### Scenario: No imports field
+- **GIVEN** a configuration file without an `imports` field
+- **WHEN** the configuration is loaded
+- **THEN** it loads normally as a single-file configuration
+- **AND** no merging occurs
+
+#### Scenario: Empty imports list
+- **GIVEN** a configuration file with:
+  ```yaml
+  imports: []
+  
+  duckdb:
+    database: catalog.duckdb
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** it loads normally as a single-file configuration
+- **AND** no merging occurs
+
+### Requirement: Import Resolution Order
+Imports MUST be processed in the order they appear, with later imports taking precedence over earlier ones for conflicting scalar values.
+
+#### Scenario: Import order matters for scalar overrides
+- **GIVEN** `base.yaml`:
+  ```yaml
+  duckdb:
+    database: base.duckdb
+    settings:
+      - "threads = 4"
+  ```
+- **AND** `override.yaml`:
+  ```yaml
+  duckdb:
+    database: override.duckdb
+  ```
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./base.yaml
+    - ./override.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** the resulting `duckdb.database` is `"override.duckdb"` (last wins)
+- **AND** the resulting `duckdb.settings` is `["threads = 4"]` (merged from base)
+
+#### Scenario: Main file overrides imports
+- **GIVEN** `shared.yaml`:
+  ```yaml
+  duckdb:
+    database: shared.duckdb
+    settings:
+      - "threads = 4"
+  ```
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./shared.yaml
+  
+  duckdb:
+    database: main.duckdb
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** the resulting `duckdb.database` is `"main.duckdb"` (main file wins over imports)
+- **AND** the resulting `duckdb.settings` is `["threads = 4"]` (preserved from import)
+
+### Requirement: Merging Strategy
+The system MUST implement a deep merge strategy that combines configuration sections from multiple files.
+
+#### Scenario: Deep merge of objects
+- **GIVEN** `settings.yaml`:
+  ```yaml
+  duckdb:
+    install_extensions: ["httpfs"]
+    settings:
+      - "threads = 4"
+  ```
+- **AND** `secrets.yaml`:
+  ```yaml
+  duckdb:
+    secrets:
+      - type: s3
+        provider: config
+        key_id: "${env:AWS_ACCESS_KEY_ID}"
+        secret: "${env:AWS_SECRET_ACCESS_KEY}"
+  ```
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./settings.yaml
+    - ./secrets.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** the resulting configuration has:
+  ```yaml
+  duckdb:
+    install_extensions: ["httpfs"]
+    settings:
+      - "threads = 4"
+    secrets:
+      - type: s3
+        provider: config
+        key_id: "${env:AWS_ACCESS_KEY_ID}"
+        secret: "${env:AWS_SECRET_ACCESS_KEY}"
+  ```
+
+#### Scenario: List concatenation
+- **GIVEN** `users.yaml`:
+  ```yaml
+  views:
+    - name: users
+      source: parquet
+      uri: data/users.parquet
+  ```
+- **AND** `products.yaml`:
+  ```yaml
+  views:
+    - name: products
+      source: parquet
+      uri: data/products.parquet
+  ```
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./users.yaml
+    - ./products.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** the resulting `views` list contains both views in order
+- **AND** view names remain unique across all imports
+
+#### Scenario: Scalar values are replaced (last wins)
+- **GIVEN** `dev.yaml`:
+  ```yaml
+  duckdb:
+    database: dev.duckdb
+  ```
+- **AND** `prod.yaml`:
+  ```yaml
+  duckdb:
+    database: prod.duckdb
+  ```
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./dev.yaml
+    - ./prod.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** the resulting `duckdb.database` is `"prod.duckdb"` (last import wins)
+
+### Requirement: Unique Name Validation
+The system MUST validate that certain named entities remain unique across all imported files.
+
+#### Scenario: Duplicate view names cause error
+- **GIVEN** `file1.yaml`:
+  ```yaml
+  views:
+    - name: users
+      source: parquet
+      uri: data/users.parquet
+  ```
+- **AND** `file2.yaml`:
+  ```yaml
+  views:
+    - name: users
+      source: csv
+      uri: data/users.csv
+  ```
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./file1.yaml
+    - ./file2.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** validation fails with a clear error indicating duplicate view name `"users"`
+- **AND** the error indicates which files contain the duplicate
+
+#### Scenario: Duplicate semantic model names cause error
+- **GIVEN** `file1.yaml`:
+  ```yaml
+  semantic_models:
+    - name: sales
+      base_view: orders
+  ```
+- **AND** `file2.yaml`:
+  ```yaml
+  semantic_models:
+    - name: sales
+      base_view: transactions
+  ```
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./file1.yaml
+    - ./file2.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** validation fails with a clear error indicating duplicate semantic model name `"sales"`
+
+#### Scenario: Duplicate attachment aliases cause error
+- **GIVEN** `file1.yaml`:
+  ```yaml
+  attachments:
+    duckdb:
+      - alias: ref
+        path: ref1.duckdb
+  ```
+- **AND** `file2.yaml`:
+  ```yaml
+  attachments:
+    duckdb:
+      - alias: ref
+        path: ref2.duckdb
+  ```
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./file1.yaml
+    - ./file2.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** validation fails with a clear error indicating duplicate attachment alias `"ref"`
+
+#### Scenario: Duplicate iceberg catalog names cause error
+- **GIVEN** `file1.yaml`:
+  ```yaml
+  iceberg_catalogs:
+    - name: data_lake
+      catalog_type: rest
+  ```
+- **AND** `file2.yaml`:
+  ```yaml
+  iceberg_catalogs:
+    - name: data_lake
+      catalog_type: hive
+  ```
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./file1.yaml
+    - ./file2.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** validation fails with a clear error indicating duplicate iceberg catalog name `"data_lake"`
+
+### Requirement: Cycle Detection
+The system MUST detect and reject circular imports to prevent infinite recursion.
+
+#### Scenario: Direct self-import causes error
+- **GIVEN** `circular.yaml`:
+  ```yaml
+  imports:
+    - ./circular.yaml
+  
+  duckdb:
+    database: catalog.duckdb
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** loading fails with a clear error indicating a circular import
+
+#### Scenario: Indirect circular import causes error
+- **GIVEN** `a.yaml` imports `b.yaml`
+- **AND** `b.yaml` imports `c.yaml`
+- **AND** `c.yaml` imports `a.yaml`
+- **WHEN** `a.yaml` is loaded
+- **THEN** loading fails with a clear error indicating the circular import chain
+
+#### Scenario: Multiple imports of same file are allowed
+- **GIVEN** `shared.yaml` with valid configuration
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./shared.yaml
+    - ./shared.yaml  # Same file imported twice
+  
+  duckdb:
+    database: catalog.duckdb
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** it loads successfully (duplicate imports are deduplicated)
+- **AND** `shared.yaml` is only loaded once
+
+### Requirement: Path Resolution
+Import paths MUST be resolved relative to the importing file's directory, supporting both relative and absolute paths.
+
+#### Scenario: Relative path resolution
+- **GIVEN** directory structure:
+  ```
+  project/
+    config/
+      main.yaml
+      settings.yaml
+    data/
+      views.yaml
+  ```
+- **AND** `config/main.yaml`:
+  ```yaml
+  imports:
+    - ./settings.yaml
+    - ../data/views.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** `./settings.yaml` resolves to `project/config/settings.yaml`
+- **AND** `../data/views.yaml` resolves to `project/data/views.yaml`
+
+#### Scenario: Absolute paths work as-is
+- **GIVEN** `main.yaml`:
+  ```yaml
+  imports:
+    - /etc/duckalog/settings.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** the absolute path `/etc/duckalog/settings.yaml` is used as-is
+
+#### Scenario: Environment variable interpolation in paths
+- **GIVEN** `ENVIRONMENT=production` is set
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./config/${env:ENVIRONMENT}.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** the path resolves to `./config/production.yaml` after interpolation
+
+### Requirement: Error Handling
+The system MUST provide clear error messages for import-related failures.
+
+#### Scenario: Import file not found
+- **GIVEN** `main.yaml`:
+  ```yaml
+  imports:
+    - ./missing.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** loading fails with a clear error indicating the file `./missing.yaml` was not found
+- **AND** the error includes the resolved absolute path
+
+#### Scenario: Import file has syntax error
+- **GIVEN** `broken.yaml` contains invalid YAML
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./broken.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** loading fails with a clear error indicating the syntax error in `./broken.yaml`
+- **AND** the error includes the file path and line/column information if available
+
+#### Scenario: Import file validation fails
+- **GIVEN** `invalid.yaml` contains invalid configuration (e.g., missing required fields)
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./invalid.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** loading fails with a clear error indicating the validation failure in `./invalid.yaml`
+- **AND** the error includes the file path
+
+### Requirement: Backward Compatibility
+The import feature MUST be fully backward compatible with existing single-file configurations.
+
+#### Scenario: Existing config without imports works unchanged
+- **GIVEN** an existing configuration file without an `imports` field
+- **WHEN** the configuration is loaded with the new version
+- **THEN** it loads exactly as before
+- **AND** no import processing occurs
+
+#### Scenario: Config with imports field but empty list works
+- **GIVEN** a configuration file with:
+  ```yaml
+  imports: []
+  
+  duckdb:
+    database: catalog.duckdb
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** it loads successfully
+- **AND** behaves identically to a config without the `imports` field
+
+### Requirement: Performance Considerations
+Import processing MUST be efficient and avoid redundant work.
+
+#### Scenario: Same file imported multiple times
+- **GIVEN** `shared.yaml` with complex configuration
+- **AND** `main.yaml`:
+  ```yaml
+  imports:
+    - ./shared.yaml
+    - ./shared.yaml
+    - ./shared.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** `shared.yaml` is only loaded and parsed once
+- **AND** the result is reused for all imports
+
+#### Scenario: Nested imports are processed efficiently
+- **GIVEN** `a.yaml` imports `b.yaml` and `c.yaml`
+- **AND** `b.yaml` imports `d.yaml`
+- **AND** `c.yaml` also imports `d.yaml`
+- **WHEN** `a.yaml` is loaded
+- **THEN** `d.yaml` is only loaded and parsed once
+- **AND** the result is reused for both imports
+
+### Requirement: CLI and API Compatibility
+The import feature MUST work transparently through all existing interfaces.
+
+#### Scenario: CLI commands work with imported configs
+- **GIVEN** a configuration file with imports
+- **WHEN** running `duckalog build config.yaml`
+- **THEN** the command works exactly as with single-file configs
+- **AND** all imported files are loaded and merged automatically
+
+#### Scenario: Python API works with imported configs
+- **GIVEN** a configuration file with imports
+- **WHEN** calling `load_config("config.yaml")` from Python
+- **THEN** it returns a merged `Config` object
+- **AND** the caller doesn't need to know about imports
+
+#### Scenario: Dry-run works with imported configs
+- **GIVEN** a configuration file with imports
+- **WHEN** running `duckalog build config.yaml --dry-run`
+- **THEN** it generates SQL for the merged configuration
+- **AND** all imported views are included
+
+### Requirement: Security Considerations
+Import paths MUST respect the same security boundaries as other path resolution.
+
+#### Scenario: Import path traversal is prevented
+- **GIVEN** a configuration file with:
+  ```yaml
+  imports:
+    - ../../../etc/passwd
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** loading fails with a security error if the resolved path is outside allowed roots
+- **AND** the error clearly indicates the security violation
+
+#### Scenario: Remote imports use same security as remote configs
+- **GIVEN** a configuration file with:
+  ```yaml
+  imports:
+    - s3://bucket/config.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** remote loading follows the same security rules as remote config loading
+- **AND** authentication is handled consistently
+
+### Requirement: SQL File and Template Sources
+View definitions MAY reference external SQL files or SQL templates in addition to inline SQL, but each view MUST declare at most one SQL source.
+
+#### Scenario: View uses sql_file for external SQL
+- **GIVEN** a config where a view includes a `sql_file` reference with a non-empty `path`
+- **WHEN** `load_config()` is called with `load_sql_files=True`
+- **THEN** the loader SHALL resolve the SQL file path relative to the config file directory (for non-remote paths)
+- **AND** validate the resolved path using the existing path security rules
+- **AND** read the file content and populate `view.sql` with the loaded SQL text
+- **AND** clear the `sql_file` reference on the resulting configuration object.
+
+#### Scenario: View uses sql_template with variables
+- **GIVEN** a config where a view includes a `sql_template` reference with `path` and a `variables` mapping
+- **WHEN** `load_config()` is called with `load_sql_files=True`
+- **THEN** the loader SHALL load the template content from the referenced file
+- **AND** perform placeholder substitution for `{{variable}}` markers using the provided `variables`
+- **AND** raise a configuration or SQL file error if any placeholder has no corresponding variable value
+- **AND** populate `view.sql` with the rendered SQL text, clearing the `sql_template` reference.
+
+#### Scenario: Exclusive SQL source per view
+- **GIVEN** a config where a view defines more than one SQL source among `sql`, `sql_file`, and `sql_template`
+- **WHEN** the configuration is validated
+- **THEN** validation SHALL fail with a clear error indicating that only one of `sql`, `sql_file`, or `sql_template` may be specified per view.
+
+#### Scenario: Loading config without processing SQL files
+- **GIVEN** a config that uses `sql_file` or `sql_template` on one or more views
+- **WHEN** `load_config()` is called with `load_sql_files=False`
+- **THEN** the configuration MAY be validated successfully without performing any SQL file IO or template processing
+- **AND** the resulting `Config` instance SHALL preserve the `sql_file` and `sql_template` references for callers that wish to handle them explicitly.
+
+### Requirement: Advanced Config Import Options
+Config imports MUST support advanced options on top of the core imports feature, including selective imports, override behavior, and pattern-based file selection, when those options are configured.
+
+#### Scenario: Section-specific imports
+- **GIVEN** a configuration that uses section-specific imports to pull additional view definitions and DuckDB settings from separate files
+- **WHEN** the configuration is loaded
+- **THEN** the imported view definitions SHALL be merged only into the `views` section
+- **AND** the imported DuckDB settings SHALL be merged only into the `duckdb` section
+- **AND** sections not referenced by selective imports SHALL remain unaffected.
+
+#### Scenario: Import override behavior
+- **GIVEN** an import entry that is marked with an override flag (for example, `override: false`)
+- **WHEN** the configuration is loaded and merged
+- **THEN** values from that import SHALL fill in missing fields but SHALL NOT overwrite existing values from earlier imports or the main file
+- **AND** imports without an override flag SHALL continue to use the default last-wins behavior for scalar values.
+
+#### Scenario: Glob and exclude patterns
+- **GIVEN** an import configuration that uses glob patterns to include multiple files under a directory and exclude specific ones
+- **WHEN** the configuration is loaded
+- **THEN** the glob patterns SHALL be expanded into a deterministic list of files
+- **AND** any files matching exclude patterns SHALL be omitted from that list
+- **AND** the resolved files SHALL be processed as if they were listed explicitly in `imports`, preserving the established merge and uniqueness rules.
+
+### Requirement: Remote Config Imports
+Duckalog configuration imports MUST support remote URIs in addition to local file paths, reusing the existing remote configuration loading mechanisms.
+
+#### Scenario: Import config from remote URI
+- **GIVEN** a configuration file with an `imports` entry that references a remote URI such as:
+  ```yaml
+  imports:
+    - s3://my-bucket/shared/settings.yaml
+  ```
+- **WHEN** the configuration is loaded
+- **THEN** the remote file SHALL be fetched using the same infrastructure as remote config loading
+- **AND** its contents SHALL be parsed and merged into the main configuration using the standard deep-merge rules.
+
+#### Scenario: Mixed local and remote imports
+- **GIVEN** a configuration file that includes both local and remote paths in `imports`
+- **WHEN** the configuration is loaded
+- **THEN** all imported configs SHALL be merged into a single configuration according to the same merge and uniqueness rules defined for local imports
+- **AND** the order of imports (local vs remote) SHALL determine last-wins behavior for scalar values.
+
+#### Scenario: Remote import failure reporting
+- **GIVEN** a configuration file with an `imports` entry that references a remote URI which cannot be fetched or parsed
+- **WHEN** the configuration is loaded
+- **THEN** loading SHALL fail with a configuration error that includes the failing URI and a short description of the failure
+- **AND** the underlying error SHALL be preserved via exception chaining.
+

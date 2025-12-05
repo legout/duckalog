@@ -145,3 +145,138 @@ The documentation SHALL include practical S3 examples demonstrating the \`option
 - **THEN** the pattern shows how to reference environment variables in options
 - **AND** the example validates successfully without errors
 
+### Requirement: Example for SQL Files and Templates
+The examples library MUST include at least one runnable example that demonstrates using `sql_file` and `sql_template` in Duckalog catalogs.
+
+#### Scenario: Example structure for external SQL
+- **GIVEN** the examples directory
+- **WHEN** a user inspects the example for SQL files and templates
+- **THEN** they SHALL find an example directory that follows the standardized structure:
+  - `README.md` describing the business context and explaining `sql_file` and `sql_template` usage
+  - `catalog.yaml` defining at least one inline SQL view, one `sql_file`-based view, and one or more `sql_template`-based views
+  - `data/generate.py` that produces deterministic synthetic data for the example
+  - `validate.py` that validates the example end-to-end
+  - a `sql/` subdirectory containing the SQL and template files referenced from `catalog.yaml`.
+
+#### Scenario: Example demonstrates per-view template variables
+- **GIVEN** the example catalog demonstrating SQL templates
+- **WHEN** a user opens `catalog.yaml`
+- **THEN** they SHALL see one or more views that use `sql_template` with a `variables` mapping
+- **AND** the corresponding template file SHALL use `{{variable}}` placeholders consistent with the configuration
+- **AND** the `README.md` SHALL explain how these variables are defined and substituted during config loading.
+
+#### Scenario: Example validation covers external SQL behavior
+- **GIVEN** the example validation script
+- **WHEN** the user runs the example's validation step
+- **THEN** the script SHALL:
+  - Load the catalog using `load_config(..., load_sql_files=True)`
+  - Build or open a DuckDB catalog database
+  - Query the views defined via `sql_file` and `sql_template`
+  - Assert that the results match the expected behavior described in the README
+  - Report clear errors if SQL files or templates are misconfigured.
+
+### Requirement: Config Imports Comprehensive Guide
+The examples SHALL include a comprehensive guide for config imports feature explaining import resolution, merge behavior, diagnostics, and best practices.
+
+#### Scenario: Import resolution understanding
+- **GIVEN** a user wanting to use config imports
+- **WHEN** they read the config imports guide
+- **THEN** they find detailed explanation of:
+  - Import path resolution (relative to config file)
+  - Import processing order
+  - Remote import support (S3, GCS, Azure, HTTP)
+  - Circular dependency detection
+- **AND** they see practical examples of each import type
+- **SO** they understand how imports are resolved and processed
+
+#### Scenario: Merge behavior documentation
+- **GIVEN** a user with conflicting definitions across imported configs
+- **WHEN** they consult the config imports guide
+- **THEN** they find documentation of merge strategies:
+  - How views are merged/overridden
+  - How attachments are combined
+  - How secrets are merged
+  - Conflict resolution rules
+- **AND** they see examples of merge outcomes
+- **SO** they can predict and control merge behavior
+
+#### Scenario: Diagnostics usage guide
+- **GIVEN** a user debugging import issues
+- **WHEN** they need to use show-imports diagnostics
+- **THEN** they find guide documentation showing:
+  - How to use --diagnostics flag
+  - How to interpret import graph output
+  - How to use --show-merged to preview final config
+  - How to export import graph as JSON
+- **AND** they see example diagnostic outputs with explanations
+- **SO** they can effectively debug import problems
+
+#### Scenario: Config imports best practices
+- **GIVEN** a user organizing large configurations
+- **WHEN** they look for organizational guidance
+- **THEN** they find best practices for config imports:
+  - When to use imports vs single file
+  - How to organize shared configurations
+  - Patterns for environment-specific configs
+  - Import depth recommendations
+- **AND** they see real-world organizational examples
+- **SO** they can organize configurations effectively
+
+### Requirement: Example Metadata and Prerequisites
+Each example SHALL include metadata indicating difficulty level, prerequisites, learning objectives, and estimated completion time.
+
+#### Scenario: Example difficulty identification
+- **GIVEN** a user browsing examples
+- **WHEN** they view any example page
+- **THEN** they see a difficulty level indicator (Beginner/Intermediate/Advanced)
+- **AND** they see prerequisites listed (e.g., "Complete 'Simple Parquet' example first")
+- **AND** they see "What you'll learn" section
+- **AND** they see estimated time to complete
+- **SO** they can assess if the example is appropriate for their level
+
+#### Scenario: Learning objectives clarity
+- **GIVEN** a user selecting an example to work through
+- **WHEN** they read the example introduction
+- **THEN** they find clear learning objectives stating what skills they'll gain
+- **AND** objectives align with the difficulty level
+- **AND** objectives specify what they'll be able to do after completion
+- **SO** they have clear expectations of outcomes
+
+#### Scenario: Progressive skill indicators
+- **GIVEN** a user completing multiple examples
+- **WHEN** they track their progress
+- **THEN** they can see how examples build on each other
+- **AND** they can identify their current skill level
+- **AND** they can choose appropriate next examples
+- **SO** they can follow a coherent learning path
+
+### Requirement: Example Cross-Referencing
+Examples SHALL include cross-references to related examples, relevant how-to guides, and reference documentation to facilitate learning and discovery.
+
+#### Scenario: Related examples discovery
+- **GIVEN** a user completing an example
+- **WHEN** they finish the example
+- **THEN** they see "Related Examples" section suggesting:
+  - Prerequisite examples (if not already completed)
+  - Next logical examples in learning progression
+  - Alternative approaches to similar problems
+- **SO** they can continue learning systematically
+
+#### Scenario: Reference documentation links
+- **GIVEN** a user working through an example
+- **WHEN** they encounter configuration options or commands
+- **THEN** they find links to reference documentation for:
+  - Configuration schema for options used
+  - CLI command reference for commands demonstrated
+  - API reference for functions called
+- **SO** they can learn more details about specific features
+
+#### Scenario: How-to guide connections
+- **GIVEN** a user understanding example concepts
+- **WHEN** they want to apply concepts to real problems
+- **THEN** they find links to relevant how-to guides:
+  - "See how to debug this in production" → troubleshooting guide
+  - "Learn to optimize this pattern" → performance tuning guide
+  - "Adapt this for multiple environments" → environment management guide
+- **SO** they can bridge from learning to practical application
+

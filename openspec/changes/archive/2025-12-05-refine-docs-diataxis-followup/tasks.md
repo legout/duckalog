@@ -46,5 +46,4 @@
 
 - [x] 5.1 Run `mkdocs build` and ensure the site builds without warnings or broken links.
 - [x] 5.2 Verify that the README, docs index, and navigation behave as expected when browsing locally.
-- [ ] 5.3 Optionally solicit quick feedback from at least one user or maintainer on the updated top‑level navigation and entry experience.
-
+- [x] 5.3 Optionally solicit quick feedback from at least one user or maintainer on the updated top‑level navigation and entry experience.
