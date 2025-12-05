@@ -1,5 +1,3 @@
-# Duckalog
-
 [![PyPI version](https://badge.fury.io/py/duckalog.svg)](https://badge.fury.io/py/duckalog)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/duckalog.svg)](https://pypi.org/project/duckalog/)
 [![Tests](https://github.com/legout/duckalog/workflows/Tests/badge.svg)](https://github.com/legout/duckalog/actions)
@@ -8,32 +6,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/badge/lint-ruff-blue.svg)](https://github.com/charliermarsh/ruff)
 
-Duckalog is a Python library and CLI for building DuckDB catalogs from
-declarative YAML/JSON configuration files. A single config file describes your
-DuckDB database, attachments (other DuckDB files, SQLite, Postgres), Iceberg
-catalogs, and views over Parquet/Delta/Iceberg or attached tables.
-
-The goal is to make DuckDB catalogs reproducible, versionable, and easy to
-apply in local workflows and automated pipelines.
-
----
-
-## Features
-
-- **Config-driven catalogs** – Define DuckDB views in YAML/JSON instead of
-  scattering `CREATE VIEW` statements across scripts.
-- **Multiple sources** – Views over S3 Parquet, Delta Lake, Iceberg tables, and
-  attached DuckDB/SQLite/Postgres databases.
-- **Attachments & catalogs** – Configure attachments and Iceberg catalogs in
-  same config and reuse them across views.
-- **Semantic layer** – Define business-friendly dimensions and measures on top of existing views for BI and analytics.
-- **Safe credentials** – Use environment variables (e.g. `${env:AWS_ACCESS_KEY_ID}`)
-  instead of embedding secrets.
-- **CLI + Python API** – Build catalogs from command line or from Python
-  code with the same semantics.
-- **Web UI** – Interactive dashboard for catalog management, query execution, and data export (requires `duckalog[ui]`).
-
-For a full product and technical description, see `docs/PRD_Spec.md`.
+--8<-- "docs/_snippets/intro-quickstart.md"
 
 **Ready to try examples?** See the [`examples/`](examples/) directory for hands-on learning:
 

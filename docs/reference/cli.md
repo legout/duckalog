@@ -1,0 +1,698 @@
+# CLI Reference
+
+Complete reference for all Duckalog command-line interface commands, options, and usage patterns.
+
+## Overview
+
+Duckalog provides a comprehensive CLI for building, validating, and managing DuckDB catalogs. All commands support consistent patterns for help, configuration, and output formatting.
+
+## Global Options
+
+These options are available for all commands:
+
+### Help and Version
+```bash
+# Show help
+duckalog --help
+duckalog <command> --help
+
+# Show version
+duckalog version
+```
+
+### Configuration Options
+```bash
+# Specify configuration file (positional argument)
+duckalog build catalog.yaml
+
+# Use remote configuration
+duckalog build s3://bucket/config.yaml
+
+# Enable verbose output
+duckalog build catalog.yaml --verbose
+
+# Suppress output
+duckalog build catalog.yaml --quiet
+```
+
+### Output Formatting
+```bash
+# JSON output
+duckalog validate catalog.yaml --format json
+
+# Colored output (default)
+duckalog build catalog.yaml --color
+
+# No color
+duckalog build catalog.yaml --no-color
+```
+
+## Commands
+
+### build
+
+Build or update a DuckDB catalog from configuration.
+
+#### Syntax
+```bash
+duckalog build [OPTIONS] CONFIG_PATH
+```
+
+#### Options
+```bash
+--db-path, --database-path PATH
+    Override database path from configuration
+    
+--dry-run, --dry
+    Generate SQL only, don't execute
+    
+--verbose, -v
+    Enable verbose logging
+    
+--quiet, -q
+    Suppress output except errors
+    
+--color, --no-color
+    Enable/disable colored output
+    
+--format FORMAT
+    Output format (text, json)
+    
+--threads NUM
+    Override thread count
+    
+--memory-limit SIZE
+    Override memory limit (e.g., '2GB')
+    
+--filesystem fs
+    Custom filesystem for remote configs
+```
+
+#### Examples
+```bash
+# Basic build
+duckalog build catalog.yaml
+
+# With custom database path
+duckalog build catalog.yaml --db-path analytics.duckdb
+
+# Dry run to generate SQL
+duckalog build catalog.yaml --dry-run
+
+# Verbose build with custom settings
+duckalog build catalog.yaml --verbose --threads 8 --memory-limit '4GB'
+
+# Remote configuration
+duckalog build s3://bucket/config.yaml --verbose
+
+# JSON output
+duckalog build catalog.yaml --format json
+```
+
+#### Output
+```bash
+# Success
+✅ Built catalog 'catalog.yaml' successfully
+📊 Database: analytics.duckdb
+📋 Views created: 15
+🔗 Attachments: 3
+⏱️ Build time: 2.3s
+
+# With warnings
+⚠️  Warning: View 'users' has no description
+✅ Built catalog 'catalog.yaml' successfully
+
+# JSON output
+{
+  "status": "success",
+  "database": "analytics.duckdb",
+  "views_created": 15,
+  "attachments": 3,
+  "build_time": "2.3s"
+}
+```
+
+### validate
+
+Validate configuration without building the catalog.
+
+#### Syntax
+```bash
+duckalog validate [OPTIONS] CONFIG_PATH
+```
+
+#### Options
+```bash
+--format FORMAT
+    Output format (text, json)
+    
+--verbose, -v
+    Enable verbose logging
+    
+--filesystem fs
+    Custom filesystem for remote configs
+```
+
+#### Examples
+```bash
+# Basic validation
+duckalog validate catalog.yaml
+
+# JSON output
+duckalog validate catalog.yaml --format json
+
+# Remote configuration
+duckalog validate s3://bucket/config.yaml
+
+# Verbose validation
+duckalog validate catalog.yaml --verbose
+```
+
+#### Output
+```bash
+# Success
+✅ Configuration 'catalog.yaml' is valid
+
+# With warnings
+⚠️  Warning: View 'users' has no description
+✅ Configuration 'catalog.yaml' is valid
+
+# JSON output
+{
+  "status": "valid",
+  "warnings": [
+    {
+      "view": "users",
+      "message": "No description provided"
+    }
+  ]
+}
+
+# Error
+❌ Configuration 'catalog.yaml' is invalid:
+  - Field required: version
+  - Invalid YAML syntax at line 5
+```
+
+### generate-sql
+
+Generate SQL statements without executing them.
+
+#### Syntax
+```bash
+duckalog generate-sql [OPTIONS] CONFIG_PATH
+```
+
+#### Options
+```bash
+--output, -o FILE
+    Output file for SQL (default: stdout)
+    
+--format FORMAT
+    Output format (sql, json)
+    
+--verbose, -v
+    Enable verbose logging
+    
+--filesystem fs
+    Custom filesystem for remote configs
+```
+
+#### Examples
+```bash
+# Output to stdout
+duckalog generate-sql catalog.yaml
+
+# Save to file
+duckalog generate-sql catalog.yaml --output create_views.sql
+
+# JSON format
+duckalog generate-sql catalog.yaml --format json --output views.json
+
+# Remote configuration
+duckalog generate-sql s3://bucket/config.yaml --output remote_views.sql
+```
+
+#### Output
+```bash
+# SQL output
+-- Creating view: users
+CREATE OR REPLACE VIEW "users" AS SELECT * FROM 'data/users.parquet';
+
+-- Creating view: orders
+CREATE OR REPLACE VIEW "orders" AS SELECT * FROM 'data/orders.parquet';
+
+# JSON output
+{
+  "sql": [
+    "CREATE OR REPLACE VIEW \"users\" AS SELECT * FROM 'data/users.parquet';",
+    "CREATE OR REPLACE VIEW \"orders\" AS SELECT * FROM 'data/orders.parquet';"
+  ]
+}
+```
+
+### show-imports
+
+Display import graph and diagnostics for configuration with imports.
+
+#### Syntax
+```bash
+duckalog show-imports [OPTIONS] CONFIG_PATH
+```
+
+#### Options
+```bash
+--diagnostics, -d
+    Show import diagnostics
+    
+--show-merged
+    Show fully merged configuration
+    
+--format FORMAT
+    Output format (tree, json)
+    
+--verbose, -v
+    Enable verbose logging
+    
+--filesystem fs
+    Custom filesystem for remote configs
+```
+
+#### Examples
+```bash
+# Basic import tree
+duckalog show-imports catalog.yaml
+
+# With diagnostics
+duckalog show-imports catalog.yaml --diagnostics
+
+# Show merged configuration
+duckalog show-imports catalog.yaml --show-merged
+
+# JSON output
+duckalog show-imports catalog.yaml --format json
+
+# Remote configuration
+duckalog show-imports s3://bucket/config.yaml --diagnostics
+```
+
+#### Output
+```bash
+# Tree format
+catalog.yaml
+├── ./base.yaml
+├── ./views/
+│   ├── users.yaml
+│   └── orders.yaml
+└── ./analytics.yaml
+
+# Diagnostics
+Import Graph Diagnostics:
+- Total files: 5
+- Import depth: 3 levels
+- No circular imports detected
+- No duplicate imports found
+- Selective imports: 1 file with section-specific imports
+
+# Merged configuration
+{
+  "version": 1,
+  "duckdb": {
+    "database": "analytics.duckdb",
+    "pragmas": ["SET memory_limit='2GB'", "SET threads=4"]
+  },
+  "views": [...]
+}
+```
+
+### init
+
+Initialize a new Duckalog configuration file with educational examples.
+
+#### Syntax
+```bash
+duckalog init [OPTIONS]
+```
+
+#### Options
+```bash
+--output, -o FILE
+    Output file path (default: catalog.yaml)
+    
+--format FORMAT
+    Configuration format (yaml, json)
+    
+--database, --database-name NAME
+    Database name (default: catalog)
+    
+--project, --project-name NAME
+    Project name for examples
+    
+--force, -f
+    Overwrite existing file
+    
+--verbose, -v
+    Enable verbose logging
+```
+
+#### Examples
+```bash
+# Basic initialization
+duckalog init
+
+# Custom filename and format
+duckalog init --output my_config.json --format json
+
+# With project and database names
+duckalog init --project sales_analytics --database sales.db
+
+# Force overwrite
+duckalog init --force
+
+# Verbose initialization
+duckalog init --verbose
+```
+
+#### Output
+```bash
+# Success
+✅ Created configuration file: catalog.yaml
+📝 Database: catalog.duckdb
+📊 Views: 3 example views
+🔗 Attachments: 1 example attachment
+💡 Tip: Edit the file to match your data sources
+
+# File structure created
+catalog.yaml
+data/
+├── users.parquet
+├── orders.parquet
+└── products.parquet
+```
+
+### ui
+
+Start the Duckalog web dashboard for interactive catalog management.
+
+#### Syntax
+```bash
+duckalog ui [OPTIONS] CONFIG_PATH
+```
+
+#### Options
+```bash
+--host HOST
+    Bind to specific host (default: 127.0.0.1)
+    
+--port PORT
+    Use specific port (default: 8787)
+    
+--row-limit NUM
+    Limit ad-hoc query results (default: 500)
+    
+--db-path, --database-path PATH
+    Override database path from configuration
+    
+--verbose, -v
+    Enable verbose logging
+    
+--no-open
+    Don't open browser automatically
+```
+
+#### Examples
+```bash
+# Basic dashboard
+duckalog ui catalog.yaml
+
+# Custom host and port
+duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
+
+# With row limit
+duckalog ui catalog.yaml --row-limit 1000
+
+# Production deployment
+export DUCKALOG_ADMIN_TOKEN="your-secure-token"
+duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
+```
+
+#### Output
+```bash
+# Success
+🚀 Starting Duckalog dashboard...
+🌐 Dashboard URL: http://127.0.0.1:8787
+📊 Database: catalog.duckdb
+👥 Views: 15
+🔗 Attachments: 3
+💡 Press Ctrl+C to stop the server
+
+# With admin token
+🔐 Admin token authentication enabled
+🌐 Dashboard URL: http://0.0.0.0:8000
+🔑 Use admin token for mutating operations
+```
+
+## Remote Configuration Support
+
+All commands support remote configuration files with these URI schemes:
+
+### Supported URI Schemes
+```bash
+# Amazon S3
+s3://bucket/path/config.yaml
+
+# Google Cloud Storage
+gs://bucket/path/config.yaml
+gcs://bucket/path/config.yaml
+
+# Azure Blob Storage
+abfs://account@container/path/config.yaml
+
+# SFTP/SSH
+sftp://user@host/path/config.yaml
+
+# HTTPS/HTTP
+https://example.com/config.yaml
+http://example.com/config.yaml
+```
+
+### Authentication
+
+#### Environment Variables (Recommended)
+```bash
+# AWS S3
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+export AWS_DEFAULT_REGION=us-west-2
+
+# Google Cloud Storage
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+
+# Azure Blob Storage
+export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=https;..."
+
+# SFTP
+export SFTP_HOST=server.com
+export SFTP_USER=username
+export SFTP_PASSWORD=password
+```
+
+#### Custom Filesystem
+```python
+import fsspec
+
+# Create custom filesystem
+fs = fsspec.filesystem(
+    protocol="s3",
+    key="your_access_key",
+    secret="your_secret_key"
+)
+
+# Use with any command
+duckalog build s3://bucket/config.yaml --filesystem fs
+```
+
+## Exit Codes
+
+| Code | Meaning | Common Causes |
+|-------|---------|---------------|
+| 0 | Success | Command completed successfully |
+| 1 | Configuration Error | Invalid YAML, missing fields, validation failed |
+| 2 | File Not Found | Configuration file doesn't exist |
+| 3 | Permission Error | Can't read configuration or write database |
+| 4 | Database Error | DuckDB connection or execution failed |
+| 5 | Network Error | Remote configuration download failed |
+| 130 | Interrupted | User pressed Ctrl+C |
+
+## Environment Variables
+
+### Duckalog Configuration
+```bash
+# Log level
+export DUCKALOG_LOG_LEVEL=DEBUG
+
+# Disable colors
+export DUCKALOG_NO_COLOR=1
+
+# Custom config directory
+export DUCKALOG_CONFIG_DIR=/path/to/configs
+```
+
+### DuckDB Integration
+```bash
+# These are used by DuckDB and can be set in Duckalog pragmas
+export AWS_ACCESS_KEY_ID=your_key
+export AWS_SECRET_ACCESS_KEY=your_secret
+export AWS_DEFAULT_REGION=us-west-2
+export AZURE_STORAGE_CONNECTION_STRING="..."
+export GCS_SERVICE_ACCOUNT_KEY=your_key
+```
+
+## Advanced Usage
+
+### Command Chaining
+```bash
+# Validate then build
+duckalog validate catalog.yaml && duckalog build catalog.yaml
+
+# Generate SQL then review
+duckalog generate-sql catalog.yaml --output review.sql && less review.sql
+
+# Build with error handling
+duckalog build catalog.yaml || echo "Build failed, check configuration"
+```
+
+### Batch Processing
+```bash
+# Process multiple configurations
+for config in config1.yaml config2.yaml config3.yaml; do
+  echo "Building $config..."
+  duckalog build "$config" || echo "Failed to build $config"
+done
+```
+
+### Integration with CI/CD
+
+```yaml
+# GitHub Actions
+- name: Build Duckalog Catalog
+  run: |
+    duckalog build catalog.yaml --verbose
+    duckalog validate catalog.yaml --format json
+
+# Dockerfile
+FROM python:3.12
+RUN pip install duckalog
+COPY catalog.yaml /app/
+WORKDIR /app
+CMD ["duckalog", "build", "catalog.yaml", "--verbose"]
+```
+
+## Performance Considerations
+
+### Memory Usage
+```bash
+# Limit memory for large builds
+duckalog build catalog.yaml --memory-limit '2GB'
+
+# Monitor memory usage
+/usr/bin/time -v duckalog build catalog.yaml
+```
+
+### Parallel Processing
+```bash
+# Control thread usage
+duckalog build catalog.yaml --threads 2
+
+# For multi-core systems
+duckalog build catalog.yaml --threads $(nproc)
+```
+
+### I/O Optimization
+```bash
+# Reduce I/O for remote configs
+duckalog build s3://bucket/config.yaml --filesystem cached_fs
+
+# Use local caching
+export DUCKALOG_CACHE_DIR=/tmp/duckalog_cache
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### Configuration Not Found
+```bash
+# Check file exists
+ls -la catalog.yaml
+
+# Use absolute path
+duckalog build /full/path/to/catalog.yaml
+
+# Check working directory
+pwd
+```
+
+#### Permission Errors
+```bash
+# Check file permissions
+ls -la catalog.yaml
+
+# Fix permissions
+chmod 644 catalog.yaml
+
+# Check database directory permissions
+ls -la $(dirname catalog.yaml)
+```
+
+#### Remote Configuration Issues
+```bash
+# Test remote access
+curl -I s3://bucket/config.yaml
+
+# Check credentials
+aws s3 ls s3://bucket/
+
+# Use verbose output for debugging
+duckalog build s3://bucket/config.yaml --verbose
+```
+
+#### Database Lock Errors
+```bash
+# Find conflicting processes
+lsof | grep duckdb
+
+# Remove lock files
+rm -f *.duckdb.wal *.duckdb.lock
+
+# Use different database name
+duckalog build catalog.yaml --db-path catalog_new.duckdb
+```
+
+## Best Practices
+
+### Configuration Management
+- **Use version control** for all configuration files
+- **Environment-specific configs** for different deployment stages
+- **Sensitive data in environment variables**, never in configuration files
+- **Validate configurations** before deployment
+
+### Performance Optimization
+- **Set appropriate memory limits** based on available RAM and data size
+- **Configure thread count** based on CPU cores and workload
+- **Use remote configuration caching** for frequently accessed configs
+- **Monitor resource usage** during builds
+
+### Security
+- **Use read-only database connections** where possible
+- **Restrict dashboard access** in production with admin tokens
+- **Rotate credentials regularly** and use environment variables
+- **Audit configuration changes** and access logs
+
+### CI/CD Integration
+- **Fail fast** on configuration validation errors
+- **Use specific versions** rather than latest for stability
+- **Cache dependencies** for faster builds
+- **Generate artifacts** for deployment and debugging
+
+This comprehensive CLI reference covers all Duckalog commands and options for effective catalog management and automation.

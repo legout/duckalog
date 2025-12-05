@@ -1,24 +1,36 @@
+--8<-- "_snippets/intro-quickstart.md"
+
 # Duckalog Documentation
 
-Welcome to the Duckalog documentation. Duckalog is a Python library and CLI
-for building DuckDB catalogs from declarative YAML/JSON configuration files.
+Welcome to the Duckalog documentation! This comprehensive guide will help you master Duckalog's features and patterns.
 
-Use these docs to:
+## Getting Started
 
-- Understand the core concepts behind Duckalog configs.
-- Get started with the CLI and Python API.
-- Find API reference information generated from the source code.
-- Learn about the [system architecture](architecture.md) and design patterns.
+The documentation is organized for different learning styles and needs:
 
-For a deeper product and technical description, see the [Architecture in `architecture.md`](architecture.md).
+- **[Tutorials](tutorials/index.md)** - Step-by-step hands-on learning for beginners
+- **[How-to Guides](how-to/index.md)** - Practical solutions for specific problems
+- **[Reference](reference/index.md)** - Technical API documentation and configuration schema
+- **[Understanding](explanation/philosophy.md)** - Background context and architectural concepts
+- **[Examples](examples/index.md)** - Real-world configuration examples and patterns
 
-## Quick Start Guide: A Realistic Example
+## Expanded Quickstart Guide
 
-Let's walk through a typical analytics scenario where you need to combine data from multiple sources: Parquet files in S3, a reference database (DuckDB), and an Iceberg table. We'll create a unified catalog that joins these datasources.
+Let's build on the basic quickstart above with a more realistic analytics scenario that combines multiple data sources.
 
-### Step 1: Set up your configuration
+### Step 1: Initialize with the starter template
 
-First, create a comprehensive config file called `analytics_catalog.yaml`:
+Instead of creating a config from scratch, use Duckalog's built-in template generator:
+
+```bash
+duckalog init --output analytics_catalog.yaml
+```
+
+This creates a well-structured configuration with examples and educational comments.
+
+### Step 2: Set up your analytics configuration
+
+Here's a more comprehensive example that shows Duckalog's multi-source capabilities:
 
 ```yaml
 version: 1
@@ -103,7 +115,17 @@ export AWS_SECRET_ACCESS_KEY="your_aws_secret"
 export ICEBERG_TOKEN="your_iceberg_token"
 ```
 
-### Step 3: Validate and build your catalog
+### Step 3: Set environment variables
+
+Before running Duckalog, set the required environment variables:
+
+```bash
+export AWS_ACCESS_KEY_ID="your_aws_key"
+export AWS_SECRET_ACCESS_KEY="your_aws_secret"
+export ICEBERG_TOKEN="your_iceberg_token"
+```
+
+### Step 4: Validate and build your catalog
 
 First, let's validate the configuration to catch any issues early:
 
@@ -119,7 +141,7 @@ duckalog build analytics_catalog.yaml
 
 This will create the `analytics.duckdb` file with all your views properly configured.
 
-### Step 4: Use your catalog
+### Step 5: Use your catalog
 
 Now you can query your unified data source:
 
@@ -131,7 +153,7 @@ duckdb analytics.duckdb -c "SELECT * FROM daily_metrics ORDER BY event_date DESC
 duckalog generate-sql analytics_catalog.yaml --output create_views.sql
 ```
 
-### Step 5: Programmatically interact with your catalog
+### Step 6: Programmatically interact with your catalog
 
 You can also use the Python API for more advanced workflows:
 
@@ -167,152 +189,86 @@ con.close()
 
 This example demonstrates how Duckalog can help you create a cohesive analytics layer that combines data from multiple sources, applies business logic, and provides a single point of access for your data consumers.
 
-## Path Resolution Feature
+### Step 7: Explore more features
 
-Duckalog includes automatic path resolution that converts relative file paths to absolute paths relative to the configuration file location. This provides consistent behavior across different working directories while maintaining security validation.
+Now that you have a working catalog, explore these advanced capabilities:
 
-### Key Benefits
+- **[Semantic Layer](tutorials/getting-started.md#semantic-models)**: Add business-friendly dimensions and measures
+- **[Web UI Dashboard](tutorials/dashboard-basics.md)**: Interactive catalog management and querying
+- **[Path Resolution](path-resolution.md)**: Automatic path handling with security validation
+- **[Remote Configuration](reference/cli.md#remote-configuration)**: Load configs from S3, GCS, Azure, and more
 
-- **Portability**: Configurations can be moved between environments without breaking file references
-- **Security**: Built-in validation prevents directory traversal attacks while allowing reasonable parent directory access
-- **Consistency**: Paths are resolved consistently regardless of the current working directory
-- **Flexibility**: Works with relative paths, absolute paths, and remote URIs
+## Key Features Overview
 
-### Quick Example
+### ✅ Multi-Source Data Integration
+- **S3 Parquet/Delta/Iceberg**: Direct querying of cloud data lakes
+- **Database Attachments**: Connect DuckDB, SQLite, PostgreSQL databases
+- **Semantic Layer**: Business-friendly dimensions and measures
+- **Path Resolution**: Automatic path handling with security validation
 
-```yaml
-version: 1
+### ✅ Developer Experience  
+- **Config-Driven**: Declarative YAML/JSON configurations
+- **Idempotent**: Same config always produces the same catalog
+- **CLI + Python API**: Use from command line or in code
+- **Remote Configs**: Load configurations from S3, GCS, Azure, GitHub
 
-duckdb:
-  database: catalog.duckdb
+### ✅ Production Ready
+- **Security**: Environment variable credentials, no secrets in configs
+- **Performance**: Optimized for large-scale analytics workloads
+- **Monitoring**: Comprehensive logging and error handling
+- **Web UI**: Interactive dashboard for catalog management
 
-views:
-  - name: events
-    source: parquet
-    uri: data/events.parquet        # Automatically resolved to absolute path
-    
-  - name: reference
-    source: parquet  
-    uri: ../shared/data/users.parquet  # Parent directory access allowed
-```
+### ✅ Enterprise Features
+- **Semantic Models**: Business-friendly metadata layer
+- **Secret Management**: Canonical credential configuration
+- **Audit Trail**: Config-driven change tracking
+- **Multi-Cloud**: Support for AWS, GCP, Azure storage systems
 
-The paths above are automatically resolved relative to the configuration file location when loaded.
+## Popular Examples
 
-**Learn more:** [Path Resolution Guide](path-resolution.md)
-
-## Secret Management
-
-Duckalog provides comprehensive secret management for secure credential handling:
-
-### Environment Variable Integration
-All sensitive configuration uses environment variables:
-
-```yaml
-duckdb:
-  pragmas:
-    - "SET s3_access_key_id='${env:AWS_ACCESS_KEY_ID}'"
-    - "SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"
-
-attachments:
-  postgres:
-    - host: "${env:PG_HOST}"
-      user: "${env:PG_USER}"
-      password: "${env:PG_PASSWORD}"
-```
-
-### Canonical Secret Configuration
-Define secrets once and reference them across views:
-
-```yaml
-secrets:
-  - name: s3_credentials
-    type: s3
-    key_id: "${env:AWS_ACCESS_KEY_ID}"
-    secret: "${env:AWS_SECRET_ACCESS_KEY}"
-    region: "us-east-1"
-
-views:
-  - name: sales_data
-    source: parquet
-    uri: "s3://my-bucket/sales/*.parquet"
-    secrets_ref: s3_credentials
-```
-
-## Remote Configuration
-
-Load configurations from remote sources:
-
-```bash
-# S3 configuration
-duckalog build s3://my-bucket/catalog.yaml --fs-key AKIA... --fs-secret...
-
-# GitHub repository
-duckalog build github://user/repo/catalog.yaml --fs-token ghp_...
-
-# Azure Blob Storage
-duckalog build abfs://account@container/catalog.yaml --azure-connection-string "..."
-```
-
-**Learn more:** [Architecture - Remote Configuration](architecture.md#remote-configuration-architecture)
+- 📊 **[Multi-Source Analytics](examples/multi-source-analytics.md)**: Combine Parquet, DuckDB, and PostgreSQL data
+- 🔒 **[Environment Variables Security](examples/environment-vars.md)**: Secure credential management patterns  
+- ⚡ **[DuckDB Performance Settings](examples/duckdb-settings.md)**: Optimize memory, threads, and storage
+- 🏷️ **[Semantic Layer v2](examples/config-imports.md)**: Business-friendly semantic models with dimensions and measures
 
 ## Quick Reference
 
-### Documentation Structure
-
-- **[System Architecture](architecture.md)** - Understanding Duckalog's design, components, and patterns
-  - **[Config Package Structure](architecture.md#2-configuration-models-package-duckalogconfigmodels)** - Unified configuration interface
-  - **[CatalogBuilder Orchestration](architecture.md#4-engine-module-enginepy-with-catalogbuilder-orchestration)** - Engine workflow management
-  - **[Path Security Architecture](architecture.md#path-security-architecture)** - Security boundaries and validation
-  - **[Secret Management](architecture.md#secret-management-architecture)** - Canonical secret models and DuckDB integration
-  - **[Remote Configuration](architecture.md#remote-configuration-architecture)** - Remote access and filesystem integration
-- **[Path Resolution Guide](path-resolution.md)** - Automatic path resolution and security features
-- **[User Guide](guides/usage.md)** - Configuration patterns and troubleshooting
-
-### Install
-
 ```bash
-pip install duckalog
+# Installation
+pip install duckalog           # Core package
+pip install duckalog[ui]       # With web dashboard
+pip install duckalog[remote]   # With remote configuration support
+
+# Core CLI commands
+duckalog init                  # Create starter configuration
+duckalog build catalog.yaml    # Build DuckDB catalog
+duckalog validate catalog.yaml # Check configuration syntax
+duckalog ui catalog.yaml       # Launch web dashboard
+
+# Remote configuration examples
+duckalog build s3://bucket/config.yaml          # S3 configuration
+duckalog build github://user/repo/config.yaml   # GitHub repository
+duckalog build gs://bucket/config.yaml          # Google Cloud Storage
 ```
-
-### Basic Commands
-
-```bash
-# Build a catalog from configuration
-duckalog build catalog.yaml
-
-# Generate SQL without executing it
-duckalog generate-sql catalog.yaml --output create_views.sql
-
-# Validate configuration syntax
-duckalog validate catalog.yaml
-
-# Show import graph for a configuration with imports
-duckalog show-imports catalog.yaml
-
-# Show import graph with diagnostic information
-duckalog show-imports catalog.yaml --diagnostics
-
-# Export import graph as JSON
-duckalog show-imports catalog.yaml --format json
-
-# Preview merged configuration
-duckalog show-imports catalog.yaml --show-merged
-```
-
-### Python API
 
 ```python
+# Python API basics
 from duckalog import build_catalog, generate_sql, validate_config
 
-# Build or update a catalog
-build_catalog("catalog.yaml")
+# Start with a template
+from duckalog.config_init import create_config_template
+config = create_config_template(format="yaml", output_path="my_config.yaml")
 
-# Generate SQL without execution
-sql = generate_sql("catalog.yaml")
-
-# Validate configuration
-validate_config("catalog.yaml")
+# Build and validate
+build_catalog("my_config.yaml")
+validate_config("my_config.yaml")
+sql = generate_sql("my_config.yaml")
 ```
 
-For a deeper product and technical description, see the PRD in
-`docs/PRD_Spec.md`.
+## Next Steps
+
+- **🆕 New to Duckalog?** Start with the [Getting Started Tutorial](tutorials/getting-started.md)
+- **🎯 Have a specific problem?** Browse the [How-to Guides](how-to/index.md)  
+- **📚 Need technical details?** Check the [Reference documentation](reference/index.md)
+- **🏗️ Want to understand the design?** Read the [Architecture overview](explanation/architecture.md)
+- **💡 Need ideas?** Explore the [Examples](examples/index.md) collection

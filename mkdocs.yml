@@ -6,13 +6,44 @@ repo_name: legout/duckalog
 
 theme:
   name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
 
 nav:
   - Home: index.md
-  - Architecture: architecture.md
-  - Security: SECURITY.md
-  - Dashboard UI: guides/ui-dashboard.md
-  - User Guide:
+  - Getting Started:
+      - Overview: tutorials/index.md
+      - Tutorial: tutorials/getting-started.md
+      - Dashboard Tutorial: tutorials/dashboard-basics.md
+  - How-to Guides:
+      - Overview: how-to/index.md
+      - Environment Management: how-to/environment-management.md
+      - Debugging Builds: how-to/debugging-builds.md
+      - Migration: how-to/migration.md
+      - Performance Tuning: how-to/performance-tuning.md
+  - Reference:
+      - Overview: reference/index.md
+      - Python API: reference/api.md
+      - CLI Commands: reference/cli.md
+      - Configuration Schema: reference/config-schema.md
+  - Understanding:
+      - Architecture: explanation/architecture.md
+      - Philosophy: explanation/philosophy.md
+      - Performance: explanation/performance.md
+      - Limitations: explanation/limitations.md
+      - Comparison: explanation/comparison.md
+  - Examples:
+      - Overview: examples/index.md
+      - DuckDB Secrets: examples/duckdb-secrets.md
+      - DuckDB Settings: examples/duckdb-settings.md
+      - Environment Variables: examples/environment-vars.md
+      - Local Attachments: examples/local-attachments.md
+      - Multi-Source Analytics: examples/multi-source-analytics.md
+      - Path Resolution Examples: examples/path-resolution-examples.md
+      - Simple Parquet: examples/simple-parquet.md
+      - Config Imports: examples/config-imports.md
+  - Legacy Guides:
       - User Guide: guides/index.md
       - Usage: guides/usage.md
       - Path Resolution:
@@ -22,18 +53,9 @@ nav:
           - Configuration Examples: configuration-path-examples.md
           - Migration Guide: migration-path-resolution.md
           - Examples: path-resolution-examples.md
-  - Examples:
-      - Examples Index: examples/index.md
-      - DuckDB Secrets: examples/duckdb-secrets.md
-      - DuckDB Settings: examples/duckdb-settings.md
-      - Environment Variables: examples/environment-vars.md
-      - Local Attachments: examples/local-attachments.md
-      - Multi-Source Analytics: examples/multi-source-analytics.md
-      - Path Resolution Examples: examples/path-resolution-examples.md
-      - Simple Parquet: examples/simple-parquet.md
-  - API Reference:
-      - API Reference Index: reference/index.md
-      - Python API: reference/api.md
+      - UI Dashboard: guides/ui-dashboard.md
+      - Troubleshooting: guides/troubleshooting.md
+  - Security: SECURITY.md
 
 plugins:
   - search
@@ -57,6 +79,6 @@ markdown_extensions:
       custom_fences:
         - name: mermaid
           class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
+          format: "!!python/name:pymdownx.superfences.fence_code_format"
   - pymdownx.inlinehilite
   - pymdownx.snippets

@@ -14,9 +14,9 @@ Config imports are useful when you want to:
 
 ## Basic Usage
 
-### Simple Split
+### Simple Import List
 
-Create a main catalog file that imports other config files:
+Create a main catalog file that imports other config files using a simple list:
 
 ```yaml
 # catalog.yaml
@@ -58,9 +58,109 @@ When you load `catalog.yaml`, Duckalog will:
 3. Merge them together (views are concatenated, scalar values are overridden)
 4. Return a single, merged configuration
 
+### Advanced Import Options
+
+Duckalog supports advanced import features through `SelectiveImports` and `ImportEntry` objects.
+
+#### Section-Specific Imports
+
+Import different files for different configuration sections:
+
+```yaml
+# catalog.yaml
+version: 1
+imports:
+  duckdb:
+    - ./database-settings.yaml
+  views:
+    - ./user-views.yaml
+    - ./product-views.yaml
+  attachments:
+    - ./external-databases.yaml
+
+duckdb:
+  database: main.duckdb  # This can be overridden by database-settings.yaml
+```
+
+#### Import Override Control
+
+Control whether imports can override existing values:
+
+```yaml
+# catalog.yaml
+version: 1
+imports:
+  - path: ./base-settings.yaml
+    override: true    # Can override existing values (default)
+  - path: ./optional-settings.yaml
+    override: false   # Only fills missing fields, won't override
+
+duckdb:
+  database: main.duckdb
+```
+
+#### Combined Section-Specific with Override Control
+
+```yaml
+# catalog.yaml
+version: 1
+imports:
+  duckdb:
+    - path: ./database.yaml
+      override: true
+    - path: ./optional-db-settings.yaml
+      override: false
+  views:
+    - path: ./base-views.yaml
+      override: true
+  semantic_models:
+    - path: ./shared-models.yaml
+      override: false  # Won't override existing models
+
+duckdb:
+  database: catalog.duckdb
+```
+
+#### Import Entry Format
+
+Each import can be specified as either:
+- **Simple string**: `"./settings.yaml"` (uses default override=true)
+- **ImportEntry object**: `{path: "./settings.yaml", override: false}`
+
+```yaml
+# All equivalent:
+imports:
+  - ./settings.yaml                    # Simple string
+  - path: ./settings.yaml              # ImportEntry with defaults
+  - path: ./settings.yaml
+    override: true                     # Explicit override
+```
+
+## Import Resolution Algorithm
+
+Duckalog follows a precise algorithm when resolving imports:
+
+### 1. Path Resolution
+- **Remote URIs** (`s3://`, `gs://`, `https://`, etc.): Used as-is
+- **Absolute paths**: Used as-is without modification
+- **Relative paths**: Resolved relative to the importing file's directory
+- **Environment variables**: Expanded before resolution (`${env:VAR}`)
+
+### 2. Import Processing Order
+1. Load main configuration file
+2. Process imports in the order they appear
+3. For `SelectiveImports`: process each section separately
+4. Apply override behavior based on `ImportEntry.override` setting
+5. Validate final merged configuration
+
+### 3. Caching
+- Imported files are cached to avoid duplicate loading
+- Circular imports are detected during processing
+- Remote imports use authentication from environment or filesystem context
+
 ## Merge Behavior
 
-Config imports use a **deep merge** strategy:
+Config imports use a **deep merge** strategy with override control:
 
 ### Scalar Values
 Later imports override earlier ones:
@@ -115,7 +215,10 @@ duckdb:
     - json
 ```
 
-### Lists
+### Lists with Override Control
+Lists behavior depends on the `override` setting:
+
+#### Default Behavior (override=true)
 Lists are concatenated (items from all imports are included):
 
 ```yaml
@@ -137,6 +240,36 @@ views:
 views:
   - name: view1  # From file1
   - name: view2  # From file2
+```
+
+#### Override Control (override=false)
+When `override=false`, lists are only merged if the target list is empty:
+
+```yaml
+# main.yaml
+version: 1
+imports:
+  - path: ./additional-views.yaml
+    override: false  # Won't override existing views
+
+views:
+  - name: main_view
+    sql: "SELECT 1"
+```
+
+```yaml
+# additional-views.yaml
+version: 1
+views:
+  - name: extra_view
+    sql: "SELECT 2"
+```
+
+**Result:** (additional-views.yaml views are ignored because main.yaml already has views)
+```yaml
+views:
+  - name: main_view
+    sql: "SELECT 1"
 ```
 
 ## Environment Variables
@@ -346,6 +479,93 @@ imports:
   - ./environments/${env:ENVIRONMENT}.yaml  # dev.yaml, prod.yaml, etc.
 ```
 
+### Layered Configuration with Override Control
+
+```yaml
+# catalog.yaml
+version: 1
+imports:
+  # Base layer - always applied
+  - path: ./base.yaml
+    override: true
+  
+  # Environment-specific - can override base
+  - path: ./environments/${env:ENVIRONMENT}.yaml
+    override: true
+  
+  # Local overrides - only fills gaps, doesn't override
+  - path: ./local-overrides.yaml
+    override: false
+
+duckdb:
+  database: catalog.duckdb
+```
+
+### Section-Specific Team Ownership
+
+```yaml
+# catalog.yaml
+version: 1
+imports:
+  # Infrastructure team owns database settings
+  duckdb:
+    - path: ./infrastructure/database.yaml
+      override: true
+  
+  # Data team owns views
+  views:
+    - path: ./analytics/core-views.yaml
+      override: true
+    - path: ./analytics/dimension-views.yaml
+      override: true
+  
+  # BI team owns semantic models
+  semantic_models:
+    - path: ./bi/shared-models.yaml
+      override: false  # Won't override local models
+
+duckdb:
+  database: analytics.duckdb
+```
+
+### Modular View Organization
+
+```yaml
+# catalog.yaml
+version: 1
+imports:
+  views:
+    - ./domains/users/views.yaml      # User domain views
+    - ./domains/products/views.yaml   # Product domain views
+    - ./domains/orders/views.yaml    # Order domain views
+    - ./domains/analytics/views.yaml  # Analytics views
+
+duckdb:
+  database: multi_domain.duckdb
+```
+
+### Safe Configuration Updates
+
+```yaml
+# catalog.yaml
+version: 1
+imports:
+  # Production config - can be overridden
+  - path: ./production.yaml
+    override: true
+  
+  # Emergency fixes - only fills gaps, safe to apply
+  - path: ./emergency-fixes.yaml
+    override: false
+  
+  # Local development - never overrides production
+  - path: ./local-dev.yaml
+    override: false
+
+duckdb:
+  database: catalog.duckdb
+```
+
 ### Shared Base Configuration
 
 ```yaml
@@ -404,6 +624,56 @@ duckalog build catalog.yaml
 
 ## Troubleshooting
 
+### Import Resolution Details
+
+#### Path Resolution Rules
+
+1. **Remote URIs**: Used as-is without modification
+   ```yaml
+   imports:
+     - s3://bucket/config.yaml
+     - https://example.com/config.yaml
+   ```
+
+2. **Absolute Paths**: Used as-is
+   ```yaml
+   imports:
+     - /etc/duckalog/base.yaml
+     - C:\Configs\base.yaml
+   ```
+
+3. **Relative Paths**: Resolved relative to importing file
+   ```yaml
+   # config/catalog.yaml imports:
+   - ./settings.yaml        # → config/settings.yaml
+   - ../shared/base.yaml     # → shared/base.yaml
+   - ./views/users.yaml      # → config/views/users.yaml
+   ```
+
+4. **Environment Variables**: Expanded before resolution
+   ```yaml
+   imports:
+     - ${env:CONFIG_DIR}/settings.yaml
+     - ${env:SHARED_CONFIGS}/base.yaml
+   ```
+
+#### Import Processing Order
+
+Imports are processed in this order:
+1. Main configuration file loaded
+2. `imports` section processed top-to-bottom
+3. For `SelectiveImports`: each section processed in order (duckdb → views → attachments → iceberg_catalogs → semantic_models)
+4. Within each section: imports processed in order listed
+5. Override behavior applied based on `ImportEntry.override`
+6. Final validation performed
+
+#### Caching and Performance
+
+- **File Caching**: Each unique file path loaded only once
+- **Remote Caching**: Remote files cached per import operation
+- **Circular Detection**: Tracks import chains to prevent cycles
+- **Validation**: Merged config validated after all imports processed
+
 ### Debugging Import Issues
 
 Use the `show-imports` command to visualize and debug your import graph:
@@ -428,6 +698,29 @@ This helps you:
 - **Count total files** - Understand the complexity of your configuration
 - **Find duplicate imports** - Catch redundant file references
 - **Preview merged config** - Verify the final configuration before building
+- **See override behavior** - Understand which imports override others
+- **Validate section-specific imports** - Check SelectiveImports structure
+
+#### Example Output
+
+```bash
+$ duckalog show-imports catalog.yaml --diagnostics
+
+Import Graph:
+catalog.yaml
+├── ./database-settings.yaml
+├── ./views/
+│   ├── users.yaml
+│   └── products.yaml
+└── ../shared/base.yaml
+
+Diagnostics:
+- Total files: 5
+- Import depth: 3 levels
+- No circular imports detected
+- No duplicate imports found
+- Selective imports: 1 file with section-specific imports
+```
 
 ### File Not Found
 If you see "Imported file not found", check:
