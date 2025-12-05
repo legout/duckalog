@@ -813,6 +813,39 @@ class SemanticModelConfig(BaseModel):
         return self
 
 
+# Import-related models for advanced import options
+
+
+class ImportEntry(BaseModel):
+    """A single import entry with optional override behavior.
+
+    Attributes:
+        path: Path to the configuration file to import.
+        override: Whether this import can override values from earlier imports or the main config.
+                 If False, only fills in missing fields without overwriting existing values.
+                 Defaults to True.
+    """
+    path: str
+    override: bool = True
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class SelectiveImports(BaseModel):
+    """Section-specific imports for targeted configuration merging.
+
+    Each field represents a section of the Config that can have targeted imports.
+    Values can be either simple paths (strings) or ImportEntry objects with options.
+    """
+    duckdb: Optional[list[Union[str, ImportEntry]]] = None
+    views: Optional[list[Union[str, ImportEntry]]] = None
+    attachments: Optional[list[Union[str, ImportEntry]]] = None
+    iceberg_catalogs: Optional[list[Union[str, ImportEntry]]] = None
+    semantic_models: Optional[list[Union[str, ImportEntry]]] = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class Config(BaseModel):
     """Top-level Duckalog configuration.
 
@@ -824,6 +857,9 @@ class Config(BaseModel):
         iceberg_catalogs: Optional Iceberg catalog definitions.
         semantic_models: Optional semantic model definitions for business metadata.
         imports: Optional list of additional config files to import and merge.
+                  Can be a simple list of paths (backward compatible) or a SelectiveImports
+                  object for advanced options like section-specific imports, override behavior,
+                  and glob patterns.
     """
 
     version: int
@@ -832,7 +868,8 @@ class Config(BaseModel):
     attachments: AttachmentsConfig = Field(default_factory=AttachmentsConfig)
     iceberg_catalogs: list[IcebergCatalogConfig] = Field(default_factory=list)
     semantic_models: list[SemanticModelConfig] = Field(default_factory=list)
-    imports: list[str] = Field(default_factory=list)
+    # Advanced import options: can be a simple list (backward compatible) or a SelectiveImports object
+    imports: Union[list[Union[str, ImportEntry]], SelectiveImports] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -841,6 +878,20 @@ class Config(BaseModel):
     def _version_positive(cls, value: int) -> int:
         if value <= 0:
             raise ValueError("Config version must be a positive integer")
+        return value
+
+    @field_validator("imports")
+    @classmethod
+    def _normalize_imports(cls, value: Union[list[str], SelectiveImports]) -> Union[list[str], SelectiveImports]:
+        """Normalize imports to ensure consistent handling.
+
+        If imports is a SelectiveImports object with all None values, convert to empty list.
+        Otherwise, return as-is to support both simple list and SelectiveImports formats.
+        """
+        if isinstance(value, SelectiveImports):
+            # Check if all fields are None
+            if all(getattr(value, field_name) is None for field_name in value.model_fields.keys()):
+                return []
         return value
 
     @model_validator(mode="after")

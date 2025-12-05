@@ -27,7 +27,9 @@ from .config_init import create_config_template, validate_generated_config
 from .engine import build_catalog
 from .errors import ConfigError, EngineError
 from .config import log_error, log_info
+from .config.validators import log_debug
 from .sql_generation import generate_all_views_sql
+from .config.loader import ImportContext
 
 app = typer.Typer(help="Duckalog CLI for building and inspecting DuckDB catalogs.")
 
@@ -725,6 +727,394 @@ def validate_paths(
         _fail("Some files are not accessible.", 3)
     else:
         typer.echo("✅ All files are accessible.")
+
+
+def _collect_import_graph(
+    config_path: str,
+    filesystem: Optional[Any] = None,
+) -> tuple[list[str], dict[str, list[str]], set[str]]:
+    """Collect import graph information from a config file.
+
+    Args:
+        config_path: Path to the configuration file.
+        filesystem: Optional filesystem object for remote file access.
+
+    Returns:
+        A tuple of (import_chain, import_graph, visited) where:
+        - import_chain: The chain of files from root to current
+        - import_graph: Dict mapping file paths to their imported files
+        - visited: Set of visited file paths (normalized)
+    """
+    from .config.loader import (
+        _is_remote_uri,
+        _normalize_uri,
+        _resolve_import_path,
+    )
+
+    import_chain = []
+    import_graph: dict[str, list[str]] = {}
+    visited = set()
+
+    def _traverse_imports(current_path: str, base_path: str) -> None:
+        """Recursively traverse import graph."""
+        # Normalize and resolve the current path
+        if _is_remote_uri(current_path):
+            normalized_current = _normalize_uri(current_path)
+        else:
+            normalized_current = _normalize_uri(str(Path(current_path).resolve()))
+
+        # Avoid infinite loops and duplicate processing
+        if normalized_current in visited:
+            return
+        visited.add(normalized_current)
+
+        # Use normalized path for the chain to ensure consistency
+        import_chain.append(normalized_current)
+
+        # Load the config to get its imports
+        try:
+            if _is_remote_uri(current_path):
+                config = load_config(current_path, filesystem=filesystem, load_sql_files=False)
+            else:
+                config = load_config(current_path, filesystem=filesystem, load_sql_files=False)
+        except Exception:
+            # If we can't load the config, skip it
+            import_graph[normalized_current] = []
+            return
+
+        # Get imports and resolve them to normalized paths
+        imports = config.imports if config.imports else []
+        resolved_imports = []
+
+        # Recursively process each import
+        for import_path in imports:
+            try:
+                resolved_import = _resolve_import_path(import_path, current_path)
+
+                # Normalize the resolved import for consistency
+                if _is_remote_uri(resolved_import):
+                    normalized_import = _normalize_uri(resolved_import)
+                else:
+                    normalized_import = _normalize_uri(str(Path(resolved_import).resolve()))
+
+                resolved_imports.append(resolved_import)
+
+                _traverse_imports(resolved_import, current_path)
+            except Exception:
+                # If we can't resolve an import, skip it
+                continue
+
+        import_graph[normalized_current] = resolved_imports
+
+    # Start traversal from the root config
+    if _is_remote_uri(config_path):
+        _traverse_imports(config_path, config_path)
+    else:
+        # Resolve to absolute path for proper relative path resolution
+        abs_config_path = str(Path(config_path).resolve())
+        _traverse_imports(abs_config_path, abs_config_path)
+
+    return import_chain, import_graph, visited
+
+
+def _compute_import_diagnostics(import_graph: dict[str, list[str]]) -> dict[str, Any]:
+    """Compute diagnostics for the import graph.
+
+    Args:
+        import_graph: Dict mapping file paths to their imported files.
+
+    Returns:
+        Dictionary containing diagnostic information:
+        - max_depth: Maximum import depth
+        - total_files: Total number of files in the graph
+        - files_with_imports: Count of files that have imports
+        - remote_imports: Count of remote URI imports
+        - local_imports: Count of local file imports
+        - duplicate_imports: List of files imported multiple times
+    """
+    if not import_graph:
+        return {
+            "max_depth": 0,
+            "total_files": 0,
+            "files_with_imports": 0,
+            "remote_imports": 0,
+            "local_imports": 0,
+            "duplicate_imports": [],
+        }
+
+    # Build parent-child relationships
+    children_map = {parent: children for parent, children in import_graph.items()}
+
+    # Find the root (file that is not imported by any other file)
+    all_imported = set()
+    for children in import_graph.values():
+        all_imported.update(children)
+
+    roots = [f for f in import_graph.keys() if f not in all_imported]
+
+    # Compute maximum depth
+    max_depth = 0
+    for root in roots:
+        depths = {}
+
+        def compute_depth(node: str, depth: int = 0) -> None:
+            """Recursively compute depth."""
+            if node in depths and depths[node] <= depth:
+                return
+            depths[node] = depth
+
+            children = children_map.get(node, [])
+            for child in children:
+                compute_depth(child, depth + 1)
+
+        compute_depth(root)
+        max_depth = max(max_depth, max(depths.values()) if depths else 0)
+
+    # Count file types
+    remote_imports = sum(
+        1
+        for children in import_graph.values()
+        for child in children
+        if "://" in child
+    )
+
+    local_imports = sum(
+        1
+        for children in import_graph.values()
+        for child in children
+        if "://" not in child
+    )
+
+    # Find duplicate imports
+    all_imports = []
+    for children in import_graph.values():
+        all_imports.extend(children)
+
+    import_counts = {}
+    for imp in all_imports:
+        import_counts[imp] = import_counts.get(imp, 0) + 1
+
+    duplicate_imports = [imp for imp, count in import_counts.items() if count > 1]
+
+    return {
+        "max_depth": max_depth,
+        "total_files": len(import_graph),
+        "files_with_imports": sum(1 for children in import_graph.values() if children),
+        "remote_imports": remote_imports,
+        "local_imports": local_imports,
+        "duplicate_imports": duplicate_imports,
+    }
+
+
+def _print_import_tree(
+    import_chain: list[str],
+    import_graph: dict[str, list[str]],
+    visited: set[str],
+    show_diagnostics: bool = False,
+    original_root_path: Optional[str] = None,
+) -> None:
+    """Print the import graph as a tree structure.
+
+    Args:
+        import_chain: The chain of files from root to current.
+        import_graph: Dict mapping file paths to their imported files.
+        visited: Set of visited file paths.
+        show_diagnostics: If True, also print diagnostic information.
+        original_root_path: The original root path (for display purposes).
+    """
+    if not import_chain:
+        typer.echo("No imports found.")
+        return
+
+    # Track which files have been printed
+    printed = set()
+
+    # Create a path display helper that shows relative paths when possible
+    def _get_display_path(path: str) -> str:
+        """Get a user-friendly display path."""
+        # For remote URIs, show as-is
+        if "://" in path:
+            return path
+
+        # For local files, try to show relative to current directory
+        try:
+            from pathlib import Path
+
+            p = Path(path).resolve()
+
+            # Try to make it relative to current directory
+            try:
+                relative = p.relative_to(Path.cwd())
+                return str(relative)
+            except ValueError:
+                # Not under current dir, show as absolute
+                return str(p)
+        except Exception:
+            # If anything fails, just return the path
+            return path
+
+    def _print_node(path: str, prefix: str = "", is_last: bool = True) -> None:
+        """Print a node in the tree."""
+        display_path = _get_display_path(path)
+
+        # Determine if this is a remote URI
+        is_remote = "://" in str(display_path)
+        path_type = " [REMOTE]" if is_remote else ""
+
+        if is_last:
+            typer.echo(f"{prefix}└── {display_path}{path_type}")
+            new_prefix = prefix + "    "
+        else:
+            typer.echo(f"{prefix}├── {display_path}{path_type}")
+            new_prefix = prefix + "│   "
+
+        printed.add(path)
+
+        # Get and sort children
+        children = sorted(import_graph.get(path, []))
+
+        # Print children
+        for i, child in enumerate(children):
+            is_child_last = i == len(children) - 1
+            if child not in printed:
+                _print_node(child, new_prefix, is_child_last)
+
+    # Start printing from the root
+    root = import_chain[0]
+    root_display = _get_display_path(root)
+    typer.echo(f"{root_display}")
+    children = sorted(import_graph.get(root, []))
+
+    for i, child in enumerate(children):
+        is_last = i == len(children) - 1
+        _print_node(child, "", is_last)
+
+    # Print diagnostics
+    if show_diagnostics:
+        diagnostics = _compute_import_diagnostics(import_graph)
+        typer.echo("")
+        typer.echo("Import Diagnostics:")
+        typer.echo("-" * 80)
+        typer.echo(f"  Total files: {diagnostics['total_files']}")
+        typer.echo(f"  Maximum import depth: {diagnostics['max_depth']}")
+        typer.echo(f"  Files with imports: {diagnostics['files_with_imports']}")
+        typer.echo(f"  Remote imports: {diagnostics['remote_imports']}")
+        typer.echo(f"  Local imports: {diagnostics['local_imports']}")
+        if diagnostics['duplicate_imports']:
+            typer.echo(
+                f"  Duplicate imports: {', '.join(diagnostics['duplicate_imports'])}"
+            )
+    else:
+        total_files = len(visited) if visited else len(import_chain)
+        typer.echo("")
+        typer.echo(f"Total files in import graph: {total_files}")
+
+
+@app.command(help="Show the import graph for a configuration file.")
+def show_imports(
+    ctx: typer.Context,
+    config_path: str = typer.Argument(..., help="Path to configuration file or remote URI"),
+    show_merged: bool = typer.Option(
+        False,
+        "--show-merged",
+        help="Also display the fully merged configuration after imports are resolved.",
+    ),
+    output_format: str = typer.Option(
+        "tree",
+        "--format",
+        "-f",
+        help="Output format: tree or json (default: tree)",
+    ),
+    diagnostics: bool = typer.Option(
+        False,
+        "--diagnostics",
+        help="Show import diagnostics (depth, duplicates, performance metrics).",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
+) -> None:
+    """Display the import graph for a configuration file.
+
+    This command shows which configuration files are imported and how they
+    are connected, helping you understand the structure of your configuration.
+
+    Examples:
+        # Show the import tree
+        duckalog show-imports config.yaml
+
+        # Show import tree with diagnostics
+        duckalog show-imports config.yaml --diagnostics
+
+        # Show import tree with merged config
+        duckalog show-imports config.yaml --show-merged
+
+        # Export import graph as JSON
+        duckalog show-imports config.yaml --format json
+
+    Args:
+        config_path: Path to configuration file or remote URI.
+        show_merged: If True, also display the fully merged configuration.
+        output_format: Output format (tree or json).
+        diagnostics: If True, show import diagnostics (depth, duplicates, etc.).
+        verbose: If True, enable more verbose logging.
+    """
+    from .config.loader import _is_remote_uri
+    import json
+
+    _configure_logging(verbose)
+
+    # Get filesystem from context
+    filesystem = ctx.obj.get("filesystem")
+
+    # Validate that local files exist, but allow remote URIs
+    if not _is_remote_uri(config_path):
+        local_path = Path(config_path)
+        if not local_path.exists():
+            _fail(f"Config file not found: {config_path}", 2)
+
+    log_info("CLI show-imports invoked", config_path=config_path)
+
+    try:
+        # Collect import graph information
+        import_chain, import_graph, visited = _collect_import_graph(config_path, filesystem)
+
+        # Output based on format
+        if output_format == "json":
+            output = {
+                "import_chain": import_chain,
+                "import_graph": import_graph,
+                "total_files": len(visited),
+            }
+            typer.echo(json.dumps(output, indent=2))
+        else:
+            # Default tree format
+            typer.echo("")
+            typer.echo("Import Graph:")
+            typer.echo("=" * 80)
+            _print_import_tree(import_chain, import_graph, visited, show_diagnostics=diagnostics)
+
+            # Optionally show merged config
+            if show_merged:
+                typer.echo("")
+                typer.echo("Merged Configuration:")
+                typer.echo("=" * 80)
+                try:
+                    merged_config = load_config(config_path, filesystem=filesystem)
+                    # Use model_dump_json for clean JSON output
+                    merged_json = merged_config.model_dump_json(indent=2)
+                    typer.echo(merged_json)
+                except ConfigError as exc:
+                    typer.echo(f"Error loading merged config: {exc}", err=True)
+
+    except ConfigError as exc:
+        log_error("Show-imports failed due to config error", error=str(exc))
+        _fail(f"Config error: {exc}", 2)
+    except Exception as exc:
+        if verbose:
+            raise
+        log_error("Show-imports failed unexpectedly", error=str(exc))
+        _fail(f"Unexpected error: {exc}", 1)
 
 
 def _fail(message: str, code: int) -> None:

@@ -8,7 +8,7 @@ import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import yaml
 
@@ -296,11 +296,289 @@ class ImportContext:
     import_chain: list[str] = field(default_factory=list)
 
 
+def _normalize_uri(uri: str) -> str:
+    """Normalize a URI for consistent tracking in visited files set.
+
+    This ensures that different representations of the same URI (e.g., with or
+    without trailing slashes) are treated as the same file for circular import
+    detection.
+
+    Args:
+        uri: The URI to normalize
+
+    Returns:
+        Normalized URI string
+    """
+    if not _is_remote_uri(uri):
+        # For local files, use the absolute path
+        return uri
+
+    from urllib.parse import urlparse
+
+    parsed = urlparse(uri)
+
+    # Normalize the URI by reconstructing it with normalized components
+    # - Use lowercase scheme
+    # - Remove default ports
+    # - Remove trailing slashes from path
+    # - Normalize the netloc (remove default user info formatting)
+    scheme = parsed.scheme.lower()
+
+    netloc = parsed.netloc
+    if netloc:
+        # Split netloc into components
+        if "@" in netloc:
+            # Has authentication info
+            auth, host = netloc.rsplit("@", 1)
+        else:
+            auth, host = "", netloc
+
+        # Normalize host (lowercase, remove brackets for IPv6)
+        if ":" in host and not host.startswith("["):
+            # IPv6 address
+            host = f"[{host}]"
+
+        # Reconstruct netloc
+        if auth:
+            netloc = f"{auth}@{host}"
+        else:
+            netloc = host
+
+    path = parsed.path.rstrip("/") if parsed.path != "/" else "/"
+
+    # Reconstruct query without sorting to preserve order
+    query = f"?{parsed.query}" if parsed.query else ""
+
+    # Reconstruct fragment
+    fragment = f"#{parsed.fragment}" if parsed.fragment else ""
+
+    # Reconstruct URI
+    normalized = f"{scheme}://{netloc}{path}{query}{fragment}"
+
+    return normalized
+
+
 def _is_remote_uri(path: str) -> bool:
-    """Check if a path is a remote URI."""
-    # Simple check for common remote URI schemes
-    remote_schemes = ["http://", "https://", "s3://", "gcs://", "az://", "abfs://"]
-    return any(path.startswith(scheme) for scheme in remote_schemes)
+    """Check if a path is a remote URI.
+
+    This function uses the comprehensive implementation from remote_config.py
+    to support all URI schemes including S3, GCS, Azure Blob, SFTP, and HTTPS.
+    """
+    try:
+        from duckalog.remote_config import is_remote_uri as check_remote_uri
+
+        return check_remote_uri(path)
+    except ImportError:
+        # Fallback to simple check if remote config is not available
+        remote_schemes = ["http://", "https://", "s3://", "gcs://", "az://", "abfs://"]
+        return any(path.startswith(scheme) for scheme in remote_schemes)
+
+
+def _expand_glob_patterns(
+    patterns: list[str],
+    base_path: str,
+    filesystem: Optional[Any] = None,
+) -> list[str]:
+    """Expand glob patterns into a list of matching file paths.
+
+    Args:
+        patterns: List of patterns, which can include glob patterns (*, ?, [...])
+                  and exclude patterns (starting with !).
+        base_path: Base path to resolve relative patterns against.
+        filesystem: Optional filesystem object for remote operations.
+
+    Returns:
+        List of resolved file paths in deterministic order.
+
+    Raises:
+        ImportFileNotFoundError: If a pattern doesn't match any files.
+    """
+    import glob as glob_module
+
+    resolved_files = []
+    excluded_files = set()
+
+    for pattern in patterns:
+        # Handle exclude patterns
+        if pattern.startswith("!"):
+            exclude_pattern = pattern[1:]
+            # Resolve relative to base_path
+            if not _is_remote_uri(exclude_pattern):
+                exclude_pattern = str(Path(base_path).parent / exclude_pattern)
+
+            if _is_remote_uri(exclude_pattern):
+                # For remote files, we can't easily glob, so skip exclude
+                continue
+
+            # Get all matching files for exclusion
+            try:
+                matches = glob_module.glob(exclude_pattern, recursive=True)
+                excluded_files.update(matches)
+            except Exception:
+                # If glob fails, skip this exclude pattern
+                pass
+            continue
+
+        # Handle include patterns
+        # Resolve relative to base_path
+        if not _is_remote_uri(pattern):
+            resolved_pattern = str(Path(base_path).parent / pattern)
+        else:
+            # For remote URIs, glob patterns aren't supported yet
+            if "*" in pattern or "?" in pattern:
+                raise ImportError(
+                    f"Glob patterns are not supported for remote URIs: {pattern}"
+                )
+            resolved_pattern = pattern
+
+        if _is_remote_uri(resolved_pattern):
+            # Remote file - add directly
+            resolved_files.append(resolved_pattern)
+        else:
+            # Local file - expand glob
+            try:
+                matches = glob_module.glob(resolved_pattern, recursive=True)
+                if not matches:
+                    # Check if this is meant to be a single file (no glob chars)
+                    if "*" not in resolved_pattern and "?" not in resolved_pattern:
+                        # Single file - add it if it exists
+                        if Path(resolved_pattern).exists():
+                            resolved_files.append(resolved_pattern)
+                    else:
+                        # Glob pattern with no matches
+                        raise ImportFileNotFoundError(
+                            f"No files match pattern: {pattern}"
+                        )
+                else:
+                    # Sort for deterministic order
+                    resolved_files.extend(sorted(matches))
+            except Exception as exc:
+                raise ImportError(
+                    f"Failed to expand glob pattern '{pattern}': {exc}"
+                ) from exc
+
+    # Remove excluded files
+    result = [f for f in resolved_files if f not in excluded_files]
+
+    # Remove duplicates while preserving order
+    seen = set()
+    final_result = []
+    for f in result:
+        if f not in seen:
+            seen.add(f)
+            final_result.append(f)
+
+    log_debug(
+        "Expanded glob patterns",
+        input_patterns=patterns,
+        resolved_files=final_result,
+    )
+
+    return final_result
+
+
+def _resolve_import_path(import_path: str, base_path: str) -> str:
+    """Resolve an import path relative to the base configuration file.
+
+    Args:
+        import_path: The import path (can be relative, absolute, or remote URI).
+        base_path: Path to the base configuration file.
+
+    Returns:
+        Resolved import path as a string.
+
+    Raises:
+        PathResolutionError: If the import path cannot be resolved.
+    """
+    # If it's a remote URI, return as-is
+    if _is_remote_uri(import_path):
+        return import_path
+
+    # Handle absolute paths
+    if Path(import_path).is_absolute():
+        return import_path
+
+    # Handle relative paths - resolve relative to the directory containing base_path
+    base_dir = Path(base_path).parent
+    resolved_path = (base_dir / import_path).resolve()
+
+    if not resolved_path.exists():
+        raise PathResolutionError(
+            f"Failed to resolve import path: {import_path}",
+            f"Resolved path does not exist: {resolved_path}",
+        )
+
+    return str(resolved_path)
+
+
+def _normalize_imports_for_processing(
+    imports: Union[list[str], Any],
+    base_path: str,
+    filesystem: Optional[Any] = None,
+) -> list[tuple[str, bool, Optional[str]]]:
+    """Normalize imports for processing.
+
+    Converts various import formats into a list of tuples:
+    (resolved_path, override, section_name)
+
+    Args:
+        imports: Can be a simple list of strings or a SelectiveImports object
+        base_path: Base path to resolve relative patterns against
+        filesystem: Optional filesystem for remote operations
+
+    Returns:
+        List of tuples: (path, override, section_name)
+        where section_name is None for global imports or the section name for selective imports
+    """
+    from .models import ImportEntry
+
+    # Handle simple list format (backward compatible)
+    if isinstance(imports, list):
+        normalized = []
+        for item in imports:
+            if isinstance(item, str):
+                # Simple string path
+                normalized.append((item, True, None))
+            elif isinstance(item, ImportEntry):
+                # ImportEntry with options
+                normalized.append((item.path, item.override, None))
+            else:
+                raise ConfigError(
+                    f"Invalid import format: expected string or ImportEntry, got {type(item)}"
+                )
+        return normalized
+
+    # Handle SelectiveImports object
+    if hasattr(imports, "model_fields"):
+        # This is a SelectiveImports object
+        from .models import SelectiveImports
+
+        normalized = []
+
+        # Process each section
+        for field_name, field_value in imports:
+            if field_value is None:
+                continue
+
+            section_name = field_name
+
+            for item in field_value:
+                if isinstance(item, str):
+                    # Simple string path
+                    normalized.append((item, True, section_name))
+                elif isinstance(item, ImportEntry):
+                    # ImportEntry with options
+                    override = item.override
+                    normalized.append((item.path, override, section_name))
+                else:
+                    raise ConfigError(
+                        f"Invalid import format in {section_name}: expected string or ImportEntry, got {type(item)}"
+                    )
+
+        return normalized
+
+    # Fallback: treat as list
+    return [(str(path), True, None) for path in imports]
 
 
 def _deep_merge_dict(base: dict, override: dict) -> dict:
@@ -336,12 +614,18 @@ def _deep_merge_dict(base: dict, override: dict) -> dict:
     return result
 
 
-def _deep_merge_config(base: Any, override: Any) -> Any:
-    """Deep merge two Config objects.
+def _merge_config_with_override(
+    base: Any,
+    override: Any,
+    override_mode: bool = True,
+) -> Any:
+    """Merge two Config objects with override control.
 
     Args:
-        base: Base Config object.
-        override: Override Config object.
+        base: Base Config object (imported config).
+        override: Override Config object (main config or later import).
+        override_mode: If True, values from override take precedence (normal merge).
+                      If False, only fill in missing fields without overwriting existing ones.
 
     Returns:
         A new Config object with merged content.
@@ -352,12 +636,203 @@ def _deep_merge_config(base: Any, override: Any) -> Any:
     base_dict = base.model_dump(mode='json')
     override_dict = override.model_dump(mode='json')
 
-    # Deep merge the dicts
-    merged_dict = _deep_merge_dict(base_dict, override_dict)
+    log_debug("Deep merge base keys", keys=list(base_dict.keys()))
+    log_debug("Deep merge override keys", keys=list(override_dict.keys()))
 
-    # Create a new Config from the merged dict
-    # Use ** to unpack the dict and let Pydantic properly instantiate nested objects
-    return Config(**merged_dict)
+    # Extract imports from override before merging
+    # Import configs shouldn't have their own imports field in the final merged config
+    # Only the main config's imports should be kept
+    override_imports = override_dict.get('imports', [])
+
+    # Also remove imports from base_dict to ensure only main config's imports are used
+    base_dict = base_dict.copy()
+    base_dict.pop('imports', None)
+
+    # Remove imports from override_dict after extraction
+    override_dict = override_dict.copy()
+    override_dict.pop('imports', None)
+
+    log_debug("After removing imports - base_dict keys", keys=list(base_dict.keys()))
+    log_debug("After removing imports - override_dict keys", keys=list(override_dict.keys()))
+
+    # Deep merge the dicts
+    if override_mode:
+        # Normal merge: override takes precedence
+        merged_dict = _deep_merge_dict(base_dict, override_dict)
+    else:
+        # Non-overriding merge: only fill in missing fields
+        merged_dict = base_dict.copy()
+        for key, value in override_dict.items():
+            if key not in merged_dict or merged_dict[key] is None:
+                merged_dict[key] = value
+
+    # Set the imports field to the main config's imports
+    merged_dict['imports'] = override_imports
+
+    log_debug("Deep merge result keys", keys=list(merged_dict.keys()))
+
+    try:
+        # Create a new Config from the merged dict
+        # Use ** to unpack the dict and let Pydantic properly instantiate nested objects
+        result = Config(**merged_dict)
+        log_debug("Config created successfully", views=len(result.views))
+        return result
+    except ValueError as e:
+        # Check if this is a duplicate name error from the Config model validator
+        if "Duplicate view name" in str(e):
+            # Extract duplicate names from error message
+            import re
+            match = re.search(r"Duplicate view name\(s\) found: (.+)", str(e))
+            if match:
+                duplicates = match.group(1)
+                raise DuplicateNameError(
+                    f"Duplicate view name(s) found: {duplicates}",
+                    name_type="view",
+                    duplicate_names=[d.strip() for d in duplicates.split(",")],
+                ) from e
+        # Check for other duplicate types
+        elif "Duplicate Iceberg catalog name" in str(e):
+            raise DuplicateNameError(
+                str(e), name_type="iceberg_catalog"
+            ) from e
+        elif "Duplicate semantic model name" in str(e):
+            raise DuplicateNameError(
+                str(e), name_type="semantic_model"
+            ) from e
+        elif "Duplicate attachment alias" in str(e):
+            raise DuplicateNameError(
+                str(e), name_type="attachment"
+            ) from e
+        # Re-raise as is if not a duplicate error
+        log_debug("Failed to create Config", error=str(e))
+        log_debug("merged_dict details", merged_dict=str(merged_dict))
+        raise
+    except Exception as e:
+        log_debug("Failed to create Config", error=str(e))
+        log_debug("merged_dict details", merged_dict=str(merged_dict))
+        raise
+
+
+def _merge_section_specific(
+    imported_config: Any,
+    base_config: Any,
+    section_name: str,
+    override_mode: bool = True,
+) -> Any:
+    """Merge a specific section from imported config into base config.
+
+    Args:
+        imported_config: Config object to merge from.
+        base_config: Config object to merge into.
+        section_name: Name of the section to merge (e.g., 'views', 'duckdb').
+        override_mode: If True, values from imported_config take precedence.
+                      If False, only fill in missing fields.
+
+    Returns:
+        A new Config object with the merged section.
+    """
+    from .models import Config
+
+    # Get the field values from both configs
+    imported_dict = imported_config.model_dump(mode='json')
+    base_dict = base_config.model_dump(mode='json')
+
+    log_debug(
+        "Merging section-specific imports",
+        section=section_name,
+        override_mode=override_mode,
+    )
+
+    # Check if the section exists in the imported config
+    if section_name not in imported_dict:
+        log_debug("Section not found in imported config", section=section_name)
+        return base_config
+
+    # Get the section value from imported config
+    imported_section = imported_dict.get(section_name)
+
+    # Remove imports from both dicts
+    imported_dict.pop('imports', None)
+    base_dict.pop('imports', None)
+
+    # Create a copy of base_dict to modify
+    merged_dict = base_dict.copy()
+
+    # Merge only the specified section
+    if section_name in merged_dict:
+        base_section = merged_dict[section_name]
+
+        if override_mode:
+            # Normal merge: imported takes precedence
+            if isinstance(base_section, dict) and isinstance(imported_section, dict):
+                merged_dict[section_name] = _deep_merge_dict(base_section, imported_section)
+            elif isinstance(base_section, list) and isinstance(imported_section, list):
+                # For lists, concatenate
+                merged_dict[section_name] = base_section + imported_section
+            else:
+                # Override scalar values
+                merged_dict[section_name] = imported_section
+        else:
+            # Non-overriding merge: only fill in missing fields
+            if isinstance(base_section, dict) and isinstance(imported_section, dict):
+                for key, value in imported_section.items():
+                    if key not in base_section or base_section[key] is None:
+                        merged_dict[section_name][key] = value
+            elif isinstance(base_section, list) and isinstance(imported_section, list):
+                # For lists, append if not already present
+                for item in imported_section:
+                    if item not in base_section:
+                        merged_dict[section_name].append(item)
+            else:
+                # Only set if not already set
+                if base_section is None:
+                    merged_dict[section_name] = imported_section
+    else:
+        # Section doesn't exist in base, just add it
+        merged_dict[section_name] = imported_section
+
+    # Set the imports field to the base config's imports
+    merged_dict['imports'] = base_dict.get('imports', [])
+
+    try:
+        # Create a new Config from the merged dict
+        result = Config(**merged_dict)
+        log_debug("Section merged successfully", section=section_name)
+        return result
+    except ValueError as e:
+        # Check if this is a duplicate name error from the Config model validator
+        if "Duplicate view name" in str(e):
+            # Extract duplicate names from error message
+            import re
+            match = re.search(r"Duplicate view name\(s\) found: (.+)", str(e))
+            if match:
+                duplicates = match.group(1)
+                raise DuplicateNameError(
+                    f"Duplicate view name(s) found: {duplicates}",
+                    name_type="view",
+                    duplicate_names=[d.strip() for d in duplicates.split(",")],
+                ) from e
+        # Check for other duplicate types
+        elif "Duplicate Iceberg catalog name" in str(e):
+            raise DuplicateNameError(
+                str(e), name_type="iceberg_catalog"
+            ) from e
+        elif "Duplicate semantic model name" in str(e):
+            raise DuplicateNameError(
+                str(e), name_type="semantic_model"
+            ) from e
+        elif "Duplicate attachment alias" in str(e):
+            raise DuplicateNameError(
+                str(e), name_type="attachment"
+            ) from e
+        # Re-raise as is if not a duplicate error
+        log_debug("Failed to create Config", error=str(e))
+        log_debug("merged_dict details", merged_dict=str(merged_dict))
+        raise
+    except Exception as e:
+        log_debug("Failed to create Config", error=str(e))
+        log_debug("merged_dict details", merged_dict=str(merged_dict))
+        raise
 
 
 def _resolve_import_path(import_path: str, base_path: str) -> str:
@@ -540,13 +1015,20 @@ def _resolve_and_load_import(
 
     log_debug("Resolving import", import_path=import_path, resolved_path=resolved_path)
 
+    # Normalize the path for consistent tracking in visited files
+    # This ensures remote URIs are normalized for circular import detection
+    normalized_path = _normalize_uri(resolved_path)
+
     # Check for circular imports
-    # Use the resolved path as the key
-    if resolved_path in import_context.visited_files:
+    # Use the normalized path as the key to handle different representations of the same URI
+    if normalized_path in import_context.visited_files:
         # Check if it's in the current import stack
-        if resolved_path in import_context.import_stack:
+        if normalized_path in import_context.import_stack:
             # Circular import detected!
-            chain = " -> ".join(import_context.import_stack + [resolved_path])
+            # Show the import chain with normalized paths
+            chain = " -> ".join(
+                _normalize_uri(p) for p in import_context.import_stack + [resolved_path]
+            )
             raise CircularImportError(
                 f"Circular import detected in import chain: {chain}",
                 import_chain=import_context.import_stack + [resolved_path],
@@ -556,9 +1038,9 @@ def _resolve_and_load_import(
             log_debug("Using cached config for already-loaded import", path=resolved_path)
             return import_context.config_cache.get(resolved_path)
 
-    # Add to import stack and visited files
+    # Add to import stack and visited files (use both original and normalized for tracking)
     import_context.import_stack.append(resolved_path)
-    import_context.visited_files.add(resolved_path)
+    import_context.visited_files.add(normalized_path)
 
     try:
         # Load the imported config
@@ -655,8 +1137,10 @@ def _resolve_and_load_import(
                     imported_config, config_path, sql_file_loader
                 )
 
-        # Cache the imported config
+        # Cache the imported config using both the resolved path and normalized path
+        # for consistency in lookup
         import_context.config_cache[resolved_path] = imported_config
+        import_context.config_cache[normalized_path] = imported_config
 
         # Recursively process imports in the imported config
         if imported_config.imports:
@@ -682,7 +1166,7 @@ def _resolve_and_load_import(
         return imported_config
 
     finally:
-        # Remove from import stack
+        # Remove from import stack (use the original path, not normalized)
         import_context.import_stack.pop()
 
 
@@ -722,13 +1206,19 @@ def _load_config_with_imports(
 
     log_debug("Loading config with imports", path=resolved_path)
 
-    # Check if config is already in cache
+    # Normalize the path for consistent tracking
+    normalized_path = _normalize_uri(resolved_path)
+
+    # Check if config is already in cache (check both original and normalized)
     if resolved_path in import_context.config_cache:
         log_debug("Using cached config", path=resolved_path)
         return import_context.config_cache[resolved_path]
+    if normalized_path in import_context.config_cache:
+        log_debug("Using cached config (via normalized path)", path=resolved_path)
+        return import_context.config_cache[normalized_path]
 
-    # Add to visited files
-    import_context.visited_files.add(resolved_path)
+    # Add to visited files (use normalized for remote URIs, original for local)
+    import_context.visited_files.add(normalized_path)
     import_context.import_stack.append(resolved_path)
 
     try:
@@ -772,27 +1262,104 @@ def _load_config_with_imports(
         try:
             config = Config.model_validate(interpolated)
         except Exception as exc:
+            log_debug("Validation failed interpolated keys", keys=list(interpolated.keys()))
+            if 'views' in interpolated:
+                log_debug("views value", views=interpolated['views'])
+            else:
+                log_debug("views missing from interpolated dict")
             raise ConfigError(f"Configuration validation failed: {exc}") from exc
 
-        # Cache the base config
+        # Cache the base config using both original and normalized paths
         import_context.config_cache[resolved_path] = config
+        import_context.config_cache[normalized_path] = config
 
         # Process imports
         if config.imports:
-            log_debug("Processing imports", import_count=len(config.imports))
-            for import_path in config.imports:
-                imported_config = _resolve_and_load_import(
-                    import_path=import_path,
+            # Handle both list and SelectiveImports formats
+            if isinstance(config.imports, list):
+                import_count = len(config.imports)
+            else:
+                # SelectiveImports - count total imports across all sections
+                import_count = sum(
+                    len(field_value) if field_value else 0
+                    for field_value in config.imports
+                    if field_value is not None
+                )
+            log_debug("Processing imports", import_count=import_count)
+
+            # Normalize imports to handle both simple list and SelectiveImports formats
+            normalized_imports = _normalize_imports_for_processing(
+                config.imports,
+                base_path=resolved_path,
+                filesystem=filesystem,
+            )
+
+            # Group imports by section for selective merging
+            global_imports = []
+            section_imports = {}
+
+            for path, override, section in normalized_imports:
+                if section is None:
+                    # Global import
+                    global_imports.append((path, override))
+                else:
+                    # Section-specific import
+                    if section not in section_imports:
+                        section_imports[section] = []
+                    section_imports[section].append((path, override))
+
+            # Process global imports first (backward compatible behavior)
+            for import_path, override in global_imports:
+                # Expand glob patterns
+                expanded_paths = _expand_glob_patterns(
+                    [import_path],
                     base_path=resolved_path,
                     filesystem=filesystem,
-                    resolve_paths=resolve_paths,
-                    load_sql_files=load_sql_files,
-                    sql_file_loader=sql_file_loader,
-                    import_context=import_context,
                 )
-                # Merge the imported config into the base config
-                # Main config should override imported config, so import goes first
-                config = _deep_merge_config(imported_config, config)
+
+                for expanded_path in expanded_paths:
+                    imported_config = _resolve_and_load_import(
+                        import_path=expanded_path,
+                        base_path=resolved_path,
+                        filesystem=filesystem,
+                        resolve_paths=resolve_paths,
+                        load_sql_files=load_sql_files,
+                        sql_file_loader=sql_file_loader,
+                        import_context=import_context,
+                    )
+                    # Merge the imported config into the base config
+                    # When override=True: imported values override main config (normal behavior)
+                    # When override=False: main config values are preserved, only missing fields filled
+                    config = _merge_config_with_override(config, imported_config, override_mode=override)
+
+            # Process section-specific imports
+            for section_name, imports_list in section_imports.items():
+                for import_path, override in imports_list:
+                    # Expand glob patterns
+                    expanded_paths = _expand_glob_patterns(
+                        [import_path],
+                        base_path=resolved_path,
+                        filesystem=filesystem,
+                    )
+
+                    for expanded_path in expanded_paths:
+                        imported_config = _resolve_and_load_import(
+                            import_path=expanded_path,
+                            base_path=resolved_path,
+                            filesystem=filesystem,
+                            resolve_paths=resolve_paths,
+                            load_sql_files=load_sql_files,
+                            sql_file_loader=sql_file_loader,
+                            import_context=import_context,
+                        )
+
+                        # Merge only the specified section
+                        config = _merge_section_specific(
+                            imported_config,
+                            config,
+                            section_name,
+                            override_mode=override,
+                        )
 
         # Validate merged config
         _validate_unique_names(config, import_context)

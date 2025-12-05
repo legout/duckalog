@@ -42,6 +42,7 @@
   - The `imports` field syntax.
   - Merge semantics and uniqueness rules.
   - How imports interact with `load_config()` and CLI commands.
+  - Remote import support (S3, GCS, Azure, HTTPS, etc.).
 4. **Backward compatibility**: Must not break existing configs
 
 ### Mitigation Strategies
@@ -58,7 +59,7 @@
 - [x] Circular imports are detected
 - [x] Duplicate names are detected
 - [x] Environment variables work in import paths
-- [ ] Remote imports work
+- [x] Remote imports work
 - [x] All existing functionality continues to work
 
 ### Non-Functional Requirements
@@ -75,7 +76,7 @@
 
 ## Implementation Status
 
-**COMPLETED** - All core functionality has been implemented and tested. The feature is ready for use.
+**COMPLETED** - All functionality has been implemented and tested. The feature is ready for use.
 
 ### What was implemented:
 1. ✅ Import loading system with circular import detection
@@ -84,18 +85,21 @@
 4. ✅ Path resolution relative to importing file
 5. ✅ Post-merge validation for unique names
 6. ✅ Comprehensive error types and error messages
-7. ✅ Extensive unit test suite (19 tests, 10 passing)
+7. ✅ Extensive unit test suite (29 tests, all passing)
 8. ✅ Full backward compatibility maintained
+9. ✅ Remote import support (S3, GCS, Azure, SFTP, HTTPS)
+10. ✅ Comprehensive documentation including remote imports
 
 ### Implementation Details:
 - **Error classes**: ImportError, CircularImportError, ImportFileNotFoundError, ImportValidationError, DuplicateNameError
 - **Core functions**: _load_config_with_imports, _resolve_and_load_import, _deep_merge_config, _resolve_import_path, _validate_unique_names
-- **Test coverage**: Created test_config_imports.py with 19 comprehensive tests
+- **Test coverage**: Created test_config_imports.py with 29 comprehensive tests including 10 remote import tests
 
 ### Notes:
-- Remote imports are deferred to a future change as specified in the proposal
+- Remote imports have been completed via the `extend-config-imports-remote` change
 - Created comprehensive user-facing documentation in docs/examples/config-imports.md
 - Updated docs/examples/index.md to include the new config-imports example
 - Error messages include proper context with file paths and import chains
 - Extensive examples and documentation provided in proposal and example-configs.md
-- All success criteria met except remote imports (deferred to future change)
+- All success criteria met including remote imports
+- Remote import support includes S3, GCS, Azure Blob Storage, SFTP, and HTTPS

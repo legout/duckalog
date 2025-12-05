@@ -207,9 +207,89 @@ This will fail with an error:
 Circular import detected in import chain: file_a.yaml -> file_b.yaml -> file_a.yaml
 ```
 
-## Remote Imports (Future)
+## Remote Imports
 
-Remote imports from URLs like `s3://` or `https://` are planned for a future release. Currently, only local file imports are supported.
+You can import configuration files from remote storage systems such as S3, GCS, Azure Blob Storage, or HTTPS endpoints. This allows you to share common configuration across multiple projects or load configuration from centralized locations.
+
+### Supported URI Schemes
+
+Duckalog supports the following remote URI schemes:
+
+- **S3**: `s3://bucket/path/config.yaml`
+- **Google Cloud Storage**: `gs://bucket/path/config.yaml` or `gcs://bucket/path/config.yaml`
+- **Azure Blob Storage**: `abfs://account@container/path/config.yaml`
+- **SFTP**: `sftp://user@host/path/config.yaml`
+- **HTTPS**: `https://example.com/config.yaml`
+
+### Example: Import from S3
+
+```yaml
+# catalog.yaml
+version: 1
+imports:
+  - s3://my-bucket/shared/base-config.yaml
+  - ./local-config.yaml
+
+duckdb:
+  database: my-project.duckdb
+```
+
+### Example: Import from HTTPS
+
+```yaml
+# catalog.yaml
+version: 1
+imports:
+  - https://raw.githubusercontent.com/company/config-templates/main/base.yaml
+
+duckdb:
+  database: main.duckdb
+```
+
+### Authentication
+
+Remote imports use the same authentication mechanisms as regular remote config loading:
+
+- **S3**: AWS credentials via environment variables, `~/.aws/credentials`, or IAM role
+- **GCS**: Google Cloud credentials via `GOOGLE_APPLICATION_CREDENTIALS` or ADC
+- **Azure**: Azure credentials via environment variables or managed identity
+- **SFTP**: SSH credentials via SSH config or environment variables
+- **HTTPS**: No authentication required for public URLs
+
+For S3, you can use environment variables:
+```bash
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+```
+
+### Environment Variables in Remote Paths
+
+You can use environment variables in remote import paths:
+
+```yaml
+# catalog.yaml
+version: 1
+imports:
+  - https://${env:COMPANY}.s3.amazonaws.com/configs/base.yaml
+
+duckdb:
+  database: main.duckdb
+```
+
+### Error Handling
+
+Remote import failures include clear error messages with the URI and operation:
+
+```
+Failed to load remote config 's3://bucket/config.yaml': NoSuchKey: The specified key does not exist
+```
+
+### Security Notes
+
+- Remote imports follow the same security rules as remote config loading
+- Credentials should be provided via environment variables or secure credential stores
+- For HTTPS URLs, ensure you're using trusted endpoints
+- Consider using signed URLs for temporary access to private resources
 
 ## Best Practices
 
@@ -324,21 +404,55 @@ duckalog build catalog.yaml
 
 ## Troubleshooting
 
+### Debugging Import Issues
+
+Use the `show-imports` command to visualize and debug your import graph:
+
+```bash
+# View the import tree
+duckalog show-imports catalog.yaml
+
+# Show import diagnostics (depth, file counts, duplicates)
+duckalog show-imports catalog.yaml --diagnostics
+
+# Export import graph as JSON for programmatic analysis
+duckalog show-imports catalog.yaml --format json
+
+# Preview the fully merged configuration
+duckalog show-imports catalog.yaml --show-merged
+```
+
+This helps you:
+- **Visualize the import structure** - See which files import which others
+- **Detect circular imports** - Identify problematic import chains
+- **Count total files** - Understand the complexity of your configuration
+- **Find duplicate imports** - Catch redundant file references
+- **Preview merged config** - Verify the final configuration before building
+
 ### File Not Found
 If you see "Imported file not found", check:
 - The path is correct and relative to the importing file
 - The file exists and is readable
 - Environment variables in paths are set correctly
+- Use `duckalog show-imports catalog.yaml` to see the resolved paths
 
 ### Validation Errors
 If you see "Field required" errors:
 - Make sure all imported files have required fields (`version`, `duckdb`, `views`)
 - Add empty lists for sections that don't apply: `views: []`
+- Use `duckalog show-imports catalog.yaml --show-merged` to see the merged config
 
 ### Duplicate Names
 If you see duplicate name errors:
 - Check that view names are unique across all imported files
 - Use schema-qualified names if needed: `schema.view_name`
+- Use `duckalog show-imports catalog.yaml --diagnostics` to identify where duplicates come from
+
+### Circular Imports
+If you see a circular import error:
+- Duckalog will show you the import chain where the cycle occurs
+- Use `duckalog show-imports catalog.yaml` to visualize the structure
+- Refactor your imports to eliminate the cycle (e.g., move common config to a separate file)
 
 ## See Also
 

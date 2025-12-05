@@ -554,3 +554,149 @@ def test_build_catalog_processes_multiple_secrets(tmp_path):
 
     # Verify that database file was created
     assert db_file.exists()
+
+
+def test_cli_show_imports_simple_config():
+    """Test show-imports with a config that has no imports."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("catalog.yaml").write_text(
+            textwrap.dedent(
+                """
+                version: 1
+                duckdb:
+                  database: catalog.duckdb
+                views:
+                  - name: simple_view
+                    sql: "SELECT 1"
+                """
+            )
+        )
+        result = runner.invoke(app, ["show-imports", "catalog.yaml"])
+        assert result.exit_code == 0
+        assert "catalog.yaml" in result.output
+        assert "Total files in import graph: 1" in result.output
+
+
+def test_cli_show_imports_with_nested_imports():
+    """Test show-imports with a config that has nested imports."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        # Create imported config
+        Path("base.yaml").write_text(
+            textwrap.dedent(
+                """
+                version: 1
+                duckdb:
+                  database: catalog.duckdb
+                views:
+                  - name: base_view
+                    sql: "SELECT 1"
+                """
+            )
+        )
+
+        # Create main config that imports base
+        Path("main.yaml").write_text(
+            textwrap.dedent(
+                """
+                version: 1
+                duckdb:
+                  database: catalog.duckdb
+                imports:
+                  - base.yaml
+                views:
+                  - name: main_view
+                    sql: "SELECT 2"
+                """
+            )
+        )
+
+        result = runner.invoke(app, ["show-imports", "main.yaml"])
+        assert result.exit_code == 0
+        assert "main.yaml" in result.output
+        assert "base.yaml" in result.output
+        assert "Total files in import graph: 2" in result.output
+
+
+def test_cli_show_imports_with_diagnostics():
+    """Test show-imports with diagnostic information."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("catalog.yaml").write_text(
+            textwrap.dedent(
+                """
+                version: 1
+                duckdb:
+                  database: catalog.duckdb
+                views:
+                  - name: simple_view
+                    sql: "SELECT 1"
+                """
+            )
+        )
+        result = runner.invoke(app, ["show-imports", "catalog.yaml", "--diagnostics"])
+        assert result.exit_code == 0
+        assert "catalog.yaml" in result.output
+        assert "Import Diagnostics:" in result.output
+        assert "Total files: 1" in result.output
+        assert "Maximum import depth: 0" in result.output
+
+
+def test_cli_show_imports_json_format():
+    """Test show-imports with JSON output format."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("catalog.yaml").write_text(
+            textwrap.dedent(
+                """
+                version: 1
+                duckdb:
+                  database: catalog.duckdb
+                views:
+                  - name: simple_view
+                    sql: "SELECT 1"
+                """
+            )
+        )
+        result = runner.invoke(app, ["show-imports", "catalog.yaml", "--format", "json"])
+        assert result.exit_code == 0
+        # Check that output is valid JSON
+        import json
+
+        output_json = json.loads(result.output)
+        assert "import_chain" in output_json
+        assert "import_graph" in output_json
+        assert "total_files" in output_json
+        assert output_json["total_files"] == 1
+
+
+def test_cli_show_imports_with_merged_config():
+    """Test show-imports with --show-merged flag."""
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("catalog.yaml").write_text(
+            textwrap.dedent(
+                """
+                version: 1
+                duckdb:
+                  database: catalog.duckdb
+                views:
+                  - name: simple_view
+                    sql: "SELECT 1"
+                """
+            )
+        )
+        result = runner.invoke(app, ["show-imports", "catalog.yaml", "--show-merged"])
+        assert result.exit_code == 0
+        assert "catalog.yaml" in result.output
+        assert "Merged Configuration:" in result.output
+        assert "simple_view" in result.output
+
+
+def test_cli_show_imports_nonexistent_file():
+    """Test show-imports with a nonexistent file."""
+    runner = CliRunner()
+    result = runner.invoke(app, ["show-imports", "nonexistent.yaml"])
+    assert result.exit_code == 2
+    assert "Config file not found" in result.output

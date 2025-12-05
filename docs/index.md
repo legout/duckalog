@@ -285,6 +285,18 @@ duckalog generate-sql catalog.yaml --output create_views.sql
 
 # Validate configuration syntax
 duckalog validate catalog.yaml
+
+# Show import graph for a configuration with imports
+duckalog show-imports catalog.yaml
+
+# Show import graph with diagnostic information
+duckalog show-imports catalog.yaml --diagnostics
+
+# Export import graph as JSON
+duckalog show-imports catalog.yaml --format json
+
+# Preview merged configuration
+duckalog show-imports catalog.yaml --show-merged
 ```
 
 ### Python API
