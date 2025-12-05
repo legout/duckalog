@@ -1,6 +1,8 @@
 # Parquet Basics - Duckalog Configuration
 # This is the simplest possible catalog with a single Parquet file source
 
+version: 1
+
 duckdb:
   database: catalog.duckdb
 

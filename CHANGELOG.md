@@ -1,4 +1,33 @@
 # Changelog
+## [UNRELEASED] - 0.4.0
+
+### Added
+- Major documentation refactor implementing Diátaxis framework
+- Complete tutorial system with step-by-step learning paths
+- Comprehensive how-to guides for common workflows  
+- Enhanced CLI and API reference documentation
+- New explanation section: Philosophy, Performance, Limitations, and Comparison guides
+- Dashboard basics tutorial with hands-on UI workflow instructions
+- Performance tuning and environment management guides
+- Migration and troubleshooting documentation
+- Updated examples with validated schema compliance
+
+### Changed
+- Reorganized documentation following Diátaxis principles (Tutorials, How-to, Reference, Explanation)
+- Updated navigation structure for improved discoverability
+- Fixed CLI command documentation (version command syntax)
+- Corrected example catalog configurations to match schema requirements
+- Enhanced code examples and validated all CLI commands
+
+### Deprecated
+- Legacy guides section (preserved for backward compatibility)
+- Mixed-content documentation patterns
+
+### Fixed
+- Fixed missing version field in example catalog files
+- Corrected CSV source configuration examples
+- Updated documentation build process to eliminate warnings
+
 ## [2025-12-03] - 0.3.2
 
 ### Added

@@ -2,6 +2,189 @@
 
 This section documents the core API functions and classes in Duckalog, with a focus on path resolution features.
 
+## Connection Helper API
+
+### connect_to_catalog()
+
+Connect to an existing DuckDB database created by Duckalog.
+
+```python
+from duckalog import connect_to_catalog
+
+# Connect to an existing catalog
+conn = connect_to_catalog("catalog.yaml")
+
+# Use the connection for queries
+result = conn.execute("SELECT * FROM some_table").fetchall()
+conn.close()
+
+# With path override
+conn = connect_to_catalog("catalog.yaml", database_path="analytics.db")
+
+# With read-only mode
+conn = connect_to_catalog("catalog.yaml", read_only=True)
+```
+
+**Parameters:**
+- `config_path` (str): Path to YAML/JSON configuration file for an existing catalog
+- `database_path` (str, optional): Database path override. If not provided, uses path from configuration
+- `read_only` (bool, optional): Open connection in read-only mode for safety. Default: False
+
+**Returns:**
+- `duckdb.DuckDBPyConnection`: Active DuckDB connection object ready for query execution
+
+**Raises:**
+- `ConfigError`: If configuration file is invalid
+- `FileNotFoundError`: If specified database file doesn't exist
+- `duckdb.Error`: If connection or queries fail
+
+### connect_to_catalog_cm()
+
+Context manager version of `connect_to_catalog()` for automatic connection cleanup.
+
+```python
+from duckalog import connect_to_catalog_cm
+
+with connect_to_catalog_cm("catalog.yaml") as conn:
+    data = conn.execute("SELECT * FROM users").fetchall()
+    print(f"Found {len(data)} records")
+# Connection is automatically closed here
+```
+
+**Parameters:**
+- `config_path` (str): Path to YAML/JSON configuration file for an existing catalog
+- `database_path` (str, optional): Database path override
+- `read_only` (bool, optional): Open connection in read-only mode for safety. Default: False
+
+**Yields:**
+- `duckdb.DuckDBPyConnection`: Active DuckDB connection that will be closed automatically
+
+**Raises:**
+- `ConfigError`: If configuration file is invalid
+- `FileNotFoundError`: If specified database file doesn't exist
+- `duckdb.Error`: If connection or queries fail
+
+### connect_and_build_catalog()
+
+Build a catalog and create a DuckDB connection in one operation.
+
+```python
+from duckalog import connect_and_build_catalog
+
+# Build catalog and start querying immediately
+conn = connect_and_build_catalog("catalog.yaml")
+data = conn.execute("SELECT * FROM important_table").fetchall()
+print(f"Found {len(data)} records")
+conn.close()
+
+# Validate only (dry run)
+sql = connect_and_build_catalog("catalog.yaml", dry_run=True)
+print("SQL generation completed, no database created")
+
+# Custom database path
+conn = connect_and_build_catalog("catalog.yaml", database_path="analytics.db")
+print("Connected to custom database: analytics.db")
+```
+
+**Parameters:**
+- `config_path` (str): Path to the YAML/JSON configuration file
+- `database_path` (str, optional): Database path override
+- `dry_run` (bool, optional): If True, only validates configuration and returns SQL. Default: False
+- `verbose` (bool, optional): Enable verbose logging during build process. Default: False
+- `read_only` (bool, optional): Open the resulting connection in read-only mode. Default: False
+- `**kwargs`: Additional keyword arguments
+
+**Returns:**
+- `duckdb.DuckDBPyConnection | str | None`: Connection object for immediate use, or SQL string when `dry_run=True`
+
+**Raises:**
+- `ConfigError`: If the configuration file is invalid
+- `EngineError`: If catalog building or connection fails
+- `FileNotFoundError`: If the resulting database file doesn't exist (after build)
+
+## SQL File Loading API
+
+### SQLFileLoader
+
+Loads SQL content from external files and processes templates.
+
+```python
+from duckalog import SQLFileLoader
+
+loader = SQLFileLoader()
+
+# Load raw SQL content
+sql = loader.load_sql_file(
+    file_path="./queries/users.sql",
+    config_file_path="catalog.yaml"
+)
+
+# Load SQL with template processing
+sql = loader.load_sql_file(
+    file_path="./queries/filtered_users.sql",
+    config_file_path="catalog.yaml",
+    variables={"min_date": "2023-01-01", "status": "active"},
+    as_template=True
+)
+```
+
+#### Methods
+
+##### load_sql_file()
+
+Load SQL content from a file and optionally process as a template.
+
+**Parameters:**
+- `file_path` (str): Path to SQL file (can be relative or absolute)
+- `config_file_path` (str): Path to config file for resolving relative paths
+- `variables` (dict, optional): Dictionary of variables for template substitution. Default: None
+- `as_template` (bool, optional): Whether to process file content as a template. Default: False
+- `filesystem` (object, optional): Optional filesystem object for file I/O operations
+
+**Returns:**
+- `str`: The loaded SQL content (processed if template, raw otherwise)
+
+**Raises:**
+- `SQLFileError`: If file cannot be loaded or processed
+
+#### Template Processing
+
+SQLFileLoader supports simple template substitution using `{variable}` syntax:
+
+```sql
+-- filtered_users.sql
+SELECT * FROM users 
+WHERE created_at >= '{min_date}'
+  AND status = '{status}'
+  AND region = '{region}'
+```
+
+```python
+loader = SQLFileLoader()
+sql = loader.load_sql_file(
+    file_path="./filtered_users.sql",
+    config_file_path="catalog.yaml",
+    variables={
+        "min_date": "2023-01-01",
+        "status": "active", 
+        "region": "US"
+    },
+    as_template=True
+)
+
+# Result: SELECT * FROM users WHERE created_at >= '2023-01-01' AND status = 'active' AND region = 'US'
+```
+
+#### Path Resolution
+
+SQLFileLoader automatically resolves relative paths relative to the configuration file directory:
+
+```python
+# If catalog.yaml is in /project/config/
+# and filtered_users.sql is specified as ./queries/filtered_users.sql
+# The loader will look for: /project/config/queries/filtered_users.sql
+```
+
 ## Core Configuration API
 
 ### load_config()
