@@ -17,3 +17,9 @@
 - [x] 3.2 Ensure examples and getting-started guides that reference `duckalog query` match the implemented behavior
 - [x] 3.3 Add brief usage notes to `README.md` or relevant docs pages for quick reference
 
+## 4. CLI Argument Fix
+- [x] 4.1 Fix CLI argument ambiguity by changing from positional catalog argument to --catalog flag
+- [x] 4.2 Update all test cases to use new --catalog flag syntax
+- [x] 4.3 Update documentation examples to show flag-based usage
+- [x] 4.4 Update CLI specification to reflect new argument structure
+
