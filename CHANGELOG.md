@@ -1,5 +1,17 @@
 # Changelog
-## [UNRELEASED] - 0.4.0
+## [2025-12-06] - 0.4.1
+
+### Added
+- Feat: add cli query command for ad-hoc sql execution (7214308)
+- Archive outdated api docstrings change and implement config imports feature (9913995)
+
+### Fixed
+- Fix: resolve cli query command argument ambiguity (8900e11)
+- Fix: resolve cli query command argument ambiguity (14a9124)
+
+### Changed
+- Docs: update api docstrings for mkdocstrings-only reference (b78f8d2)
+
 
 ### Added
 - Major documentation refactor implementing Diátaxis framework
