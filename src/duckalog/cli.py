@@ -1184,13 +1184,15 @@ def _fail(message: str, code: int) -> None:
 
 @app.command(help="Execute SQL queries against a DuckDB catalog.")
 def query(
-    catalog_path: Optional[str] = typer.Argument(
-        None,
-        help="Path to DuckDB catalog file (optional, defaults to catalog.duckdb in current directory).",
-    ),
     sql: str = typer.Argument(
         ...,
         help="SQL query to execute against the catalog.",
+    ),
+    catalog: Optional[str] = typer.Option(
+        None,
+        "--catalog",
+        "-c",
+        help="Path to DuckDB catalog file (optional, defaults to catalog.duckdb in current directory).",
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose logging output."
@@ -1206,15 +1208,16 @@ def query(
         duckalog query "SELECT COUNT(*) FROM users"
 
         # Query with explicit catalog path
-        duckalog query catalog.duckdb "SELECT * FROM active_users LIMIT 5"
+        duckalog query "SELECT * FROM users" --catalog catalog.duckdb
+        duckalog query "SELECT * FROM users" -c analytics.duckdb
 
         # Query a remote catalog (if filesystem options are configured)
-        duckalog query s3://my-bucket/catalog.duckdb "SELECT name, email FROM users WHERE active = true"
+        duckalog query "SELECT name, email FROM users WHERE active = true" --catalog s3://my-bucket/catalog.duckdb
 
     Args:
-        catalog_path: Optional path to DuckDB catalog file. If omitted, looks for
-            'catalog.duckdb' in the current directory.
         sql: SQL query string to execute.
+        catalog: Optional path to DuckDB catalog file. If omitted, looks for
+            'catalog.duckdb' in the current directory.
         verbose: If True, enable verbose logging.
     """
     import duckdb
@@ -1223,11 +1226,11 @@ def query(
     _configure_logging(verbose)
 
     # Determine catalog path
-    if not catalog_path:
+    if not catalog:
         # Try to find a default catalog in the current directory
         default_path = Path("catalog.duckdb")
         if default_path.exists():
-            catalog_path = str(default_path)
+            catalog = str(default_path)
         else:
             _fail(
                 "No catalog file specified and catalog.duckdb not found in current directory. "
@@ -1236,19 +1239,19 @@ def query(
             )
     else:
         # Validate that the provided catalog path exists
-        catalog_file = Path(catalog_path)
+        catalog_file = Path(catalog)
         if not catalog_file.exists():
-            _fail(f"Catalog file not found: {catalog_path}", 2)
+            _fail(f"Catalog file not found: {catalog}", 2)
 
     log_info(
         "CLI query invoked",
-        catalog_path=catalog_path,
+        catalog_path=catalog,
         sql=sql[:100] + "..." if len(sql) > 100 else sql,
     )
 
     try:
         # Connect to the DuckDB catalog
-        conn = duckdb.connect(str(catalog_path), read_only=True)
+        conn = duckdb.connect(str(catalog), read_only=True)
 
         try:
             # Execute the query

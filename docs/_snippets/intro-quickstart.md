@@ -44,7 +44,11 @@ duckalog query "SELECT COUNT(*) FROM users"
 duckalog query "SELECT * FROM users LIMIT 5"
 
 # Use explicit catalog path
-duckalog query catalog.duckdb "SELECT name, email FROM users WHERE active = true"
+duckalog query "SELECT * FROM users LIMIT 5" --catalog catalog.duckdb
+duckalog query "SELECT * FROM users LIMIT 5" -c analytics.duckdb
+
+# Query with specific conditions
+duckalog query "SELECT name, email FROM users WHERE active = true" --catalog analytics.duckdb
 ```
 
 For comprehensive documentation, tutorials, and examples, visit the **[Duckalog Documentation](https://legout.github.io/duckalog/)**.

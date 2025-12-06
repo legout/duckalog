@@ -104,25 +104,25 @@ The Duckalog CLI MUST provide commands or options to inspect configuration impor
 The CLI SHALL expose a `query` command for executing SQL queries against DuckDB catalogs.
 
 #### Scenario: CLI query with explicit catalog path
-- **WHEN** `duckalog query catalog.duckdb "SELECT COUNT(*) FROM users"` is executed
+- **WHEN** `duckalog query "SELECT COUNT(*) FROM users" --catalog catalog.duckdb` is executed
 - **THEN** the command opens the specified catalog file in read-only mode
 - **AND** executes the provided SQL query against the catalog
 - **AND** displays results in a tabular format on stdout
 - **AND** returns exit code 0 on successful execution
 
 #### Scenario: CLI query with catalog discovery
-- **WHEN** `duckalog query "SELECT COUNT(*) FROM users"` is executed without catalog path
+- **WHEN** `duckalog query "SELECT COUNT(*) FROM users"` is executed without catalog flag
 - **THEN** the command looks for `catalog.duckdb` in the current directory
 - **AND** if found, executes the query against that catalog
 - **AND** if not found, exits with error code 2 and clear error message
 
 #### Scenario: CLI query with missing catalog
-- **WHEN** `duckalog query nonexistent.duckdb "SELECT 1"` is executed
+- **WHEN** `duckalog query "SELECT 1" --catalog missing.duckdb` is executed
 - **THEN** the command exits with error code 2
 - **AND** prints a clear error message indicating the catalog file was not found
 
 #### Scenario: CLI query with invalid SQL
-- **WHEN** `duckalog query catalog.duckdb "SELECT * FROM nonexistent_table"` is executed
+- **WHEN** `duckalog query "SELECT * FROM nonexistent_table" --catalog catalog.duckdb` is executed
 - **THEN** the command exits with error code 3
 - **AND** prints a clear SQL error message from DuckDB
 

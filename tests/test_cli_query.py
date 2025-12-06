@@ -32,15 +32,15 @@ class TestCLIQuery:
         """Test querying with an explicit catalog path."""
         with patch("duckalog.cli.typer.echo") as mock_echo:
             query(
-                catalog_path=str(self.test_catalog),
                 sql="SELECT * FROM users ORDER BY id",
+                catalog=str(self.test_catalog),
                 verbose=False,
             )
 
             # Verify that output was printed
             mock_echo.assert_called()
 
-            # Check that the table formatting was called
+            # Check that table formatting was called
             calls = [call.args[0] for call in mock_echo.call_args_list]
             # Should contain table borders and data
             output_text = "".join(calls)
@@ -50,7 +50,7 @@ class TestCLIQuery:
 
     def test_query_with_implicit_catalog_discovery(self):
         """Test querying with implicit catalog discovery."""
-        # Change to the temp directory and create catalog.duckdb
+        # Change to temp directory and create catalog.duckdb
         original_cwd = Path.cwd()
         default_catalog = self.temp_dir / "catalog.duckdb"
 
@@ -67,7 +67,7 @@ class TestCLIQuery:
 
             with patch("duckalog.cli.typer.echo") as mock_echo:
                 query(
-                    catalog_path=None,  # Should discover catalog.duckdb
+                    catalog=None,  # Should discover catalog.duckdb
                     sql="SELECT COUNT(*) as count FROM users",
                     verbose=False,
                 )
@@ -86,7 +86,7 @@ class TestCLIQuery:
 
         with patch("duckalog.cli.typer.echo") as mock_echo:
             with pytest.raises(typer.Exit) as exc_info:
-                query(catalog_path=non_existent_path, sql="SELECT 1", verbose=False)
+                query(catalog=non_existent_path, sql="SELECT 1", verbose=False)
 
             assert exc_info.value.exit_code == 2
             mock_echo.assert_called_with(
@@ -104,7 +104,7 @@ class TestCLIQuery:
 
             with patch("duckalog.cli.typer.echo") as mock_echo:
                 with pytest.raises(typer.Exit) as exc_info:
-                    query(catalog_path=None, sql="SELECT 1", verbose=False)
+                    query(catalog=None, sql="SELECT 1", verbose=False)
 
                 assert exc_info.value.exit_code == 2
                 call_args = mock_echo.call_args[0][0]
@@ -119,7 +119,7 @@ class TestCLIQuery:
         with patch("duckalog.cli.typer.echo") as mock_echo:
             with pytest.raises(typer.Exit) as exc_info:
                 query(
-                    catalog_path=str(self.test_catalog),
+                    catalog=str(self.test_catalog),
                     sql="SELECT * FROM non_existent_table",
                     verbose=False,
                 )
@@ -134,7 +134,7 @@ class TestCLIQuery:
         """Test querying with no results returned."""
         with patch("duckalog.cli.typer.echo") as mock_echo:
             query(
-                catalog_path=str(self.test_catalog),
+                catalog=str(self.test_catalog),
                 sql="SELECT * FROM users WHERE id = 999",
                 verbose=False,
             )
@@ -145,7 +145,7 @@ class TestCLIQuery:
             assert "No rows returned" in output_text
 
     def test_display_table_function(self):
-        """Test the table display function directly."""
+        """Test table display function directly."""
         columns = ["id", "name", "email"]
         rows = [(1, "Alice", "alice@example.com"), (2, "Bob", "bob@example.com")]
 
@@ -158,7 +158,6 @@ class TestCLIQuery:
             # Check output contains expected elements
             calls = [call.args[0] for call in mock_echo.call_args_list]
             output_text = "".join(calls)
-
             assert "Alice" in output_text
             assert "Bob" in output_text
             assert "+" in output_text  # Table borders
@@ -177,7 +176,7 @@ class TestCLIQuery:
         """Test verbose logging in query command."""
         with patch("duckalog.cli._configure_logging") as mock_logging:
             with patch("duckalog.cli.typer.echo"):
-                query(catalog_path=str(self.test_catalog), sql="SELECT 1", verbose=True)
+                query(catalog=str(self.test_catalog), sql="SELECT 1", verbose=True)
 
                 mock_logging.assert_called_once_with(True)
 
@@ -189,7 +188,7 @@ class TestCLIQuery:
 
         with patch("duckalog.cli.typer.echo") as mock_echo:
             with pytest.raises(typer.Exit) as exc_info:
-                query(catalog_path=str(invalid_db), sql="SELECT 1", verbose=False)
+                query(catalog=str(invalid_db), sql="SELECT 1", verbose=False)
 
             assert exc_info.value.exit_code == 3
             mock_echo.assert_called()
@@ -219,7 +218,7 @@ class TestCLIQuery:
 
         with patch("duckalog.cli.typer.echo") as mock_echo:
             query(
-                catalog_path=str(self.test_catalog),
+                catalog=str(self.test_catalog),
                 sql="SELECT * FROM mixed_types ORDER BY id",
                 verbose=False,
             )

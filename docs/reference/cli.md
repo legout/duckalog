@@ -257,7 +257,44 @@ Execute SQL queries against a DuckDB catalog and display results in tabular form
 
 #### Syntax
 ```bash
-duckalog query [OPTIONS] [CATALOG_PATH] SQL
+duckalog query [OPTIONS] SQL
+```
+
+#### Arguments
+```bash
+SQL
+    SQL query to execute against catalog (required)
+```
+
+#### Options
+```bash
+--catalog, -c TEXT
+    Path to DuckDB catalog file (optional, defaults to catalog.duckdb in current directory)
+    
+--verbose, -v
+    Enable verbose logging
+```
+
+#### Examples
+```bash
+# Query with implicit catalog discovery
+duckalog query "SELECT COUNT(*) FROM users"
+
+# Query with explicit catalog path
+duckalog query "SELECT * FROM active_users LIMIT 5" --catalog catalog.duckdb
+duckalog query "SELECT * FROM active_users LIMIT 5" -c analytics.duckdb
+
+# Query with specific conditions
+duckalog query "SELECT name, email FROM users WHERE active = true" --catalog analytics.duckdb
+
+# Aggregate queries
+duckalog query "SELECT status, COUNT(*) FROM orders GROUP BY status"
+
+# Complex joins
+duckalog query "SELECT u.name, o.amount FROM users u JOIN orders o ON u.id = o.user_id WHERE o.amount > 100" --catalog catalog.duckdb
+
+# Remote catalog (with filesystem options)
+duckalog query "SELECT * FROM products WHERE category = 'electronics'" --catalog s3://my-bucket/catalog.duckdb --fs-key AKIA... --fs-secret wJalr...
 ```
 
 #### Arguments
