@@ -760,6 +760,7 @@ ui = [
     { name = "openpyxl" },
     { name = "pandas" },
     { name = "pyarrow" },
+    { name = "python-multipart" },
     { name = "starhtml" },
     { name = "starlette" },
     { name = "starui" },
@@ -768,6 +769,7 @@ ui = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "faker" },
     { name = "httpx" },
     { name = "ipython" },
     { name = "marimo" },
@@ -775,7 +777,9 @@ dev = [
     { name = "mkdocs-material" },
     { name = "mkdocstrings", extra = ["python"] },
     { name = "mypy" },
+    { name = "pandas" },
     { name = "polars" },
+    { name = "pyarrow" },
     { name = "pytest" },
     { name = "ruff" },
     { name = "types-pyyaml" },
@@ -795,6 +799,7 @@ requires-dist = [
     { name = "pandas", marker = "extra == 'ui'", specifier = ">=1.5.0" },
     { name = "pyarrow", marker = "extra == 'ui'", specifier = ">=10.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "python-multipart", marker = "extra == 'ui'", specifier = ">=0.0.20" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "requests", marker = "extra == 'remote'", specifier = ">=2.28.0" },
     { name = "starhtml", marker = "extra == 'ui'", specifier = ">=0.1.0" },
@@ -807,6 +812,7 @@ provides-extras = ["ui", "remote", "remote-s3", "remote-gcs", "remote-azure", "r
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "faker", specifier = ">=38.2.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "ipython", specifier = ">=8.18.1" },
     { name = "marimo", specifier = ">=0.18.0" },
@@ -814,7 +820,9 @@ dev = [
     { name = "mkdocs-material", specifier = ">=9.0.0" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=0.24.0" },
     { name = "mypy", specifier = ">=1.18.2" },
+    { name = "pandas", specifier = ">=2.3.3" },
     { name = "polars", specifier = ">=1.35.2" },
+    { name = "pyarrow", specifier = ">=22.0.0" },
     { name = "pytest", specifier = ">=7.0.0" },
     { name = "ruff", specifier = ">=0.14.5" },
     { name = "types-pyyaml", specifier = ">=6.0.0" },
@@ -862,6 +870,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cc/28/c14e053b6762b1044f34a13aab6859bbf40456d37d23aa286ac24cfd9a5d/executing-2.2.1.tar.gz", hash = "sha256:3632cc370565f6648cc328b32435bd120a1e4ebb20c77e3fdde9a13cd1e533c4", size = 1129488, upload-time = "2025-09-01T09:48:10.866Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/ea/53f2148663b321f21b5a606bd5f191517cf40b7072c0497d3c92c4a13b1e/executing-2.2.1-py2.py3-none-any.whl", hash = "sha256:760643d3452b4d777d295bb167ccc74c64a81df23fb5e08eff250c425a4b2017", size = 28317, upload-time = "2025-09-01T09:48:08.5Z" },
+]
+
+[[package]]
+name = "faker"
+version = "38.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tzdata" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/64/27/022d4dbd4c20567b4c294f79a133cc2f05240ea61e0d515ead18c995c249/faker-38.2.0.tar.gz", hash = "sha256:20672803db9c7cb97f9b56c18c54b915b6f1d8991f63d1d673642dc43f5ce7ab", size = 1941469, upload-time = "2025-11-19T16:37:31.892Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/93/00c94d45f55c336434a15f98d906387e87ce28f9918e4444829a8fda432d/faker-38.2.0-py3-none-any.whl", hash = "sha256:35fe4a0a79dee0dc4103a6083ee9224941e7d3594811a50e3969e547b0d2ee65", size = 1980505, upload-time = "2025-11-19T16:37:30.208Z" },
 ]
 
 [[package]]
@@ -2541,6 +2561,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f0/26/19cadc79a718c5edbec86fd4919a6b6d3f681039a2f6d66d14be94e75fb9/python_dotenv-1.2.1.tar.gz", hash = "sha256:42667e897e16ab0d66954af0e60a9caa94f0fd4ecf3aaf6d2d260eec1aa36ad6", size = 44221, upload-time = "2025-10-26T15:12:10.434Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/14/1b/a298b06749107c305e1fe0f814c6c74aea7b2f1e10989cb30f544a1b3253/python_dotenv-1.2.1-py3-none-any.whl", hash = "sha256:b81ee9561e9ca4004139c6cbba3a238c32b03e4894671e181b671e8cb8425d61", size = 21230, upload-time = "2025-10-26T15:12:09.109Z" },
+]
+
+[[package]]
+name = "python-multipart"
+version = "0.0.20"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/87/f44d7c9f274c7ee665a29b885ec97089ec5dc034c7f3fafa03da9e39a09e/python_multipart-0.0.20.tar.gz", hash = "sha256:8dd0cab45b8e23064ae09147625994d090fa46f5b0d1e13af944c331a7fa9d13", size = 37158, upload-time = "2024-12-16T19:45:46.972Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/45/58/38b5afbc1a800eeea951b9285d3912613f2603bdf897a4ab0f4bd7f405fc/python_multipart-0.0.20-py3-none-any.whl", hash = "sha256:8a62d3a8335e06589fe01f2a3e178cdcc632f3fbe0d492ad9ee0ec35aab1f104", size = 24546, upload-time = "2024-12-16T19:45:44.423Z" },
 ]
 
 [[package]]

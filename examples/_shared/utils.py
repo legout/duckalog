@@ -9,14 +9,10 @@ import duckdb
 def check_duckalog_installed() -> bool:
     """Check if duckalog is installed and available."""
     try:
-        result = subprocess.run(
-            [sys.executable, "-m", "duckalog", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        return result.returncode == 0
-    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        import duckalog
+
+        return True
+    except ImportError:
         return False
 
 

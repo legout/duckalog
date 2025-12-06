@@ -8,13 +8,39 @@ from starlette.responses import HTMLResponse
 
 from .state import DashboardContext, QueryResult, summarize_config
 
-
 # --- Minimal starhtml/starui compatibility -------------------------------------
 
 try:  # pragma: no cover - import-time fallback
     import starhtml as sh
     import starui as ui
+
+    sh.h1 = sh.H1
+    sh.h2 = sh.H2
+    sh.h3 = sh.H3
+    sh.p = sh.P
+    sh.div = sh.Div
+    sh.ul = sh.Ul
+    sh.li = sh.Li
+    sh.a = sh.A
+    sh.pre = sh.Pre
+    sh.br = sh.Br
+    sh.table = sh.Table
+    sh.thead = sh.Thead
+    sh.tbody = sh.Tbody
+    sh.tr = sh.Tr
+    sh.th = sh.Th
+    sh.td = sh.Td
+    sh.form = sh.Form
+    sh.input = sh.Input
+    sh.textarea = sh.Textarea
+    sh.button = sh.Button
+    sh.head = sh.Head
+    sh.title = sh.Title
+    sh.html = sh.Html
+    sh.body = sh.Body
+
 except Exception:  # pragma: no cover - allow running without deps installed
+
     class _Elt:
         def __init__(self, tag: str, *children, **attrs):
             self.tag = tag
@@ -22,7 +48,11 @@ except Exception:  # pragma: no cover - allow running without deps installed
             self.attrs = attrs
 
         def __str__(self):
-            attr_str = " ".join(f'{k.replace("_", "-")}="{v}"' for k, v in self.attrs.items() if v is not None)
+            attr_str = " ".join(
+                f'{k.replace("_", "-")}="{v}"'
+                for k, v in self.attrs.items()
+                if v is not None
+            )
             inner = "".join(str(c) for c in self.children)
             if attr_str:
                 return f"<{self.tag} {attr_str}>{inner}</{self.tag}>"
@@ -152,6 +182,7 @@ except Exception:  # pragma: no cover - allow running without deps installed
 
 # --- Rendering helpers ---------------------------------------------------------
 
+
 def _page(title: str, body_children: Iterable) -> HTMLResponse:
     doc = sh.html(
         sh.head(sh.title(title)),
@@ -172,9 +203,15 @@ def home_page(ctx: DashboardContext) -> HTMLResponse:
         [
             sh.h1("Duckalog Dashboard"),
             sh.div(
-                sh.p(f"Config: {summary['config_path']}" if summary["config_path"] else "Config: (in-memory)"),
+                sh.p(
+                    f"Config: {summary['config_path']}"
+                    if summary["config_path"]
+                    else "Config: (in-memory)"
+                ),
                 sh.p(f"DuckDB: {summary['database']}"),
-                sh.p(f"Views: {summary['views']}  |  Attachments: {summary['attachments']}  |  Semantic models: {summary['semantic_models']}"),
+                sh.p(
+                    f"Views: {summary['views']}  |  Attachments: {summary['attachments']}  |  Semantic models: {summary['semantic_models']}"
+                ),
                 sh.p(f"Last build: {status_text}"),
             ),
             sh.ul(
@@ -197,15 +234,15 @@ def views_page(ctx: DashboardContext, q: str | None) -> HTMLResponse:
         rows = [r for r in rows if q_lower in r["name"].lower()]
 
     header = ["name", "source", "uri", "database", "table", "semantic"]
-    table_rows = [
-        sh.tr(*(sh.td(str(r[h])) for h in header)) for r in rows
-    ]
+    table_rows = [sh.tr(*(sh.td(str(r[h])) for h in header)) for r in rows]
     return _page(
         "Views",
         [
             sh.h1("Views"),
             sh.form(
-                ui.input(type="text", name="q", value=q or "", placeholder="Search view name"),
+                ui.input(
+                    type="text", name="q", value=q or "", placeholder="Search view name"
+                ),
                 sh.button("Search", type="submit"),
                 method="get",
             ),
@@ -241,8 +278,12 @@ def view_detail_page(ctx: DashboardContext, name: str) -> HTMLResponse:
     if semantic_models:
         for sm in semantic_models:
             semantics_block.append(sh.h3(f"Semantic model: {sm.name}"))
-            semantics_block.append(sh.p(f"Dimensions: {', '.join(d.name for d in sm.dimensions) or '—'}"))
-            semantics_block.append(sh.p(f"Measures: {', '.join(m.name for m in sm.measures) or '—'}"))
+            semantics_block.append(
+                sh.p(f"Dimensions: {', '.join(d.name for d in sm.dimensions) or '—'}")
+            )
+            semantics_block.append(
+                sh.p(f"Measures: {', '.join(m.name for m in sm.measures) or '—'}")
+            )
     else:
         semantics_block.append(sh.p("No semantic-layer metadata for this view."))
 
@@ -265,9 +306,7 @@ def query_page(result: QueryResult | None = None, sql_text: str = "") -> HTMLRes
             table_part.append(sh.p(f"Error: {result.error}"))
         else:
             header = [sh.th(col) for col in result.columns]
-            body_rows = [
-                sh.tr(*(sh.td(str(v)) for v in row)) for row in result.rows
-            ]
+            body_rows = [sh.tr(*(sh.td(str(v)) for v in row)) for row in result.rows]
             table_part.append(
                 ui.table(
                     sh.thead(sh.tr(*header)),
