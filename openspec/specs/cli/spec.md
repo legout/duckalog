@@ -100,3 +100,44 @@ The Duckalog CLI MUST provide commands or options to inspect configuration impor
 - **THEN** the CLI SHALL resolve all imports and output the resulting merged configuration or a clear summary of it
 - **AND** the output SHALL reflect the same configuration that would be used by catalog build commands.
 
+### Requirement: CLI Query Command
+The CLI SHALL expose a `query` command for executing SQL queries against DuckDB catalogs.
+
+#### Scenario: CLI query with explicit catalog path
+- **WHEN** `duckalog query catalog.duckdb "SELECT COUNT(*) FROM users"` is executed
+- **THEN** the command opens the specified catalog file in read-only mode
+- **AND** executes the provided SQL query against the catalog
+- **AND** displays results in a tabular format on stdout
+- **AND** returns exit code 0 on successful execution
+
+#### Scenario: CLI query with catalog discovery
+- **WHEN** `duckalog query "SELECT COUNT(*) FROM users"` is executed without catalog path
+- **THEN** the command looks for `catalog.duckdb` in the current directory
+- **AND** if found, executes the query against that catalog
+- **AND** if not found, exits with error code 2 and clear error message
+
+#### Scenario: CLI query with missing catalog
+- **WHEN** `duckalog query nonexistent.duckdb "SELECT 1"` is executed
+- **THEN** the command exits with error code 2
+- **AND** prints a clear error message indicating the catalog file was not found
+
+#### Scenario: CLI query with invalid SQL
+- **WHEN** `duckalog query catalog.duckdb "SELECT * FROM nonexistent_table"` is executed
+- **THEN** the command exits with error code 3
+- **AND** prints a clear SQL error message from DuckDB
+
+#### Scenario: CLI query with no results
+- **WHEN** `duckalog query catalog.duckdb "SELECT * FROM users WHERE id = 999"` returns no rows
+- **THEN** the command prints "Query executed successfully. No rows returned."
+- **AND** returns exit code 0
+
+#### Implementation Requirements
+- **Read-only access**: Catalog connections SHALL be opened in read-only mode
+- **Tabular output**: Results SHALL be displayed in a clean, readable table format with borders and aligned columns
+- **Error handling**: Clear error messages SHALL be provided for missing catalogs and SQL execution failures
+- **Exit codes**: 
+  - 0 for successful execution
+  - 2 for catalog file access errors (not found, permission denied)
+  - 3 for SQL execution errors
+  - 1 for unexpected errors
+

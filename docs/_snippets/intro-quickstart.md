@@ -34,7 +34,18 @@ views:
 duckalog build catalog.yaml
 ```
 
-### 3. Start exploring
+### 3. Query your catalog
+
+```bash
+# Quick count of users
+duckalog query "SELECT COUNT(*) FROM users"
+
+# View sample data
+duckalog query "SELECT * FROM users LIMIT 5"
+
+# Use explicit catalog path
+duckalog query catalog.duckdb "SELECT name, email FROM users WHERE active = true"
+```
 
 For comprehensive documentation, tutorials, and examples, visit the **[Duckalog Documentation](https://legout.github.io/duckalog/)**.
 

@@ -265,7 +265,7 @@ def _configure_logging(verbose: bool) -> None:
     logger.add(
         sys.stderr,
         level=level,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | {message}"
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | {message}",
     )
 
 
@@ -774,9 +774,13 @@ def _collect_import_graph(
         # Load the config to get its imports
         try:
             if _is_remote_uri(current_path):
-                config = load_config(current_path, filesystem=filesystem, load_sql_files=False)
+                config = load_config(
+                    current_path, filesystem=filesystem, load_sql_files=False
+                )
             else:
-                config = load_config(current_path, filesystem=filesystem, load_sql_files=False)
+                config = load_config(
+                    current_path, filesystem=filesystem, load_sql_files=False
+                )
         except Exception:
             # If we can't load the config, skip it
             import_graph[normalized_current] = []
@@ -795,7 +799,9 @@ def _collect_import_graph(
                 if _is_remote_uri(resolved_import):
                     normalized_import = _normalize_uri(resolved_import)
                 else:
-                    normalized_import = _normalize_uri(str(Path(resolved_import).resolve()))
+                    normalized_import = _normalize_uri(
+                        str(Path(resolved_import).resolve())
+                    )
 
                 resolved_imports.append(resolved_import)
 
@@ -872,10 +878,7 @@ def _compute_import_diagnostics(import_graph: dict[str, list[str]]) -> dict[str,
 
     # Count file types
     remote_imports = sum(
-        1
-        for children in import_graph.values()
-        for child in children
-        if "://" in child
+        1 for children in import_graph.values() for child in children if "://" in child
     )
 
     local_imports = sum(
@@ -1000,7 +1003,7 @@ def _print_import_tree(
         typer.echo(f"  Files with imports: {diagnostics['files_with_imports']}")
         typer.echo(f"  Remote imports: {diagnostics['remote_imports']}")
         typer.echo(f"  Local imports: {diagnostics['local_imports']}")
-        if diagnostics['duplicate_imports']:
+        if diagnostics["duplicate_imports"]:
             typer.echo(
                 f"  Duplicate imports: {', '.join(diagnostics['duplicate_imports'])}"
             )
@@ -1013,7 +1016,9 @@ def _print_import_tree(
 @app.command(help="Show the import graph for a configuration file.")
 def show_imports(
     ctx: typer.Context,
-    config_path: str = typer.Argument(..., help="Path to configuration file or remote URI"),
+    config_path: str = typer.Argument(
+        ..., help="Path to configuration file or remote URI"
+    ),
     show_merged: bool = typer.Option(
         False,
         "--show-merged",
@@ -1077,7 +1082,9 @@ def show_imports(
 
     try:
         # Collect import graph information
-        import_chain, import_graph, visited = _collect_import_graph(config_path, filesystem)
+        import_chain, import_graph, visited = _collect_import_graph(
+            config_path, filesystem
+        )
 
         # Output based on format
         if output_format == "json":
@@ -1092,7 +1099,9 @@ def show_imports(
             typer.echo("")
             typer.echo("Import Graph:")
             typer.echo("=" * 80)
-            _print_import_tree(import_chain, import_graph, visited, show_diagnostics=diagnostics)
+            _print_import_tree(
+                import_chain, import_graph, visited, show_diagnostics=diagnostics
+            )
 
             # Optionally show merged config
             if show_merged:
@@ -1171,6 +1180,190 @@ def _fail(message: str, code: int) -> None:
 #             err=True,
 #         )
 #     uvicorn.run(app, host=host, port=port, log_level="info")
+
+
+@app.command(help="Execute SQL queries against a DuckDB catalog.")
+def query(
+    catalog_path: Optional[str] = typer.Argument(
+        None,
+        help="Path to DuckDB catalog file (optional, defaults to catalog.duckdb in current directory).",
+    ),
+    sql: str = typer.Argument(
+        ...,
+        help="SQL query to execute against the catalog.",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
+) -> None:
+    """Execute SQL queries against a DuckDB catalog.
+
+    This command allows you to run ad-hoc SQL queries against an existing
+    DuckDB catalog file and display results in a tabular format.
+
+    Examples:
+        # Query with implicit catalog discovery (catalog.duckdb in current directory)
+        duckalog query "SELECT COUNT(*) FROM users"
+
+        # Query with explicit catalog path
+        duckalog query catalog.duckdb "SELECT * FROM active_users LIMIT 5"
+
+        # Query a remote catalog (if filesystem options are configured)
+        duckalog query s3://my-bucket/catalog.duckdb "SELECT name, email FROM users WHERE active = true"
+
+    Args:
+        catalog_path: Optional path to DuckDB catalog file. If omitted, looks for
+            'catalog.duckdb' in the current directory.
+        sql: SQL query string to execute.
+        verbose: If True, enable verbose logging.
+    """
+    import duckdb
+    from pathlib import Path
+
+    _configure_logging(verbose)
+
+    # Determine catalog path
+    if not catalog_path:
+        # Try to find a default catalog in the current directory
+        default_path = Path("catalog.duckdb")
+        if default_path.exists():
+            catalog_path = str(default_path)
+        else:
+            _fail(
+                "No catalog file specified and catalog.duckdb not found in current directory. "
+                "Either provide a catalog path or ensure catalog.duckdb exists.",
+                2,
+            )
+    else:
+        # Validate that the provided catalog path exists
+        catalog_file = Path(catalog_path)
+        if not catalog_file.exists():
+            _fail(f"Catalog file not found: {catalog_path}", 2)
+
+    log_info(
+        "CLI query invoked",
+        catalog_path=catalog_path,
+        sql=sql[:100] + "..." if len(sql) > 100 else sql,
+    )
+
+    try:
+        # Connect to the DuckDB catalog
+        conn = duckdb.connect(str(catalog_path), read_only=True)
+
+        try:
+            # Execute the query
+            result = conn.execute(sql)
+
+            # Fetch results
+            rows = result.fetchall()
+
+            # Get column information
+            columns = [desc[0] for desc in result.description]
+
+            # Display results in tabular format
+            if rows:
+                _display_table(columns, rows)
+            else:
+                if columns:
+                    typer.echo("Query executed successfully. No rows returned.")
+                    # Show column headers for context
+                    typer.echo(f"Columns: {', '.join(columns)}")
+                else:
+                    typer.echo("Query executed successfully. No results returned.")
+
+        except duckdb.Error as exc:
+            log_error("Query execution failed", error=str(exc))
+            _fail(f"SQL error: {exc}", 3)
+        finally:
+            conn.close()
+
+    except duckdb.Error as exc:
+        log_error("Failed to connect to catalog", error=str(exc))
+        _fail(f"Database error: {exc}", 3)
+    except typer.Exit:
+        # Re-raise Exit exceptions (from _fail) without modification
+        raise
+    except Exception as exc:
+        if verbose:
+            raise
+        log_error("Query failed unexpectedly", error=str(exc))
+        _fail(f"Unexpected error: {exc}", 1)
+
+
+def _display_table(columns: list[str], rows: list[tuple]) -> None:
+    """Display query results in a simple tabular format.
+
+    Args:
+        columns: List of column names.
+        rows: List of rows, where each row is a tuple of values.
+    """
+    if not columns or not rows:
+        return
+
+    # Convert all values to strings for consistent display
+    str_columns = [str(col) for col in columns]
+    str_rows = [[str(cell) for cell in row] for row in rows]
+
+    # Calculate column widths
+    col_widths = []
+    for i, col in enumerate(str_columns):
+        # Start with column header width
+        max_width = len(col)
+        # Check all rows in this column
+        for row in str_rows:
+            if i < len(row):
+                max_width = max(max_width, len(str(row[i])))
+        col_widths.append(max_width)
+
+    # Create horizontal separator line
+    separator = "+" + "+".join("-" * (width + 2) for width in col_widths) + "+"
+
+    # Print header
+    typer.echo(separator)
+    header_row = (
+        "|"
+        + "|".join(f" {col:<{col_widths[i]}} " for i, col in enumerate(str_columns))
+        + "|"
+    )
+    typer.echo(header_row)
+    typer.echo(separator)
+
+    # Print data rows
+    for row in str_rows:
+        # Pad row with empty strings if it has fewer columns than headers
+        padded_row = row + [""] * (len(str_columns) - len(row))
+        data_row = (
+            "|"
+            + "|".join(
+                f" {padded_row[i]:<{col_widths[i]}} " for i in range(len(str_columns))
+            )
+            + "|"
+        )
+        typer.echo(data_row)
+
+    typer.echo(separator)
+    header_row = (
+        "|"
+        + "|".join(f" {col:<{col_widths[i]}} " for i, col in enumerate(str_columns))
+        + "|"
+    )
+    typer.echo(header_row)
+    typer.echo(separator)
+
+    # Print data rows
+    for row in str_rows:
+        # Pad row with empty strings if it has fewer columns than headers
+        padded_row = row + [""] * (len(str_columns) - len(row))
+        data_row = (
+            "|"
+            + "|".join(
+                f" {padded_row[i]:<{col_widths[i]}} " for i in range(len(str_columns))
+            )
+            + "|"
+        )
+        typer.echo(data_row)
+
+    typer.echo(separator)
 
 
 @app.command(help="Initialize a new Duckalog configuration file.")

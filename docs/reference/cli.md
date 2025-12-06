@@ -251,6 +251,82 @@ CREATE OR REPLACE VIEW "orders" AS SELECT * FROM 'data/orders.parquet';
 }
 ```
 
+### query
+
+Execute SQL queries against a DuckDB catalog and display results in tabular format.
+
+#### Syntax
+```bash
+duckalog query [OPTIONS] [CATALOG_PATH] SQL
+```
+
+#### Arguments
+```bash
+CATALOG_PATH
+    Path to DuckDB catalog file (optional, defaults to catalog.duckdb in current directory)
+    
+SQL
+    SQL query to execute against the catalog (required)
+```
+
+#### Options
+```bash
+--verbose, -v
+    Enable verbose logging
+```
+
+#### Examples
+```bash
+# Query with implicit catalog discovery
+duckalog query "SELECT COUNT(*) FROM users"
+
+# Query with explicit catalog path
+duckalog query catalog.duckdb "SELECT * FROM active_users LIMIT 5"
+
+# Query with specific conditions
+duckalog query analytics.duckdb "SELECT name, email FROM users WHERE active = true"
+
+# Aggregate queries
+duckalog query "SELECT status, COUNT(*) FROM orders GROUP BY status"
+
+# Complex joins
+duckalog query "SELECT u.name, o.amount FROM users u JOIN orders o ON u.id = o.user_id WHERE o.amount > 100"
+
+# Remote catalog (with filesystem options)
+duckalog query s3://my-bucket/catalog.duckdb "SELECT * FROM products WHERE category = 'electronics'" --fs-key AKIA... --fs-secret wJalr...
+```
+
+#### Output
+```bash
+# Tabular results
++----+---------+-------------------+
+| id | name    | email             |
++----+---------+-------------------+
+| 1  | Alice   | alice@example.com |
+| 2  | Bob     | bob@example.com   |
++----+---------+-------------------+
+
+# No results
+Query executed successfully. No rows returned.
+
+# Error cases
+Catalog file not found: nonexistent.duckdb
+SQL error: Catalog Error: Table with name invalid_table does not exist!
+```
+
+#### Behavior
+- **Read-only access**: Opens catalogs in read-only mode for safety
+- **Automatic discovery**: Uses `catalog.duckdb` in current directory when no path provided
+- **Tabular formatting**: Displays results in clean, readable table format
+- **Error handling**: Provides clear error messages for missing catalogs and SQL errors
+- **Exit codes**: Returns 0 on success, 2 for catalog errors, 3 for SQL errors
+
+#### Use Cases
+- **Data verification**: Quick checks of catalog contents and data quality
+- **Debugging**: Verify views and data after building catalogs
+- **Ad hoc analysis**: Run quick queries without external tools
+- **Integration**: Use in scripts to extract specific data from catalogs
+
 ### show-imports
 
 Display import graph and diagnostics for configuration with imports.
