@@ -183,9 +183,20 @@ except Exception:  # pragma: no cover - allow running without deps installed
 # --- Rendering helpers ---------------------------------------------------------
 
 
-def _page(title: str, body_children: Iterable) -> HTMLResponse:
+def _page(title: str, body_children: Iterable, include_datastar: bool = True) -> HTMLResponse:
+    head_content = [
+        sh.title(title),
+        sh.meta(charset="utf-8"),
+        sh.meta(name="viewport", content="width=device-width, initial-scale=1"),
+    ]
+
+    if include_datastar:
+        head_content.append(
+            sh.script(src="/static/datastar.js", defer="defer")
+        )
+
     doc = sh.html(
-        sh.head(sh.title(title)),
+        sh.head(*head_content),
         sh.body(*body_children),
     )
     return HTMLResponse(str(doc))

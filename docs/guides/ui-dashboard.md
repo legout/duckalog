@@ -1,6 +1,6 @@
 # Duckalog Dashboard
 
-The dashboard is a lightweight, reactive web UI for exploring and managing Duckalog catalogs. It is built entirely in Python using **Datastar** and **Starlette**—no frontend build tools or external CDNs are required.
+The dashboard is a lightweight, reactive web UI for exploring and managing Duckalog catalogs. It is built entirely in Python using **Starlette** and **Datastar** infrastructure—no frontend build tools or external CDNs are required.
 
 ## Installation Requirements
 
@@ -11,12 +11,27 @@ pip install duckalog[ui]
 ```
 
 This includes:
-- **Datastar Python SDK** (`datastar-python>=0.1.0`): Reactive web framework
-- **Starlette** (`starlette>=0.27.0`): ASGI web framework  
-- **Uvicorn** (`uvicorn[standard]>=0.20.0`): ASGI server
-- **CORS middleware**: Security-focused web access control
+- **Starlette** (`starlette>=0.27.0`): ASGI web framework
+- **Uvicorn** (`uvicorn[standard]>=0.24.0`): ASGI server
+- **Datastar JavaScript Bundle**: Vendored reactive framework (served locally)
+- **Security middleware**: CORS protection and security headers
 
 ## Launch from Python (recommended)
+
+```python
+from duckalog.ui import UIServer
+
+# Create and run the UI server
+server = UIServer(
+    config_path="catalog.yaml",
+    host="127.0.0.1",
+    port=8787,
+    row_limit=1000
+)
+server.run()
+```
+
+Or use the existing convenience function:
 
 ```python
 from duckalog.dashboard import run_dashboard
@@ -24,17 +39,15 @@ from duckalog.dashboard import run_dashboard
 run_dashboard("catalog.yaml", host="127.0.0.1", port=8787, row_limit=500)
 ```
 
-Pass a `Config` object instead of a path if you already loaded one.
-
 ## Launch from the CLI
 
 ```bash
-duckalog ui catalog.yaml --host 127.0.0.1 --port 8787 --row-limit 500
+duckalog ui catalog.yaml --host 127.0.0.1 --port 8787 --row-limit 1000
 ```
 
 - Binds to loopback by default; only expose other hosts if you understand the risk.
-- `--row-limit` caps ad-hoc query results (defaults to 500 rows).
-- The CLI prints the dashboard URL after startup.
+- `--row-limit` caps ad-hoc query results (defaults to 1000 rows).
+- The CLI prints the dashboard URL and security warnings after startup.
 
 ## Production Deployment
 
@@ -79,10 +92,23 @@ duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
 ## Technical Implementation
 
 ### Reactive Architecture
-- **Datastar Framework**: Real-time UI updates using Server-Sent Events
-- **Background Processing**: All database operations run in background threads
-- **Format Preservation**: Maintains YAML/JSON formatting when updating configs
+- **Datastar Framework**: Vendored JavaScript bundle served locally for reactive UI updates
+- **Server-Sent Events**: Real-time updates via `/sse/events` endpoint
+- **Signal Management**: Server-side signals for catalog summary, views, query state, and build status
+- **Background Processing**: Async task management for non-blocking operations
 - **Error Handling**: Comprehensive security-focused error messages
+
+### Security Implementation
+- **SQL Security**: Comprehensive read-only SQL enforcement blocking DDL/DML operations
+- **CORS Protection**: Localhost-only access with configurable host binding
+- **Security Headers**: Complete CSP, XSS, and clickjacking protection
+- **Input Validation**: Comprehensive SQL sanitization and validation
+
+### API Architecture
+- **RESTful Endpoints**: `/api/summary`, `/api/views`, `/api/query` for data access
+- **JSON Responses**: Structured data for reactive UI updates
+- **Error Standardization**: Consistent error format across all endpoints
+- **Rate Limiting**: Built-in row limiting for query protection
 
 ### Configuration Management
 - **Atomic Operations**: Config updates use atomic file operations
