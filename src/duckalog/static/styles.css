@@ -1,0 +1,233 @@
+/* Duckalog Dashboard Custom Styles */
+
+/* CSS Custom Properties for theming */
+:root {
+  --primary-color: #0066cc;
+  --success-color: #28a745;
+  --warning-color: #ffc107;
+  --error-color: #dc3545;
+  --info-color: #17a2b8;
+  --muted-color: #6c757d;
+  --muted-background-color: #f8f9fa;
+  --nav-background-color: #e9ecef;
+  --card-background-color: #ffffff;
+  --border-color: #dee2e6;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary-color: #4da3ff;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --error-color: #dc3545;
+    --info-color: #17a2b8;
+    --muted-color: #adb5bd;
+    --muted-background-color: #343a40;
+    --nav-background-color: #495057;
+    --card-background-color: #212529;
+    --border-color: #495057;
+  }
+}
+
+/* Dashboard layout improvements */
+.container-fluid {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Card improvements */
+article {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--card-background-color);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Table improvements */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+th {
+  background-color: var(--muted-background-color);
+  font-weight: 600;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--muted-background-color);
+  border-top: 3px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Status badges */
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-success { background-color: var(--success-color); color: white; }
+.status-error { background-color: var(--error-color); color: white; }
+.status-warning { background-color: var(--warning-color); color: black; }
+.status-info { background-color: var(--info-color); color: white; }
+
+/* Navigation improvements */
+nav[role="navigation"] ul {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+nav[role="navigation"] li {
+  margin-right: 1rem;
+}
+
+nav[role="navigation"] a {
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+nav[role="navigation"] a:hover {
+  background-color: var(--muted-background-color);
+}
+
+nav[role="navigation"] a[aria-selected="true"] {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* Form improvements */
+fieldset {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+legend {
+  font-weight: 600;
+  padding: 0 0.5rem;
+}
+
+/* Code block styling */
+pre, code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+  font-size: 0.875em;
+}
+
+pre {
+  background-color: var(--muted-background-color);
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* SQL query textarea */
+textarea[name="sql"] {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid var(--border-color);
+}
+
+textarea[name="sql"]:focus {
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .container-fluid {
+    padding: 0 0.5rem;
+  }
+
+  table {
+    font-size: 0.875rem;
+  }
+
+  th, td {
+    padding: 0.5rem;
+  }
+
+  nav[role="navigation"] ul {
+    flex-direction: column;
+  }
+
+  nav[role="navigation"] li {
+    margin-right: 0;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Utility classes */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-muted { color: var(--muted-color); }
+.bg-muted { background-color: var(--muted-background-color); }
+.border-radius { border-radius: 4px; }
+.shadow { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.p-1 { padding: 0.5rem; }
+.p-2 { padding: 1rem; }
+.p-3 { padding: 1.5rem; }
+
+/* Datastar-specific styles */
+[data-star-on="click"] {
+  cursor: pointer;
+}
+
+[data-star-indicator] {
+  transition: opacity 0.2s;
+}
+
+/* Breadcrumb styling */
+nav[aria-label="Breadcrumb"] ul {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+
+nav[aria-label="Breadcrumb"] li:not(:last-child)::after {
+  content: " / ";
+  margin: 0 0.5rem;
+  color: var(--muted-color);
+}
+
+nav[aria-label="Breadcrumb"] li[aria-current="page"] {
+  color: var(--muted-color);
+  font-weight: normal;
+}

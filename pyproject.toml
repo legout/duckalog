@@ -48,14 +48,16 @@ dependencies = [
     "click>=8.0.0",
     "loguru>=0.7.0",
     "typer>=0.20.0",
+    "htpy>=25.12.0",
+    "python-multipart>=0.0.20",
+    "datastar-py>=0.7.0",
 ]
 
 [project.optional-dependencies]
 ui = [
     "starlette>=0.27.0",
     "uvicorn[standard]>=0.24.0",
-    "starhtml>=0.1.0",
-    "starui>=0.1.0",
+    "htpy>=0.3.0",
     "pyarrow>=10.0.0",
     "pandas>=1.5.0",
     "openpyxl>=3.0.0",
