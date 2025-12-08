@@ -505,49 +505,79 @@ data/
 
 ### ui
 
-Start the Duckalog web dashboard for interactive catalog management.
+Start the Duckalog web dashboard for interactive catalog management with real-time capabilities.
 
 #### Syntax
 ```bash
 duckalog ui [OPTIONS] CONFIG_PATH
 ```
 
+#### Architecture
+The dashboard uses a modern stack for optimal performance and user experience:
+- **Litestar Framework**: Modern async Python web framework with built-in security
+- **Datastar.js Client-side**: Reactive UI framework for real-time updates without page refresh
+- **Server-Sent Events**: Efficient real-time communication for query results and build status
+- **Tailwind CSS**: Modern, responsive styling with dark/light theme support
+- **Local-first**: All assets served locally, no external CDN dependencies
+
 #### Options
 ```bash
 --host HOST
     Bind to specific host (default: 127.0.0.1)
-    
+
 --port PORT
     Use specific port (default: 8787)
-    
+
 --row-limit NUM
     Limit ad-hoc query results (default: 500)
-    
+
 --db-path, --database-path PATH
     Override database path from configuration
-    
+
 --verbose, -v
     Enable verbose logging
-    
+
 --no-open
     Don't open browser automatically
 ```
 
 #### Examples
 ```bash
-# Basic dashboard
+# Basic dashboard with real-time features
 duckalog ui catalog.yaml
 
-# Custom host and port
+# Custom host and port for team sharing
 duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
 
-# With row limit
+# With custom row limit for large datasets
 duckalog ui catalog.yaml --row-limit 1000
 
-# Production deployment
+# Production deployment with security
 export DUCKALOG_ADMIN_TOKEN="your-secure-token"
 duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
+
+# Development with verbose logging
+duckalog ui catalog.yaml --verbose --row-limit 100
 ```
+
+#### Features
+**Real-time Capabilities:**
+- Live query execution with streaming results
+- Real-time build status updates without page refresh
+- Reactive UI elements that update automatically
+- Live loading indicators and error feedback
+
+**Security Features:**
+- Read-only SQL enforcement (blocks DDL/DML operations)
+- Row limit protection to prevent resource exhaustion
+- DuckDB read-only mode for additional database security
+- Admin token authentication for production deployments
+
+**User Experience:**
+- Dark/light theme toggle with system preference detection
+- Responsive design for mobile and desktop
+- Progressive loading for large result sets
+- Intuitive error messages and guidance
 
 #### Output
 ```bash
@@ -557,13 +587,29 @@ duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
 📊 Database: catalog.duckdb
 👥 Views: 15
 🔗 Attachments: 3
+⚡ Real-time features enabled
 💡 Press Ctrl+C to stop the server
 
-# With admin token
+# Production mode
 🔐 Admin token authentication enabled
 🌐 Dashboard URL: http://0.0.0.0:8000
 🔑 Use admin token for mutating operations
+🛡️ Security mode: read-only queries only
 ```
+
+#### Dashboard Sections
+The dashboard provides four main sections:
+
+1. **Home**: Catalog overview with statistics and build management
+2. **Views**: Browse and inspect catalog views with search functionality
+3. **Query**: Ad-hoc SQL execution with real-time results streaming
+4. **Semantic Layer**: Explore business-friendly semantic models
+
+#### Performance Characteristics
+- **Fast startup**: < 2 seconds to launch with configuration loading
+- **Query streaming**: Results appear as they execute, no waiting
+- **Memory efficient**: Row limits and connection pooling prevent resource issues
+- **Responsive design**: Works on mobile, tablet, and desktop devices
 
 ## Remote Configuration Support
 

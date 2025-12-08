@@ -1,6 +1,16 @@
 # Duckalog Dashboard
 
-The dashboard is a lightweight, reactive web UI for exploring and managing Duckalog catalogs. It is built entirely in Python using **Datastar** and **Starlette**—no frontend build tools or external CDNs are required.
+The dashboard is a lightweight, reactive web UI for exploring and managing Duckalog catalogs. It is built entirely in Python using **Litestar** and **Datastar.js**—no frontend build tools or external CDNs are required.
+
+## Architecture Overview
+
+The dashboard uses a modern, secure architecture:
+
+- **Litestar Framework**: Modern Python web framework with async support
+- **Datastar.js Client-side**: Reactive UI framework for real-time updates
+- **Server-Sent Events**: Real-time communication without websockets
+- **Tailwind CSS**: Modern, responsive styling framework
+- **Local-first**: All assets served locally, no external dependencies
 
 ## Installation Requirements
 
@@ -11,10 +21,9 @@ pip install duckalog[ui]
 ```
 
 This includes:
-- **Datastar Python SDK** (`datastar-python>=0.1.0`): Reactive web framework
-- **Starlette** (`starlette>=0.27.0`): ASGI web framework  
-- **Uvicorn** (`uvicorn[standard]>=0.20.0`): ASGI server
-- **CORS middleware**: Security-focused web access control
+- **Litestar** (`litestar>=2.0.0`): Modern ASGI web framework
+- **Uvicorn** (`uvicorn[standard]>=0.24.0`): ASGI server
+- **Python Multipart** (`python-multipart>=0.0.20`): Form data support
 
 ## Launch from Python (recommended)
 
@@ -78,16 +87,30 @@ duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
 
 ## Technical Implementation
 
-### Reactive Architecture
-- **Datastar Framework**: Real-time UI updates using Server-Sent Events
-- **Background Processing**: All database operations run in background threads
-- **Format Preservation**: Maintains YAML/JSON formatting when updating configs
-- **Error Handling**: Comprehensive security-focused error messages
+### Modern Architecture
+- **Litestar Framework**: Modern async web framework with built-in dependency injection
+- **Datastar.js Integration**: Client-side reactive framework for real-time updates
+- **Server-Sent Events**: Efficient real-time communication without websockets
+- **Component-Based Design**: Modular, reusable UI components
+- **Tailwind CSS**: Utility-first styling with dark/light theme support
 
-### Configuration Management
-- **Atomic Operations**: Config updates use atomic file operations
-- **In-Memory Updates**: Configuration changes take effect immediately
-- **Format Detection**: Automatic YAML/JSON format detection and preservation
+### Real-time Features
+- **Query Streaming**: Live query results as they execute
+- **Build Status Updates**: Real-time catalog build progress
+- **Reactive UI**: Interface updates automatically without page refresh
+- **Signal-Based State**: Clean state management using Datastar signals
+
+### Security Implementation
+- **Read-Only SQL Enforcement**: Blocks DDL/DML operations automatically
+- **Row Limit Protection**: Prevents resource exhaustion from large queries
+- **DuckDB Read-Only Mode**: Additional database-level protection
+- **Input Validation**: Comprehensive SQL injection prevention
+
+### Performance Optimization
+- **Efficient Connections**: Connection management for concurrent requests
+- **Static File Caching**: Optimized asset serving with browser caching
+- **Progressive Enhancement**: Graceful degradation for low-bandwidth scenarios
+- **Minimal Dependencies**: Lightweight footprint with no external CDNs
 
 ## Scope and Limitations
 

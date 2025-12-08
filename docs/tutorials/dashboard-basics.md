@@ -134,16 +134,22 @@ Click on the `sample_users` view to see:
 
 ## Step 4: Query Execution and Data Export
 
-### 4.1 Running Queries
+### 4.1 Running Queries with Real-time Updates
 
-Navigate to the **Query** section. This is your interactive SQL playground.
+Navigate to the **Query** section. This is your interactive SQL playground with real-time feedback.
 
 **Basic Query:**
 ```sql
 SELECT * FROM sample_users WHERE age > 25
 ```
 
-**Try it:** Enter this query and click "Execute". You should see Bob's record returned.
+**Real-time Features:**
+- **Live Loading Indicators**: See query execution progress without page refresh
+- **Streaming Results**: Results appear as they're being processed
+- **Error Feedback**: Instant error messages with clear explanations
+- **Signal-Based State**: UI updates automatically using Datastar signals
+
+**Try it:** Enter this query and click "Execute". You should see Bob's record returned with loading indicators and smooth transitions.
 
 ### 4.2 Query Security Features
 

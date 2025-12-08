@@ -88,8 +88,35 @@ class DashboardContext:
         return duckdb.connect(self.db_path)
 
     def run_query(self, sql: str) -> QueryResult:
+        """Execute a read-only SQL query with security checks."""
+        # Security: Only allow SELECT queries for dashboard
+        sql_normalized = sql.strip().upper()
+        if not sql_normalized.startswith('SELECT') and not sql_normalized.startswith('WITH'):
+            return QueryResult(
+                columns=[],
+                rows=[],
+                truncated=False,
+                error="Dashboard only allows SELECT queries for safety"
+            )
+
+        # Additional security: Block dangerous keywords even in SELECT
+        dangerous_keywords = [
+            'DROP', 'DELETE', 'UPDATE', 'INSERT', 'CREATE', 'ALTER',
+            'TRUNCATE', 'EXECUTE', 'GRANT', 'REVOKE', 'COMMIT', 'ROLLBACK'
+        ]
+        for keyword in dangerous_keywords:
+            if keyword in sql_normalized:
+                return QueryResult(
+                    columns=[],
+                    rows=[],
+                    truncated=False,
+                    error=f"Dashboard queries cannot contain '{keyword}' for safety"
+                )
+
         try:
             with self._connect() as conn:
+                # Set read-only mode for extra safety
+                conn.execute("SET read_only = true")
                 cursor = conn.execute(sql)
                 rows = cursor.fetchall()
                 columns = [desc[0] for desc in cursor.description] if cursor.description else []
