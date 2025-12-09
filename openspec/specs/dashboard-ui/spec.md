@@ -1,215 +1,216 @@
 # dashboard-ui Specification
 
 ## Purpose
-TBD - created by archiving change add-dashboard-starui. Update Purpose after archive.
-## Requirements
-### Requirement: Local Dashboard Launch
-The system SHALL provide a way to launch a local web dashboard for a single Duckalog catalog from the Python API, and MAY optionally provide a CLI command for launching the same dashboard implementation.
+Provide a local-first, Litestar- and Datastar-powered dashboard for inspecting and operating a single Duckalog catalog. The UI favors basecoatui components first, uses custom htpy components with Tailwind utilities when basecoatui lacks the needed element, and never uses starui.
 
-#### Scenario: Launch dashboard from CLI with config path (optional)
-- **GIVEN** a valid `catalog.yaml` configuration file on disk
-- **AND** an installation where the `duckalog ui` CLI command is enabled
-- **WHEN** the user runs `duckalog ui catalog.yaml`
-- **THEN** a local HTTP server is started on a default host and port
-- **AND** the CLI prints the URL where the dashboard is available.
+## Requirements
+
+### Requirement: Litestar + Datastar Application Stack
+The dashboard SHALL run on Litestar with Datastar for reactive updates and htpy for type-safe HTML composition.
+
+#### Scenario: Application initialization
+- **GIVEN** the UI extras are installed
+- **WHEN** `create_app(context)` is called
+- **THEN** a Litestar application is returned with registered routes, middleware, and dependency injection wired for `DashboardContext`.
+
+#### Scenario: Static file serving
+- **GIVEN** the app is running
+- **WHEN** a request is made to `/static/*`
+- **THEN** assets (prebuilt CSS/JS/fonts) are served from the packaged `duckalog/static/` directory without requiring internet access.
+
+#### Scenario: Dependency injection
+- **GIVEN** a route declares `DashboardContext`
+- **WHEN** the handler executes
+- **THEN** Litestar injects the shared context instance for use in the handler.
+
+### Requirement: Legacy Dashboard Clean Slate
+The new dashboard SHALL not reuse or restore code, templates, or assets from the removed legacy dashboard implementation.
+
+#### Scenario: No legacy file resurrection
+- **WHEN** implementing the new dashboard
+- **THEN** no deleted legacy dashboard modules, templates, or static assets are restored from version control or prior releases; all components/routes/state are newly implemented on the Litestar/Datastar stack.
+
+### Requirement: Component and Styling Priority (Basecoatui First)
+The dashboard SHALL prefer basecoatui components for UI and styling; it SHALL use custom htpy components with Tailwind utility classes when basecoatui lacks the needed element; starui MUST NOT be used.
+
+#### Scenario: Basecoatui by default
+- **WHEN** implementing a UI element that exists in basecoatui
+- **THEN** the basecoatui variant is used (including its CSS/JS) and delivered via CDN as a temporary measure.
+
+#### Scenario: Custom htpy components when basecoatui lacks
+- **WHEN** basecoatui lacks the needed pattern or accessibility baseline
+- **THEN** a small htpy-based component is created and styled with Tailwind utility classes
+- **AND** its styles and behavior are bundled in `static/`.
+
+#### Scenario: Tailwind fallback only
+- **WHEN** no basecoatui component fits the need
+- **THEN** Tailwind utility classes are used to compose the UI with htpy
+- **AND** the compiled Tailwind CSS is shipped in `static/tailwind.css` with no CDN requirement for production.
+
+### Requirement: Type-Safe HTML Generation
+The dashboard SHALL generate HTML via htpy (or equivalent typed helpers) with Datastar attributes for reactivity.
+
+#### Scenario: Component rendering
+- **WHEN** a page is rendered
+- **THEN** HTML is produced by Python functions with type hints
+- **AND** Datastar attributes (`data-bind`, `data-on`, `data-signal`) are present where interactivity is required.
+
+#### Scenario: Composition
+- **WHEN** building complex layouts
+- **THEN** smaller typed components are composed without raw string templates.
+
+### Requirement: Security Posture and Defaults
+The dashboard SHALL default to a secure, local-only posture with explicit opt-in for wider exposure.
+
+#### Scenario: Loopback binding and CORS
+- **WHEN** the server starts without overrides
+- **THEN** it binds to `127.0.0.1` and enforces CORS to the same origin.
+
+#### Scenario: Warning on public bind
+- **WHEN** the user starts the dashboard on `0.0.0.0` or a non-loopback host without an admin token
+- **THEN** the CLI emits a warning describing the risk and how to set `DUCKALOG_ADMIN_TOKEN`.
+
+#### Scenario: Admin token for mutating actions
+- **WHEN** a build or other mutating endpoint is called
+- **THEN** the request is rejected unless the configured admin token is supplied.
+
+#### Scenario: Read-only SQL enforcement
+- **WHEN** a query is submitted
+- **THEN** only `SELECT` statements are allowed; DDL/DML statements are rejected with a clear error.
+
+#### Scenario: Sensitive data redaction
+- **WHEN** requests or errors are logged
+- **THEN** connection strings, secrets, and tokens are redacted from logs.
+
+### Requirement: Temporary CDN Asset Delivery
+UI assets MAY be delivered via CDN as a temporary measure to expedite shipping. This is an interim solution pending proper bundling.
+
+#### Scenario: CDN asset loading
+- **WHEN** the dashboard is loaded with internet access
+- **THEN** Tailwind CSS, Basecoat CSS, and Datastar JS are loaded from CDNs (jsDelivr, cdn.tailwindcss.com) for rapid development and deployment.
+
+#### Scenario: Offline limitations
+- **WHEN** the dashboard is opened without internet access
+- **THEN** the UI will not function fully as CDN assets are unavailable; this is an accepted limitation during the interim CDN period.
+
+#### Scenario: Future bundling
+- **WHEN** the interim period ends
+- **THEN** all assets will be bundled locally for offline support as originally specified; this CDN approach is temporary and will be replaced with proper offline asset bundling.
 
 ### Requirement: Dashboard Home Overview
-The dashboard home page SHALL present a concise overview of the selected catalog and navigation to other dashboard sections.
+The home page SHALL summarize the catalog and recent activity.
 
-#### Scenario: Home shows catalog summary
-- **GIVEN** the dashboard is launched for a valid catalog
-- **WHEN** the user visits the home page
-- **THEN** they see the catalog config path, DuckDB database location, and counts of views, attachments, and semantic models (if present)
-- **AND** the page links to the views browser, query runner, and build status sections.
+#### Scenario: Catalog summary
+- **WHEN** the home page loads
+- **THEN** it shows config path, DuckDB file location, counts of views/attachments/semantic models, and navigation to views, query, and build sections.
 
-#### Scenario: Home shows recent build status
-- **GIVEN** the catalog has been built at least once in the current process
-- **WHEN** the user visits or refreshes the home page
-- **THEN** they see the status of the last build (success/failure, timestamp)
-- **AND** a link or button to view more detailed build status information.
+#### Scenario: Live build status
+- **WHEN** a build is in progress or has completed
+- **THEN** current status (progress or last result with timestamp) is displayed and updated live via Datastar.
 
 ### Requirement: Views Browser
-The dashboard SHALL provide a views browser that lists catalog views and key metadata in a tabular layout.
+The dashboard SHALL list views with metadata and support fast filtering.
 
-#### Scenario: List views with metadata
-- **GIVEN** a catalog with one or more views
-- **WHEN** the user navigates to the views browser
-- **THEN** they see a table with one row per view including at minimum the view name, source type, and underlying location or attachment reference
-- **AND** each row indicates whether the view participates in the semantic layer (e.g. has dimensions or measures defined).
+#### Scenario: List views
+- **WHEN** the views page is opened
+- **THEN** a table (basecoatui preferred) shows name, source type, location/attachment, and semantic-layer flag for each view.
 
-#### Scenario: Filter or search views by name
-- **GIVEN** a catalog with many views
-- **WHEN** the user types a partial view name into a search or filter input
-- **THEN** the views table updates to show only matching views
-- **AND** clearing the search restores the full list.
+#### Scenario: Search/filter
+- **WHEN** text is entered in the search box
+- **THEN** results filter in real time using Datastar signals without page reload.
 
-#### Scenario: Navigate to view detail
-- **GIVEN** the user is viewing the views browser
-- **WHEN** they select or click on a specific view
-- **THEN** they are taken to a view detail page for that view.
+#### Scenario: Pagination
+- **WHEN** more than 100 views exist
+- **THEN** pagination controls appear with adjustable page size.
 
-### Requirement: View Detail and Semantic Metadata
-The dashboard SHALL provide a detail page for each view that surfaces its definition and semantic metadata where available.
+#### Scenario: View detail navigation
+- **WHEN** a view row is selected
+- **THEN** the user is taken to a detail page showing its SQL/config and semantic metadata (if any).
 
-#### Scenario: Show core view definition
-- **GIVEN** a view is defined in the catalog
-- **WHEN** the user navigates to that view's detail page
-- **THEN** they see the view name and either its resolved SQL or the key configuration fields that define it (e.g. source type and URI)
-- **AND** any available engine-level metadata such as row count or sample schema when inexpensive to compute.
+### Requirement: Query Runner with Streaming and Limits
+The dashboard SHALL provide a read-only query runner with streaming results and guardrails.
 
-#### Scenario: Show semantic-layer information when present
-- **GIVEN** the view participates in the semantic layer with defined dimensions and measures
-- **WHEN** the user navigates to that view's detail page
-- **THEN** they see a list of dimensions and measures with their labels and expressions
-- **AND** the page makes clear when a view has no semantic-layer metadata.
+#### Scenario: Query submission and streaming
+- **WHEN** a SELECT query is submitted
+- **THEN** results stream via SSE as they are produced and render progressively in the table.
 
-### Requirement: Ad-hoc Query Runner
-The dashboard SHALL provide a simple ad-hoc SQL query runner against the selected catalog.
+#### Scenario: Row limit and truncation
+- **WHEN** a query returns more than the configured row limit (default 500; configurable via CLI and UI)
+- **THEN** only the allowed rows are delivered
+- **AND** the UI indicates results were truncated.
 
-#### Scenario: Run query and display results
-- **GIVEN** the dashboard is connected to a valid catalog
-- **WHEN** the user enters a SELECT query and submits it
-- **THEN** the query is executed against the catalog's DuckDB database
-- **AND** the results are shown in a tabular view with column headers and a reasonable default row limit.
+#### Scenario: Timeout and cancellation
+- **WHEN** a query exceeds the max execution time or the client disconnects
+- **THEN** execution is cancelled and the user sees a timeout/cancel notice.
 
-#### Scenario: Enforce result limits and show truncation
-- **GIVEN** a query would return more than the configured maximum number of rows
-- **WHEN** the user runs the query from the dashboard
-- **THEN** only up to the configured maximum rows are displayed
-- **AND** the UI indicates that results have been truncated.
+#### Scenario: Error handling
+- **WHEN** a query fails validation or execution
+- **THEN** the error message is surfaced clearly without exposing internal stack traces.
 
-#### Scenario: Show query errors clearly
-- **GIVEN** a query contains invalid SQL or fails at execution time
-- **WHEN** the user runs the query from the dashboard
-- **THEN** the error is displayed in the UI in a clear, non-technical-friendly format
-- **AND** the previous successful results (if any) are not mistaken for the failed query's output.
+### Requirement: Build Trigger and Status Streaming
+The dashboard SHALL trigger builds and stream their status safely.
 
-### Requirement: Build Trigger and Status
-The dashboard SHALL allow users to trigger a catalog build and observe basic status and results.
+#### Scenario: Debounced build trigger
+- **WHEN** a user clicks “Build catalog” repeatedly
+- **THEN** only one build starts until the current build finishes or fails.
 
-#### Scenario: Trigger build from dashboard
-- **GIVEN** the dashboard is connected to a valid catalog config
-- **WHEN** the user clicks a “Build catalog” action in the UI
-- **THEN** a catalog build is started using the same semantics as the CLI build command
-- **AND** the UI indicates that a build is in progress.
+#### Scenario: Status stream
+- **WHEN** a build runs
+- **THEN** progress and final status stream over SSE, including counts of created/updated views and a short failure summary when applicable.
 
-#### Scenario: Show build completion and summary
-- **GIVEN** a build has completed via the dashboard
-- **WHEN** the user views the build status section
-- **THEN** they see whether the build succeeded or failed, when it completed, and a short summary (e.g. number of views created or updated)
-- **AND** any failure surface includes a concise error message suitable for users to act on.
+#### Scenario: Concurrency guard
+- **WHEN** a second build request arrives during an active build
+- **THEN** it is rejected with an informative message.
 
-### Requirement: Dashboard Documentation Accuracy
-The dashboard documentation MUST accurately reflect the current implementation using Datastar framework, include all security features, and document the complete feature set.
+### Requirement: SSE Resilience and Limits
+The dashboard SHALL manage SSE resources and degrade gracefully.
 
-#### Scenario: Correct framework documentation
-- **GIVEN** users reading dashboard documentation
-- **WHEN** they learn about the technical implementation
-- **THEN** the documentation correctly identifies Datastar as the reactive web framework
-- **AND** does NOT mention deprecated frameworks like starhtml/starui
-- **AND** includes information about bundled Datastar assets for offline operation
-- **SO** users have accurate technical information
+#### Scenario: Connection cap
+- **WHEN** the number of SSE clients exceeds the configured limit
+- **THEN** new connections are refused with a clear message.
 
-#### Scenario: Security features documented
-- **GIVEN** users deploying the dashboard
-- **WHEN** they consult the documentation for security information
-- **THEN** they find documentation of all security features:
-  - Admin token protection for mutating operations
-  - Read-only SQL enforcement (SELECT only, blocks DDL/DML)
-  - CORS protection (localhost restriction by default)
-  - Background task processing for non-blocking operations
-  - Atomic configuration updates
-- **AND** they find examples of production deployment with security enabled
-- **SO** they can deploy the dashboard securely
+#### Scenario: Heartbeat and reconnect
+- **WHEN** an SSE connection idles
+- **THEN** heartbeat events keep it alive; clients back off and retry with exponential delay on failure.
 
-#### Scenario: Complete feature list
-- **GIVEN** users learning dashboard capabilities
-- **WHEN** they read the feature documentation
-- **THEN** they find complete documentation of all features:
-  - View management (create, edit, delete)
-  - Query execution with real-time results
-  - Data export (CSV, Excel, Parquet formats)
-  - Schema inspection (tables and views)
-  - Catalog rebuild functionality
-  - Semantic layer explorer
-  - Model details (dimensions and measures with expressions)
-- **AND** each feature includes usage instructions and screenshots/examples
-- **SO** they understand full dashboard capabilities
+#### Scenario: Polling fallback
+- **WHEN** SSE repeatedly fails (e.g., after N retries)
+- **THEN** the UI falls back to periodic polling for status/results.
 
-#### Scenario: Python API as primary entry point
-- **GIVEN** users wanting to launch the dashboard
-- **WHEN** they read the documentation
-- **THEN** the Python API method (run_dashboard) is documented as the primary entry point
-- **AND** includes working code examples
-- **AND** CLI launch (duckalog ui) is clearly marked as optional or may not be available
-- **SO** users can reliably launch the dashboard regardless of installation method
+### Requirement: CLI Command Integration
+The CLI SHALL start the dashboard with configurable options and robust messaging.
 
-#### Scenario: Datastar runtime requirements
-- **GIVEN** users installing dashboard dependencies
-- **WHEN** they read the installation documentation
-- **THEN** they find information about Datastar runtime requirements:
-  - No legacy fallback (exclusive Datastar patterns)
-  - Reactive data binding capabilities
-  - Server-Sent Events for real-time updates
-  - Modern web patterns with built-in security
-  - Bundled assets for offline operation
-- **AND** they understand why duckalog[ui] extra is required
-- **SO** they can install and understand dashboard dependencies
+#### Scenario: Start with options
+- **WHEN** the user runs `duckalog ui --host 0.0.0.0 --port 8080 --row-limit 1000 catalog.yaml`
+- **THEN** the server starts with those settings and prints the access URL.
 
-### Requirement: Implementation Stack and Constraints
-The initial dashboard implementation SHALL use a pure-Python stack with starhtml and starui, be local-first, and avoid external build tooling and CDNs.
+#### Scenario: Missing dependencies
+- **WHEN** UI extras are not installed
+- **THEN** the command exits with an actionable message: `pip install duckalog[ui]`.
 
-#### Scenario: Implemented with starhtml and starui
-- **GIVEN** the dashboard UI is built for this capability
-- **WHEN** the implementation is inspected
-- **THEN** the HTML views and layouts are implemented using starhtml and starui components
-- **AND** no separate JavaScript build toolchain (e.g. webpack, Vite) is required to develop or run the dashboard.
+#### Scenario: Insecure bind warning
+- **WHEN** host is non-loopback and no admin token is set
+- **THEN** the CLI prints a security warning before starting.
 
-#### Scenario: Local-first and loopback by default
-- **GIVEN** a user launches the dashboard without overriding host or port
-- **WHEN** the HTTP server starts
-- **THEN** it binds to a loopback-only interface by default
-- **AND** the documentation explains how to change host/port while warning about exposing the dashboard beyond local development.
+#### Scenario: Graceful shutdown
+- **WHEN** the user presses Ctrl+C
+- **THEN** the server stops cleanly and active SSE streams are closed.
 
-#### Scenario: Offline-friendly asset serving
-- **GIVEN** a user starts the dashboard on a machine without internet access
-- **WHEN** they load the dashboard in a browser
-- **THEN** all required assets (CSS, JavaScript, fonts) are served from the duckalog installation
-- **AND** the dashboard is fully functional without external CDNs.
+### Requirement: Documentation Accuracy
+Documentation SHALL match the implemented stack and capabilities and omit unimplemented features.
 
-### Requirement: Dashboard Deployment Patterns
-The documentation SHALL provide practical deployment patterns for the dashboard including local development, production deployment, and security configuration.
+#### Scenario: Stack correctness
+- **WHEN** users read the docs
+- **THEN** they see Litestar + Datastar + htpy with basecoatui-first, Tailwind-fallback styling order, and no references to starui or starhtml.
 
-#### Scenario: Local development setup
-- **GIVEN** a developer wanting to use the dashboard locally
-- **WHEN** they follow the local development documentation
-- **THEN** they find clear instructions for:
-  - Installing UI dependencies (duckalog[ui])
-  - Launching dashboard with default settings
-  - Accessing dashboard at localhost
-  - Understanding default security (no admin token in dev)
-- **SO** they can quickly start using the dashboard for development
+#### Scenario: Security coverage
+- **WHEN** deployment guidance is read
+- **THEN** it documents admin token usage, read-only SQL enforcement, CORS/binding defaults, and log redaction.
 
-#### Scenario: Production deployment guidance
-- **GIVEN** a user deploying dashboard in production
-- **WHEN** they consult deployment documentation
-- **THEN** they find production deployment guidance including:
-  - Setting DUCKALOG_ADMIN_TOKEN for security
-  - Configuring host and port binding
-  - Understanding CORS implications
-  - Background task behavior
-  - Resource requirements
-- **AND** they find example deployment configurations
-- **SO** they can deploy securely and reliably
+#### Scenario: Feature scope clarity
+- **WHEN** capabilities are listed
+- **THEN** they include view browsing/detail, search, query runner with streaming, and build status; they do NOT promise view create/edit/delete or data export unless implemented.
 
-#### Scenario: Security configuration reference
-- **GIVEN** a user configuring dashboard security
-- **WHEN** they need security configuration details
-- **THEN** they find reference documentation for:
-  - Admin token environment variable
-  - Read-only SQL enforcement (not configurable, always active)
-  - CORS middleware configuration
-  - Default security settings
-  - Security best practices
-- **SO** they can configure appropriate security for their deployment
-
+#### Scenario: Migration guidance
+- **WHEN** users move from the legacy dashboard
+- **THEN** docs provide migration steps, changed commands, and screenshot examples of the new UI.
