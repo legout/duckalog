@@ -554,3 +554,50 @@ def table_component(
             ],
         ]
     ]
+
+
+def table_header_component(columns: list[str]) -> Element:
+    """Create a table header component for streaming.
+
+    Args:
+        columns: Column headers
+
+    Returns:
+        Table header element with empty tbody
+    """
+    return div(class_="overflow-x-auto")[
+        table(class_="min-w-full divide-y divide-gray-200 dark:divide-gray-700")[
+            thead(class_="bg-gray-50 dark:bg-gray-800")[
+                tr[
+                    (
+                        th(
+                            scope="col",
+                            class_="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider",
+                        )[col]
+                        for col in columns
+                    )
+                ]
+            ],
+            tbody(
+                id="results-tbody",
+                class_="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700",
+            ),
+        ]
+    ]
+
+
+def table_rows_component(rows: list[tuple[Any, ...]]) -> str:
+    """Generate HTML for a batch of table rows.
+
+    Args:
+        rows: Table rows to render
+
+    Returns:
+        HTML string for the rows
+    """
+    return "".join(
+        f'''<tr>
+            {"".join(f'<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{str(cell) if cell is not None else ""}</td>' for cell in row)}
+        </tr>'''
+        for row in rows
+    )

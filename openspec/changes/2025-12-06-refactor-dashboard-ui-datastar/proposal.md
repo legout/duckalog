@@ -27,6 +27,7 @@ This change will modernize the dashboard to provide:
 - **HTML Templating**: Replace the custom HTML fallback with **h2py** for Pythonic, type-safe HTML generation that integrates naturally with Datastar.
 - **Component Library**: Integrate **starui** components designed specifically for the Datastar ecosystem, providing modern, accessible UI primitives.
 - **Reactivity Layer**: Properly integrate **datastar-python** SDK for server-sent events, signal-based state management, and real-time DOM updates.
+- **Legacy Code Reset**: Rebuild the dashboard from scratch; do not reuse or restore any legacy dashboard modules or templates removed from the repository.
 
 ### Implementation Details
 - **New Dashboard Structure**:
@@ -111,6 +112,10 @@ ui = [
 ### Dependency Risk
 - Adding Litestar and datastar-python increases the dependency footprint
 - **Mitigation**: Keep dependencies in optional `[ui]` group; core functionality unaffected
+
+### Risk: Legacy code reintroduction
+- **Impact**: Medium – restoring deleted Starlette/fallback code would reintroduce broken behavior and styling gaps
+- **Mitigation**: Explicitly prohibit cherry-picking or restoring prior dashboard files; rebuild components and routes fresh with the new stack
 
 ### Migration Complexity
 - Complete rewrite may introduce temporary bugs

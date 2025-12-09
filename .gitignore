@@ -25,3 +25,4 @@ openspec/archive-2025-12-02-validation.md
 **/*.json
 dev/
 code_review
+.worktrees

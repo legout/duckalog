@@ -21,8 +21,6 @@ except ImportError:
 
 from .config import load_config, validate_file_accessibility
 
-# from .dashboard import create_app
-# from .dashboard.state import DashboardContext
 from .config_init import create_config_template, validate_generated_config
 from .engine import build_catalog
 from .errors import ConfigError, EngineError
@@ -1138,48 +1136,81 @@ def _fail(message: str, code: int) -> None:
     raise typer.Exit(code)
 
 
-# @app.command(
-#     name="ui", help="Launch the local starhtml/starui dashboard for a catalog."
-# )
-# def ui(
-#     config_path: str = typer.Argument(
-#         ..., help="Path to configuration file (local or remote)."
-#     ),
-#     host: str = typer.Option(
-#         "127.0.0.1", "--host", help="Host to bind (default: loopback)."
-#     ),
-#     port: int = typer.Option(8787, "--port", help="Port to bind (default: 8787)."),
-#     row_limit: int = typer.Option(
-#         500, "--row-limit", help="Max rows to show in query results."
-#     ),
-#     verbose: bool = typer.Option(
-#         False, "--verbose", "-v", help="Enable verbose logging output."
-#     ),
-# ) -> None:
-#     """Start a local dashboard to inspect and query a Duckalog catalog."""
+@app.command(
+    name="ui", help="Launch the local dashboard for a catalog."
+)
+def ui(
+    config_path: str = typer.Argument(
+        ..., help="Path to configuration file (local or remote)."
+    ),
+    host: str = typer.Option(
+        "127.0.0.1", "--host", help="Host to bind (default: loopback)."
+    ),
+    port: int = typer.Option(8787, "--port", help="Port to bind (default: 8787)."),
+    row_limit: int = typer.Option(
+        500, "--row-limit", help="Max rows to show in query results."
+    ),
+    db_path: Optional[str] = typer.Option(
+        None, "--db", help="Path to DuckDB database file (optional)."
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
+) -> None:
+    """Start a local dashboard to inspect and query a Duckalog catalog.
 
-#     _configure_logging(verbose)
+    This command launches a web-based dashboard that allows you to:
+    - Browse views defined in the catalog configuration
+    - Execute SQL queries against the DuckDB database
+    - View query results in real-time with streaming
 
-#     try:
-#         config = load_config(config_path)
-#     except ConfigError as exc:
-#         _fail(f"Config error: {exc}", 2)
+    Examples:
+        # Basic usage with config file
+        duckalog ui config.yaml
 
-#     ctx = DashboardContext(config, config_path=config_path, row_limit=row_limit)
-#     app = create_app(ctx)
+        # Specify a custom host and port
+        duckalog ui config.yaml --host 0.0.0.0 --port 8080
 
-#     try:
-#         import uvicorn
-#     except ImportError:  # pragma: no cover
-#         _fail("uvicorn is required. Install with: pip install duckalog[ui]", 2)
+        # Use with an existing database file
+        duckalog ui config.yaml --db catalog.duckdb
+    """
+    _configure_logging(verbose)
 
-#     typer.echo(f"Starting dashboard at http://{host}:{port}")
-#     if host not in ("127.0.0.1", "localhost", "::1"):
-#         typer.echo(
-#             "Warning: binding to a non-loopback host may expose the dashboard to others on your network.",
-#             err=True,
-#         )
-#     uvicorn.run(app, host=host, port=port, log_level="info")
+    # Check for UI dependencies
+    try:
+        from .dashboard import create_app
+    except ImportError:
+        _fail(
+            "Dashboard dependencies not installed. Install with: pip install duckalog[ui]",
+            2,
+        )
+
+    try:
+        import uvicorn
+    except ImportError:
+        _fail("uvicorn is required. Install with: pip install duckalog[ui]", 2)
+
+    # Load configuration
+    try:
+        config = load_config(config_path)
+    except ConfigError as exc:
+        _fail(f"Config error: {exc}", 2)
+
+    # Create the dashboard app
+    dashboard_app = create_app(
+        config,
+        config_path=config_path,
+        db_path=db_path,
+        row_limit=row_limit,
+    )
+
+    typer.echo(f"Starting dashboard at http://{host}:{port}")
+    if host not in ("127.0.0.1", "localhost", "::1"):
+        typer.echo(
+            "Warning: binding to a non-loopback host may expose the dashboard to others on your network.",
+            err=True,
+        )
+    uvicorn.run(dashboard_app, host=host, port=port, log_level="info")
 
 
 @app.command(help="Execute SQL queries against a DuckDB catalog.")
