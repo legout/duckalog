@@ -196,7 +196,7 @@ Now that you have a working catalog, explore these advanced capabilities:
 - **[Semantic Layer](tutorials/getting-started.md#semantic-models)**: Add business-friendly dimensions and measures
 - **[Web UI Dashboard](tutorials/dashboard-basics.md)**: Interactive catalog management and querying
 - **[Path Resolution](path-resolution.md)**: Automatic path handling with security validation
-- **[Remote Configuration](reference/cli.md#remote-configuration)**: Load configs from S3, GCS, Azure, and more
+- **[Remote Configuration](reference/cli.md#remote-configuration-support)**: Load configs from S3, GCS, Azure, and more
 
 ## Key Features Overview
 
