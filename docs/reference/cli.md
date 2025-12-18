@@ -139,9 +139,91 @@ complex-catalog.yaml
 
 ## Commands
 
-### build
+### run - NEW: Primary Command
 
-Build or update a DuckDB catalog from a config file or remote URI.
+Connect, build, and query a DuckDB catalog using intelligent connection management. This is the new recommended primary workflow.
+
+#### Syntax
+```bash
+duckalog run [OPTIONS] CONFIG_PATH
+```
+
+#### Options
+```bash
+--query TEXT
+    Execute SQL query directly and exit. If not provided, starts interactive mode.
+    
+--force-rebuild
+    Force rebuild all views instead of incremental updates.
+    
+--interactive
+    Start interactive SQL shell with catalog ready (default behavior when --query not provided).
+    
+--db-path PATH
+    Override DuckDB database path. Supports local paths and remote URIs (s3://, gs://, gcs://, abfs://, adl://, sftp://).
+    
+--verbose, -v
+    Enable verbose logging output.
+    
+--load-dotenv / --no-load-dotenv
+    Enable/disable automatic .env file loading. (default: --load-dotenv)
+```
+
+#### Examples
+```bash
+# Basic usage - connect and start interactive shell
+duckalog run catalog.yaml
+
+# Direct query execution
+duckalog run catalog.yaml --query "SELECT COUNT(*) FROM users"
+
+# Interactive mode with remote configuration
+duckalog run s3://my-bucket/catalog.yaml --interactive
+
+# Force rebuild all views
+duckalog run catalog.yaml --force-rebuild
+
+# Query with custom database path
+duckalog run catalog.yaml --query "SELECT * FROM analytics" --db-path analytics.duckdb
+
+# Remote configuration with authentication
+duckalog run s3://my-bucket/catalog.yaml --fs-key AKIA... --fs-secret wJalr...
+```
+
+#### Output
+```bash
+# Interactive mode
+🔗 Connected to catalog: catalog.duckdb
+📊 15 views created (3 new, 12 cached)
+💬 Starting interactive SQL shell...
+Type 'exit' to quit, 'help' for available commands
+
+catalog> SELECT COUNT(*) FROM users;
+┌──────────────┐
+│ count_star() │
+├──────────────┤
+│         1250 │
+└──────────────┘
+
+# Query mode
++----+---------+-------------------+
+| id | name    | email             |
++----+---------+-------------------+
+| 1  | Alice   | alice@example.com |
+| 2  | Bob     | bob@example.com   |
++----+---------+-------------------+
+```
+
+#### Key Features
+- **Smart Connection Management**: Automatic connection pooling and reuse
+- **Session State Restoration**: Pragmas, settings, and attachments are automatically restored
+- **Incremental Updates**: Only missing views are created for faster builds
+- **Lazy Connections**: Database connections established only when needed
+- **Remote Configuration Support**: Works with all remote filesystem options
+
+### build - DEPRECATED
+
+Build or update a DuckDB catalog from a config file or remote URI. **Note**: The `run` command is now recommended as the primary workflow.
 
 #### Syntax
 ```bash
@@ -165,7 +247,7 @@ duckalog build [OPTIONS] CONFIG_PATH
 
 #### Examples
 ```bash
-# Local configuration file
+# Local configuration file (deprecated - use 'run' instead)
 duckalog build catalog.yaml
 
 # With custom database path
@@ -192,6 +274,19 @@ Catalog build completed.
 # Dry run SQL output
 CREATE OR REPLACE VIEW "users" AS SELECT * FROM parquet_scan('data/users.parquet');
 CREATE OR REPLACE VIEW "orders" AS SELECT * FROM parquet_scan('data/orders.parquet');
+```
+
+#### Migration to `run` Command
+```bash
+# Old workflow (still works but deprecated)
+duckalog build catalog.yaml
+duckalog query "SELECT * FROM users"
+
+# New recommended workflow
+duckalog run catalog.yaml --query "SELECT * FROM users"
+
+# For interactive use
+duckalog run catalog.yaml  # Starts interactive shell
 ```
 
 ### validate
@@ -501,7 +596,7 @@ Checking file accessibility...
 
 ### query
 
-Execute SQL queries against a DuckDB catalog and display results in tabular format.
+Execute SQL queries against an existing DuckDB catalog and display results in tabular format. **Note**: For new workflows, consider using `duckalog run CONFIG_PATH --query "SQL"` instead.
 
 #### Syntax
 ```bash
@@ -534,6 +629,9 @@ duckalog query "SELECT * FROM users" -c analytics.duckdb
 
 # Query a remote catalog (if filesystem options are configured)
 duckalog query "SELECT name, email FROM users WHERE active = true" --catalog s3://my-bucket/catalog.duckdb
+
+# Alternative: Use new 'run' command for config-driven queries
+duckalog run catalog.yaml --query "SELECT * FROM users"
 ```
 
 #### Output
@@ -567,6 +665,25 @@ SQL error: Catalog Error: Table with name invalid_table does not exist!
 - **Debugging**: Verify views and data after building catalogs
 - **Ad hoc analysis**: Run quick queries without external tools
 - **Integration**: Use in scripts to extract specific data from catalogs
+
+#### When to Use `query` vs `run`
+
+```bash
+# Use 'query' for existing databases
+duckalog query "SELECT * FROM users" --catalog existing_catalog.duckdb
+
+# Use 'run' for config-driven workflows (recommended)
+duckalog run config.yaml --query "SELECT * FROM users"
+
+# Use 'run' for interactive sessions with config
+duckalog run config.yaml --interactive
+```
+
+**Key Differences:**
+- `query`: Works with existing `.duckdb` files directly
+- `run`: Builds catalog from config, manages connections, and queries in one workflow
+- `run`: Supports incremental updates and session restoration
+- `query`: Simpler for quick database queries without configuration
 
 ### show-imports
 

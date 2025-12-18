@@ -1,6 +1,47 @@
 # User Guide
 
-This guide explains how to structure Duckalog configuration files, common configuration patterns, secret management, and how to troubleshoot issues.
+This guide explains how to structure Duckalog configuration files, common configuration patterns, secret management, and how to troubleshoot issues using the new config-driven connection management system.
+
+## New Primary Workflow: `duckalog run`
+
+Duckalog now features a unified `run` command that replaces the old two-step `build` + `query` workflow with intelligent connection management and session state restoration.
+
+### Key Benefits of the New Workflow
+
+- **Single Command**: One command to connect, build, and query
+- **Smart Connection Management**: Automatic connection pooling and reuse
+- **Session State Restoration**: Pragmas, settings, and attachments are automatically restored
+- **Incremental Updates**: Only missing views are created for faster builds
+- **Lazy Connections**: Database connections are established only when needed
+
+### Basic Usage
+
+```bash
+# New primary workflow - single command
+duckalog run config.yaml
+
+# Interactive mode - opens SQL shell with catalog ready
+duckalog run config.yaml --interactive
+
+# Direct query execution
+duckalog run config.yaml --query "SELECT COUNT(*) FROM users"
+
+# Force rebuild of all views
+duckalog run config.yaml --force-rebuild
+```
+
+### Transition from Old Workflow
+
+While the new `run` command is recommended, the old workflow still works:
+
+```bash
+# Old workflow (still supported but deprecated)
+duckalog build config.yaml
+duckalog query "SELECT * FROM users"
+
+# New workflow (recommended)
+duckalog run config.yaml --query "SELECT * FROM users"
+```
 
 ## Environment Variables and .env File Support
 
@@ -114,20 +155,24 @@ duckdb:
       secret: "${env:AWS_SECRET_ACCESS_KEY}"
       region: "us-east-1"
       endpoint: "https://s3.amazonaws.com"  # Protocol automatically stripped for DuckDB compatibility
+      persistent: true  # NEW: Persist secrets for session restoration
 
     - name: azure_storage
       type: azure
       connection_string: "${env:AZURE_STORAGE_CONNECTION_STRING}"
       account_name: "${env:AZURE_STORAGE_ACCOUNT}"
+      persistent: false  # Default: temporary secrets
 
     - name: gcs_service
       type: gcs
       service_account_key: "${env:GCS_SERVICE_ACCOUNT_JSON}"
+      persistent: true  # Persist across session restarts
 
     - name: http_api
       type: http
       bearer_token: "${env:API_BEARER_TOKEN}"
       header: "Authorization"
+      persistent: false  # Temporary token for security
 
 views:
   - name: production_data
@@ -178,14 +223,39 @@ CREATE SECRET postgres_creds (
 );
 ```
 
+### New: Secret Persistence
+
+The new connection management system supports persistent secrets that are stored securely and restored across sessions:
+
+```yaml
+duckdb:
+  secrets:
+    - name: production_s3
+      type: s3
+      key_id: "${env:AWS_ACCESS_KEY_ID}"
+      secret: "${env:AWS_SECRET_ACCESS_KEY}"
+      region: "us-west-2"
+      persistent: true  # Secret persisted for session restoration
+```
+
+**Benefits of Persistent Secrets:**
+- **Session Restoration**: Secrets automatically available when reconnecting
+- **Improved Performance**: Avoid recreating secrets on each connection
+- **Security**: Encrypted storage with access controls
+- **Convenience**: No need to re-enter credentials for interactive sessions
+
 ### Security Best Practices
 
 1. **Never commit secrets**: Use `.env` files or environment variables
 2. **Rotate credentials**: Regularly update access keys and tokens
 3. **Use principle of least privilege**: Grant minimal required permissions
 4. **Audit access**: Monitor which secrets are used where
+5. **NEW - Secret Persistence**: Use `persistent: true` for long-lived secrets, `false` for temporary ones
+6. **NEW - Session Management**: Be aware that persistent secrets survive session restarts
 
-**Related:** [Architecture - Secret Management](../explanation/architecture.md#secret-management-architecture)
+**Related:** 
+- [Architecture - Secret Management](../explanation/architecture.md#secret-management-architecture)
+- [How-to - Secrets Persistence](../how-to/secrets-persistence.md)
 
 ## Remote Configuration
 
@@ -194,32 +264,41 @@ Duckalog supports loading configurations from remote sources using a unified fil
 ### Loading Remote Configurations
 
 ```bash
-# S3 configuration
-duckalog build s3://my-bucket/catalog.yaml \
+# New workflow with remote configurations
+duckalog run s3://my-bucket/catalog.yaml \
     --fs-key "${AWS_ACCESS_KEY_ID}" \
     --fs-secret "${AWS_SECRET_ACCESS_KEY}" \
     --aws-profile my-profile
 
 # GCS configuration
-duckalog build gs://my-bucket/catalog.yaml \
+duckalog run gs://my-bucket/catalog.yaml \
     --gcs-credentials-file /path/to/service-account.json
 
 # Azure Blob Storage
-duckalog build abfs://account@container/catalog.yaml \
+duckalog run abfs://account@container/catalog.yaml \
     --azure-connection-string "${AZURE_CONNECTION_STRING}"
 
 # GitHub repository
-duckalog build github://user/repo/catalog.yaml \
+duckalog run github://user/repo/catalog.yaml \
     --fs-token "${GITHUB_TOKEN}"
 
 # SFTP server
-duckalog build sftp://server/path/catalog.yaml \
+duckalog run sftp://server/path/catalog.yaml \
     --sftp-host server.com \
     --sftp-key-file ~/.ssh/id_rsa
 
 # HTTP/HTTPS
-duckalog build https://example.com/catalog.yaml \
+duckalog run https://example.com/catalog.yaml \
     --fs-token "${API_TOKEN}"
+
+# Interactive remote sessions
+duckalog run s3://my-bucket/catalog.yaml --interactive
+
+# Query remote configurations directly
+duckalog run s3://my-bucket/catalog.yaml --query "SELECT * FROM analytics_table"
+
+# Old workflow (still supported but deprecated)
+duckalog build s3://my-bucket/catalog.yaml --fs-key "${AWS_ACCESS_KEY_ID}"
 ```
 
 ### Shared Filesystem Architecture

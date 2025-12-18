@@ -290,64 +290,61 @@ duckalog generate-sql simple-parquet.yaml --output generated.sql
 cat generated.sql
 ```
 
-### 5. Build the Catalog
+### 5. Build and Query Catalog (New Workflow)
 
 ```bash
+# NEW: Single command to build and query
+duckalog run simple-parquet.yaml --query "SELECT * FROM users LIMIT 10"
+
+# Interactive exploration
+duckalog run simple-parquet.yaml --interactive
+# In shell:
+# SELECT * FROM users LIMIT 10;
+# SELECT region, COUNT(*) as user_count FROM users GROUP BY region ORDER BY user_count DESC;
+# SELECT * FROM daily_active_users WHERE event_date >= CURRENT_DATE - INTERVAL 7 DAYS;
+
+# OLD: Two-step workflow (still works)
 duckalog build simple-parquet.yaml
-```
-
-This creates `simple_catalog.duckdb` with your Parquet views.
-
-### 6. Query Your Data
-
-```bash
-# Connect with DuckDB
 duckdb simple_catalog.duckdb
-
-# Example queries:
-SELECT * FROM users LIMIT 10;
-
-SELECT 
-  region,
-  COUNT(*) as user_count
-FROM users 
-GROUP BY region
-ORDER BY user_count DESC;
-
-SELECT * FROM daily_active_users WHERE event_date >= CURRENT_DATE - INTERVAL 7 DAYS;
+# Then run the queries above
 ```
 
 ### 7. Use Programmatically
 
 ```python
-from duckalog import load_config
-import duckdb
+# NEW: Use new connection management
+from duckalog import connect_to_catalog
 import polars as pl
 
-# Load and build catalog
+# Connect with intelligent connection management
+with connect_to_catalog("simple-parquet.yaml") as conn:
+    # Get DataFrame for analysis
+    users_df = conn.execute("SELECT * FROM users WHERE region = 'US'").df()
+    print(users_df.head())
+
+    # Complex analytics
+    metrics_df = conn.execute("""
+        SELECT 
+          DATE(timestamp) as date,
+          COUNT(DISTINCT user_id) as daily_users,
+          COUNT(*) as total_events,
+          AVG(value) as avg_event_value
+        FROM raw_events
+        WHERE DATE(timestamp) >= CURRENT_DATE - INTERVAL 30 DAYS
+        GROUP BY DATE(timestamp)
+        ORDER BY date
+    """).df()
+    
+    print(metrics_df)
+
+# OLD: Manual approach (still works)
+from duckalog import load_config, build_catalog
+import duckdb
+
+# Load and build catalog manually
 build_catalog("simple-parquet.yaml")
-
-# Connect and query
 con = duckdb.connect("simple_catalog.duckdb")
-
-# Get DataFrame for analysis
-users_df = con.execute("SELECT * FROM users WHERE region = 'US'").df()
-print(users_df.head())
-
-# Complex analytics
-metrics_df = con.execute("""
-    SELECT 
-      DATE(timestamp) as date,
-      COUNT(DISTINCT user_id) as daily_users,
-      COUNT(*) as total_events,
-      AVG(value) as avg_event_value
-    FROM raw_events
-    WHERE DATE(timestamp) >= CURRENT_DATE - INTERVAL 30 DAYS
-    GROUP BY DATE(timestamp)
-    ORDER BY date
-""").df()
-
-print(metrics_df)
+# Then run queries as above
 ```
 
 ## Key Concepts Demonstrated

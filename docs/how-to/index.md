@@ -27,7 +27,22 @@ Set up and manage different environments (development, staging, production) with
 **Common problems solved:**
 - "How do I manage different database connections for dev vs prod?"
 - "How do I keep secrets out of my configuration files?"
-- "How do I deploy the same config to multiple environments?"
+- "How do I deploy same config to multiple environments?"
+
+#### [Secrets Persistence](secrets-persistence.md)
+Configure and manage secrets persistence with proper security considerations for temporary and persistent storage.
+
+**You'll learn:**
+- Differences between temporary and persistent secrets
+- Security implications of each approach
+- Configuration patterns for optimal secret management
+- Best practices for secure credential handling
+
+**Common problems solved:**
+- "When should I use persistent vs temporary secrets?"
+- "How do I balance security and convenience?"
+- "What are the security risks of persistent secrets?"
+- "How do I migrate between temporary and persistent secrets?"
 
 #### [Migration from Manual SQL](migration.md)
 Migrate existing manual SQL workflows to Duckalog configuration-driven approach.

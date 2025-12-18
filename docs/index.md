@@ -107,7 +107,7 @@ views:
 
 ### Step 2: Set environment variables
 
-Before running Duckalog, set the required environment variables:
+Before running Duckalog, set required environment variables:
 
 ```bash
 export AWS_ACCESS_KEY_ID="your_aws_key"
@@ -115,39 +115,28 @@ export AWS_SECRET_ACCESS_KEY="your_aws_secret"
 export ICEBERG_TOKEN="your_iceberg_token"
 ```
 
-### Step 3: Set environment variables
+### Step 3: Validate and run your catalog (New Workflow)
 
-Before running Duckalog, set the required environment variables:
-
-```bash
-export AWS_ACCESS_KEY_ID="your_aws_key"
-export AWS_SECRET_ACCESS_KEY="your_aws_secret"
-export ICEBERG_TOKEN="your_iceberg_token"
-```
-
-### Step 4: Validate and build your catalog
-
-First, let's validate the configuration to catch any issues early:
+With the new workflow, you can validate and use your catalog in a single command:
 
 ```bash
+# Validate first (optional but recommended)
 duckalog validate analytics_catalog.yaml
-```
 
-If validation passes, build the catalog:
+# NEW: Single command to build and query
+duckalog run analytics_catalog.yaml --query "SELECT * FROM daily_metrics ORDER BY event_date DESC LIMIT 10"
 
-```bash
+# OR: Start interactive session
+duckalog run analytics_catalog.yaml --interactive
+# In the interactive shell, you can run:
+# SELECT * FROM daily_metrics ORDER BY event_date DESC LIMIT 10;
+# SHOW TABLES;
+# DESCRIBE enhanced_events;
+
+# OLD: Two-step workflow (still works)
 duckalog build analytics_catalog.yaml
-```
-
-This will create the `analytics.duckdb` file with all your views properly configured.
-
-### Step 5: Use your catalog
-
-Now you can query your unified data source:
-
-```bash
-# Connect directly with DuckDB CLI
 duckdb analytics.duckdb -c "SELECT * FROM daily_metrics ORDER BY event_date DESC LIMIT 10"
+```
 
 # Or use duckalog to generate SQL for inspection
 duckalog generate-sql analytics_catalog.yaml --output create_views.sql

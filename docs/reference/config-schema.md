@@ -199,7 +199,7 @@ Configuration for DuckDB secrets used to authenticate with external services and
 | `type` | string | ✅ | - | Secret type (s3, azure, gcs, http, postgres, mysql) |
 | `name` | string | ❌ | type value | Optional name for the secret (defaults to type if not provided) |
 | `provider` | string | ❌ | `config` | Secret provider (config or credential_chain) |
-| `persistent` | boolean | ❌ | `false` | Whether to create a persistent secret |
+| `persistent` | boolean | ❌ | `false` | Whether to create a persistent secret (⚠️ Security implications apply) |
 | `scope` | string | ❌ | - | Optional scope prefix for the secret |
 | `key_id` | string | ❌ | - | Access key ID or username for authentication |
 | `secret` | string | ❌ | - | Secret key or password for authentication |
@@ -288,10 +288,24 @@ duckdb:
       key_id: "${env:MINIO_ACCESS_KEY}"
       secret: "${env:MINIO_SECRET_KEY}"
       endpoint: http://minio-server:9000
+      persistent: false  # Temporary secret (default)
       options:
         use_ssl: false
         url_style: path
+
+# Persistent secret (use with caution)
+duckdb:
+  database: catalog.duckdb
+  secrets:
+    - type: s3
+      name: production_s3
+      key_id: "${env:AWS_ACCESS_KEY_ID}"
+      secret: "${env:AWS_SECRET_ACCESS_KEY}"
+      persistent: true  # Persists to database file
+      region: us-west-2
 ```
+
+**Security Note:** For detailed guidance on secrets persistence and security implications, see [Secrets Persistence Guide](../how-to/secrets-persistence.md).
 
 ## Views Configuration
 

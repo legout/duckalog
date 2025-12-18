@@ -7,11 +7,38 @@ Learn Duckalog from scratch with no prior experience. This comprehensive tutoria
 After completing this tutorial, you will be able to:
 
 - **Understand Duckalog fundamentals** - Configuration, views, and data sources
+- **Use new connection management** - `duckalog run` command with intelligent session management
 - **Create basic catalogs** - Single Parquet file configurations
 - **Add SQL transformations** - Business logic and data filtering
 - **Implement multi-source joins** - Combine data from multiple sources
 - **Use config imports** - Organize configuration for maintainability
-- **Build and query catalogs** - End-to-end workflow
+- **Build and query catalogs** - End-to-end workflow with new primary workflow
+
+## New: Understanding the `duckalog run` Workflow
+
+This tutorial uses the new `duckalog run` command, which replaces the old `build` + `query` workflow with intelligent connection management.
+
+### Why the New Workflow?
+
+```bash
+# OLD WORKFLOW (deprecated but still works):
+duckalog build config.yaml     # Build catalog
+duckalog query "SELECT..."      # Query separately
+
+# NEW WORKFLOW (recommended):
+duckalog run config.yaml --query "SELECT..."    # Single command
+duckalog run config.yaml --interactive          # Interactive shell
+```
+
+### Key Benefits
+
+- **Single Command**: Build and query in one step
+- **Session State**: Pragmas, settings, and attachments are automatically restored
+- **Incremental Updates**: Only missing views are created for faster builds
+- **Connection Reuse**: Intelligent connection pooling and management
+- **Lazy Loading**: Database connections established only when needed
+
+All examples in this tutorial use the new workflow, with notes about the old workflow for reference.
 
 ## Prerequisites
 
@@ -94,23 +121,28 @@ views:
     description: "User data from sample dataset"
 ```
 
-### 1.3 Build and Test
+### 1.3 Build and Test with New Workflow
 
-Build your first catalog and verify it works:
+Build your first catalog and verify it works using the new `run` command:
 
 ```bash
-# Build the catalog
-duckalog build step1_basic.yaml
+# NEW: Build and connect in one command
+duckalog run step1_basic.yaml --interactive
 
-# Test the catalog
-duckdb tutorial.duckdb -c "
--- Check if view was created
+# In the interactive shell, run these commands:
 SHOW TABLES;
-
--- Query the users view
 SELECT * FROM users LIMIT 5;
+DESCRIBE users;
+exit
 
--- Check view definition
+# OR: Direct query mode
+duckalog run step1_basic.yaml --query "SELECT * FROM users LIMIT 5"
+
+# OLD: Two-step workflow (still works but deprecated)
+duckalog build step1_basic.yaml
+duckdb tutorial.duckdb -c "
+SHOW TABLES;
+SELECT * FROM users LIMIT 5;
 DESCRIBE users;
 "
 ```
@@ -122,13 +154,20 @@ DESCRIBE users;
 
 ### 1.4 Understanding What Happened
 
-Let's break down what Duckalog did:
+Let's break down what the new `run` command did:
 
 1. **Read Configuration**: Parsed `step1_basic.yaml`
-2. **Created Database**: Connected to/created `tutorial.duckdb`
-3. **Applied Pragmas**: Set memory limit and threads
-4. **Created View**: Executed `CREATE VIEW users AS SELECT * FROM 'data/users.parquet'`
-5. **Validated**: Ensured view was created successfully
+2. **Smart Connection**: Connected to/created `tutorial.duckdb` with intelligent connection management
+3. **Applied Pragmas**: Set memory limit and threads (automatically stored for session restoration)
+4. **Created View**: Executed `CREATE VIEW users AS SELECT * FROM 'data/users.parquet'` (incremental update)
+5. **Session Management**: Stored session state (pragmas, settings) for future connections
+6. **Validated**: Ensured view was created successfully and connection is ready
+
+**Key Benefits of New Workflow:**
+- **Single Command**: No need to run separate build and query commands
+- **Session State**: Pragmas and settings are automatically restored on reconnection
+- **Incremental Updates**: Only missing views are created for faster subsequent runs
+- **Connection Reuse**: Database connections are managed efficiently
 
 ## Step 2: Environment Variables and .env Files
 
@@ -198,20 +237,22 @@ views:
 ### 2.4 Building with Environment Variables
 
 ```bash
-# Build with .env variables (automatically loaded)
-duckalog build step2_env_vars.yaml --verbose
+# NEW: Build and connect with .env variables (automatically loaded)
+duckalog run step2_env_vars.yaml --verbose --query "SELECT * FROM users LIMIT 3"
 
 # Check the verbose output for .env loading:
 # Loading .env files {'config_path': 'step2_env_vars.yaml', 'file_count': 1}
 # Loaded .env file {'file_path': '/path/to/.env', 'var_count': 8}
 # Completed .env file loading {'total_files': 1}
 
-# Test the result
-duckdb tutorial.duckdb -c "
--- Check if view was created
-SHOW TABLES;
+# Interactive mode with environment variables
+duckalog run step2_env_vars.yaml --interactive
+# In shell: SHOW TABLES; SELECT * FROM users LIMIT 3; exit
 
--- Query the users view
+# OLD: Two-step workflow (still works)
+duckalog build step2_env_vars.yaml --verbose
+duckdb tutorial.duckdb -c "
+SHOW TABLES;
 SELECT * FROM users LIMIT 3;
 "
 ```
@@ -263,10 +304,13 @@ EOF
 
 # Use specific environment
 source .env.development
-duckalog build step2_env_vars.yaml  # Uses development values
+duckalog run step2_env_vars.yaml  # Uses development values
 
 source .env.production
-duckalog build step2_env_vars.yaml  # Uses production values
+duckalog run step2_env_vars.yaml  # Uses production values
+
+# Test specific environments with queries
+duckalog run step2_env_vars.yaml --query "SELECT current_setting('memory_limit')"
 ```
 
 ### 2.7 Understanding .env File Discovery
@@ -283,8 +327,8 @@ mkdir -p subdir/configs
 cp .env subdir/configs/
 
 # Both configurations will find and use the .env file:
-duckalog build step2_env_vars.yaml                    # Uses ./.env
-duckalog build subdir/configs/step2_env_vars.yaml     # Uses subdir/configs/.env
+duckalog run step2_env_vars.yaml                    # Uses ./.env
+duckalog run subdir/configs/step2_env_vars.yaml     # Uses subdir/configs/.env
 ```
 
 ### 2.8 Security Best Practices
@@ -363,22 +407,24 @@ views:
 ### 3.2 Build and Test Transformations
 
 ```bash
-# Build with transformations
-duckalog build step3_transformations.yaml
-
-# Test the new views
-duckdb tutorial.duckdb -c "
+# NEW: Build and test with transformations
+duckalog run step3_transformations.yaml --query "
 -- Test active_users view
 SELECT * FROM active_users;
+"
 
--- Test monthly registrations
+# Interactive mode to explore all transformations
+duckalog run step3_transformations.yaml --interactive
+# In shell:
+# SELECT * FROM active_users;
+# SELECT * FROM user_registrations_by_month;
+# SELECT COUNT(*) as total_users, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_users FROM users;
+
+# OLD: Two-step workflow (still works)
+duckalog build step3_transformations.yaml
+duckdb tutorial.duckdb -c "
+SELECT * FROM active_users;
 SELECT * FROM user_registrations_by_month;
-
--- Verify transformation logic
-SELECT 
-    COUNT(*) as total_users,
-    SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_users
-FROM users;
 "
 ```
 
@@ -580,21 +626,29 @@ imports:
 ### 4.3 Build and Test Modular Configuration
 
 ```bash
-# Build with imports
-duckalog build step4_modular.yaml
-
-# Test that all views are available
-duckdb tutorial.duckdb -c "
+# NEW: Build and test with imports
+duckalog run step4_modular.yaml --query "
 -- List all views
 SHOW TABLES;
-
--- Test each imported view
-SELECT * FROM users LIMIT 3;
-SELECT * FROM orders LIMIT 3;
-SELECT * FROM active_users LIMIT 3;
-SELECT * FROM user_orders LIMIT 3;
-SELECT * FROM user_summary LIMIT 3;
 "
+
+# Interactive mode to explore modular views
+duckalog run step4_modular.yaml --interactive
+# In shell:
+# SHOW TABLES;
+# SELECT * FROM users LIMIT 3;
+# SELECT * FROM orders LIMIT 3;
+# SELECT * FROM active_users LIMIT 3;
+# SELECT * FROM user_orders LIMIT 3;
+# SELECT * FROM user_summary LIMIT 5;
+
+# Quick test of imported views
+duckalog run step4_modular.yaml --query "SELECT COUNT(*) FROM users"
+duckalog run step4_modular.yaml --query "SELECT COUNT(*) FROM orders"
+
+# OLD: Two-step workflow (still works)
+duckalog build step4_modular.yaml
+duckdb tutorial.duckdb -c "SHOW TABLES; SELECT * FROM users LIMIT 3;"
 ```
 
 ### 4.4 Understanding Import Benefits
@@ -769,35 +823,63 @@ views:
 #### SQL Syntax Errors
 **Issue**: `EngineError: Failed to create view`
 
-**Solution**: Test SQL in DuckDB first:
+**Solution**: Test SQL in interactive mode first:
 ```bash
-# Test SQL manually
+# Test SQL interactively with new workflow
+duckalog run step3_transformations.yaml --interactive
+# Then test your SQL in the shell
+
+# OLD: Test SQL manually (still works)
 duckdb tutorial.duckdb -c "YOUR SQL HERE"
+```
+
+#### Connection Issues with New Workflow
+**Issue**: Connection failures or session not restored
+
+**Solution**: Use verbose logging to diagnose:
+```bash
+# Check connection details with verbose output
+duckalog run config.yaml --verbose --query "SELECT 1"
+
+# Force rebuild if views are missing
+duckalog run config.yaml --force-rebuild
 ```
 
 ## Next Steps
 
 After completing this tutorial:
 
-1. **Explore Advanced Features**:
+1. **Explore New Connection Management**:
+   - Session state restoration and persistent secrets
+   - Incremental view updates for faster builds
+   - Connection pooling and intelligent management
+   - [`duckalog run`](../reference/cli.md#run---new-primary-command) command features
+
+2. **Explore Advanced Features**:
    - Database attachments for multi-database scenarios
    - Semantic models for business-friendly metadata
    - Environment variables for secure configuration
 
-2. **Work Through Examples**:
+3. **Work Through Examples**:
    - [Multi-Source Analytics Example](../examples/multi-source-analytics.md)
    - [Environment Variables Example](../examples/environment-vars.md)
    - [Config Imports Example](../examples/config-imports.md)
 
-3. **Learn Best Practices**:
+4. **Learn Best Practices**:
    - [Performance Tuning Guide](../how-to/performance-tuning.md)
    - [Environment Management Guide](../how-to/environment-management.md)
    - [Troubleshooting Guide](../guides/troubleshooting.md)
+   - [Secrets Persistence Guide](../how-to/secrets-persistence.md)
 
-4. **Try the Dashboard**:
+5. **Try the Dashboard**:
    - [Dashboard Tutorial](dashboard-basics.md)
    - Interactive data exploration
    - Real-time query execution
+
+6. **Migration Tips**:
+   - Use `duckalog run` instead of `build` + `query` workflow
+   - Leverage context managers for Python API (`with connect_to_catalog(...)`)
+   - Consider using persistent secrets for long-running applications
 
 ## Congratulations!
 

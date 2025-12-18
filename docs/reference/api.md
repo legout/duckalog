@@ -4,9 +4,135 @@ This reference provides comprehensive documentation for the Duckalog Python API,
 
 ## Core API Overview
 
-The main API provides both simple convenience functions and advanced patterns for custom implementations:
+The main API provides both simple convenience functions and advanced patterns for custom implementations. With the new config-driven connection management system, the primary API now returns a `CatalogConnection` object for intelligent connection management.
+
+### Core Functions
+
+#### New: connect_to_catalog()
+
+The primary function for connecting to catalogs with intelligent connection management:
+
+```python
+from duckalog import connect_to_catalog
+
+# Basic usage - returns CatalogConnection object
+conn = connect_to_catalog("catalog.yaml")
+
+# Use as context manager for automatic cleanup
+with connect_to_catalog("catalog.yaml") as conn:
+    # conn is a CatalogConnection object
+    result = conn.execute("SELECT COUNT(*) FROM users").fetchall()
+
+# Force rebuild of all views
+conn = connect_to_catalog("catalog.yaml", force_rebuild=True)
+
+# Custom database path
+conn = connect_to_catalog("catalog.yaml", db_path="custom.duckdb")
+```
+
+#### Key Features of CatalogConnection
+
+- **Automatic Connection Management**: Handles connection pooling and reuse
+- **Session State Restoration**: Automatically restores pragmas, settings, and attachments
+- **Incremental Updates**: Only creates missing views for faster builds
+- **Lazy Connection**: Database connection established only when needed
+- **Context Manager Support**: Automatic cleanup when used with `with` statement
+
+#### Legacy: connect_to_catalog_cm()
+
+For backward compatibility, the context manager function still works:
+
+```python
+from duckalog import connect_to_catalog_cm
+
+# Old style (still supported for compatibility)
+with connect_to_catalog_cm("catalog.yaml") as conn:
+    # conn is raw DuckDB connection (legacy behavior)
+    result = conn.execute("SELECT * FROM users").fetchall()
+```
+
+### Legacy Functions
+
+All existing functions continue to work but are deprecated in favor of the new connection management approach:
+
+```python
+from duckalog import (
+    generate_sql,           # Generate SQL from config
+    validate_config,        # Validate configuration
+    connect_and_build_catalog,  # Legacy build + connect
+)
+```
 
 ::: duckalog
+
+## New Connection Management Architecture
+
+### CatalogConnection Class
+
+The new `CatalogConnection` class is the primary interface for working with Duckalog catalogs. It provides intelligent connection management and session state restoration.
+
+```python
+from duckalog import connect_to_catalog
+
+# Create connection
+conn = connect_to_catalog("catalog.yaml")
+
+# The connection manages:
+# - Automatic catalog building
+# - Connection pooling and reuse
+# - Session state restoration
+# - Incremental view updates
+```
+
+#### Key Methods
+
+```python
+# Execute SQL (returns DuckDB result)
+result = conn.execute("SELECT * FROM users")
+
+# Get raw DuckDB connection when needed
+duckdb_conn = conn.get_connection()
+
+# Force rebuild catalog
+conn.rebuild_catalog()
+
+# Check if connection is ready
+is_ready = conn.is_ready()
+
+# Get catalog metadata
+metadata = conn.get_metadata()
+```
+
+#### Context Manager Usage
+
+```python
+# Recommended usage pattern
+with connect_to_catalog("catalog.yaml") as conn:
+    # Connection automatically managed
+    # Pragmas, settings, and attachments restored
+    # Cleanup performed on exit
+    
+    result = conn.execute("SELECT COUNT(*) FROM users").fetchone()
+    print(f"Total users: {result[0]}")
+
+# Connection automatically cleaned up
+```
+
+#### Session State Features
+
+```python
+with connect_to_catalog("catalog.yaml") as conn:
+    # Session state is automatically restored:
+    # - DuckDB pragmas
+    # - Session settings  
+    # - Database attachments
+    # - Persistent secrets
+    # - Custom functions
+    
+    # All views are available
+    for table in conn.execute("SHOW TABLES").fetchall():
+        print(f"Available view: {table[0]}")
+```
 
 ## New Architecture Patterns
 
@@ -109,6 +235,51 @@ with request_cache_scope() as request_context:
     # Integrate with the loading process
 ```
 
+### Connection Management Patterns
+
+```python
+from duckalog import connect_to_catalog
+
+# Pattern 1: Single connection with multiple queries
+conn = connect_to_catalog("catalog.yaml")
+users = conn.execute("SELECT * FROM users").fetchall()
+orders = conn.execute("SELECT * FROM orders").fetchall()
+
+# Pattern 2: Context manager for automatic cleanup
+with connect_to_catalog("catalog.yaml") as conn:
+    # Process data with automatic connection management
+    results = conn.execute("""
+        SELECT u.username, COUNT(o.order_id) as order_count
+        FROM users u
+        LEFT JOIN orders o ON u.user_id = o.user_id
+        GROUP BY u.username
+    """).fetchall()
+
+# Pattern 3: Multiple connections with connection pooling
+with connect_to_catalog("analytics.yaml") as analytics_conn:
+    with connect_to_catalog("warehouse.yaml") as warehouse_conn:
+        # Both connections managed independently
+        analytics_data = analytics_conn.execute("SELECT * FROM metrics").fetchall()
+        warehouse_data = warehouse_conn.execute("SELECT * FROM inventory").fetchall()
+```
+
+### Performance Optimization
+
+```python
+# Incremental builds - only missing views created
+conn = connect_to_catalog("catalog.yaml")  # Fast for subsequent runs
+
+# Force rebuild when needed
+conn = connect_to_catalog("catalog.yaml", force_rebuild=True)
+
+# Connection reuse across operations
+with connect_to_catalog("catalog.yaml") as conn:
+    # Reuse same connection for multiple queries
+    metadata = conn.get_metadata()  # Cached connection
+    results = conn.execute("COMPLEX_QUERY").fetchall()
+    # Connection reused, no reconnection overhead
+```
+
 ### Custom Filesystem Implementations
 
 ```python
@@ -124,6 +295,13 @@ custom_fs = fsspec.filesystem(
 
 # Load config with custom filesystem
 config = load_config(
+    "myprotocol://bucket/config.yaml",
+    filesystem=custom_fs
+)
+
+# Use with new connection management
+from duckalog import connect_to_catalog
+conn = connect_to_catalog(
     "myprotocol://bucket/config.yaml",
     filesystem=custom_fs
 )

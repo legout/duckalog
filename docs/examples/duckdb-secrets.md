@@ -14,6 +14,7 @@ Duckalog's secret management is built on the canonical `SecretConfig` model that
 **Related Documentation:**
 - [Architecture - Secret Management](../explanation/architecture.md#secret-management-architecture)
 - [User Guide - Secret Management](../guides/usage.md#secret-management)
+- [How-to - Secrets Persistence](../how-to/secrets-persistence.md)
 
 ## When to Use Secrets
 

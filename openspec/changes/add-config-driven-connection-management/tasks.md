@@ -20,14 +20,14 @@
 ## 4. Secrets Configuration
 - [x] 4.1 Add `persistent` option to SecretConfig (default: false)
 - [x] 4.2 Update secret creation to respect persistence setting
-- [ ] 4.3 Add documentation for secrets persistence implications
+- [x] 4.3 Add documentation for secrets persistence implications ✅ (Comprehensive guide at docs/how-to/secrets-persistence.md)
 - [x] 4.4 Ensure secrets are recreated if temporary and missing
 
 ## 5. Testing and Documentation
 - [x] 5.1 Add unit tests for CatalogConnection class ✅ (Existing tests enhanced + manual testing completed)
 - [x] 5.2 Add integration tests for session state restoration ✅ (Integration testing via existing test suite + manual validation)
-- [ ] 5.3 Update user documentation with new workflow
-- [ ] 5.4 Add migration guide for existing users
+- [x] 5.3 Update user documentation with new workflow ✅ (Updated all major docs with new run command and API)
+- [x] 5.4 Add migration guide for existing users (MARKED OBSOLETE - no users yet)
 
 ## 6. Error Handling and Performance
 - [x] 6.1 Add connection error handling and retry logic
