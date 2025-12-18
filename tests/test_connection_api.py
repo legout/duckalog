@@ -56,7 +56,8 @@ class TestConnectToCatalog:
         build_catalog(sample_config_path)
 
         # Now connect to it
-        conn = connect_to_catalog(sample_config_path)
+        catalog = connect_to_catalog(sample_config_path)
+        conn = catalog.get_connection()
 
         assert conn is not None
         assert isinstance(conn, duckdb.DuckDBPyConnection)
@@ -67,12 +68,15 @@ class TestConnectToCatalog:
         ).fetchall()
         assert isinstance(result, list)
 
-        conn.close()
+        catalog.close()
 
     def test_connect_with_database_path_override(self, sample_config_path: str):
         """Test connecting with a custom database path override."""
-        with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as tmp:
-            tmp_path = tmp.name
+        # Use a path that doesn't exist yet so DuckDB creates it
+        tmp_dir = tempfile.gettempdir()
+        tmp_path = str(Path(tmp_dir) / "test_override.duckdb")
+        if Path(tmp_path).exists():
+            Path(tmp_path).unlink()
 
         try:
             # Create a database at the custom path
@@ -81,38 +85,55 @@ class TestConnectToCatalog:
             conn.close()
 
             # Connect using the override
-            conn = connect_to_catalog(sample_config_path, database_path=tmp_path)
+            catalog = connect_to_catalog(sample_config_path, database_path=tmp_path)
+            conn = catalog.get_connection()
 
             result = conn.execute("SELECT * FROM test_table").fetchall()
             assert result == []
 
-            conn.close()
+            catalog.close()
         finally:
             Path(tmp_path).unlink(missing_ok=True)
 
-    def test_connect_read_only_mode(self, sample_config_path: str):
-        """Test connecting in read-only mode."""
-        from duckalog import build_catalog
+    def test_connect_read_only_mode(self, sample_config):
+        """Test connecting in read-only mode with a persistent database."""
+        # We need a persistent database for read-only test, as :memory: doesn't support it
+        with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as tmp:
+            db_path = tmp.name
+        Path(db_path).unlink()  # Delete so duckdb can create it
 
-        build_catalog(sample_config_path)
+        sample_config.duckdb.database = db_path
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(sample_config.model_dump(), f, default_flow_style=False)
+            cfg_path = f.name
 
-        conn = connect_to_catalog(sample_config_path, read_only=True)
+        try:
+            from duckalog import build_catalog
 
-        # Should be able to read
-        result = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
-        assert isinstance(result, list)
+            build_catalog(cfg_path)
 
-        # Should not be able to write (this will raise an exception)
-        with pytest.raises(duckdb.Error):
-            conn.execute("CREATE TABLE test_table (id INTEGER)")
+            catalog = connect_to_catalog(cfg_path, read_only=True)
+            conn = catalog.get_connection()
 
-        conn.close()
+            # Should be able to read
+            result = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+            assert isinstance(result, list)
+
+            # Should not be able to write (this will raise an exception)
+            with pytest.raises(duckdb.Error):
+                conn.execute("CREATE TABLE test_table (id INTEGER)")
+
+            catalog.close()
+        finally:
+            Path(db_path).unlink(missing_ok=True)
+            Path(cfg_path).unlink(missing_ok=True)
 
     def test_connect_to_in_memory_database(self, sample_config_path: str):
         """Test connecting to an in-memory database."""
-        conn = connect_to_catalog(sample_config_path, database_path=":memory:")
+        catalog = connect_to_catalog(sample_config_path, database_path=":memory:")
+        conn = catalog.get_connection()
 
         assert conn is not None
         assert isinstance(conn, duckdb.DuckDBPyConnection)
@@ -123,17 +144,21 @@ class TestConnectToCatalog:
         ).fetchall()
         assert result == []
 
-        conn.close()
+        catalog.close()
 
     def test_connect_nonexistent_database(self, sample_config_path: str):
         """Test connecting to a non-existent database raises FileNotFoundError."""
+        catalog = connect_to_catalog(
+            sample_config_path, database_path="/nonexistent/path.db"
+        )
         with pytest.raises(FileNotFoundError, match="Database file not found"):
-            connect_to_catalog(sample_config_path, database_path="/nonexistent/path.db")
+            catalog.get_connection()
 
     def test_connect_invalid_config(self):
         """Test connecting with invalid config raises ConfigError."""
+        catalog = connect_to_catalog("/nonexistent/config.yaml")
         with pytest.raises(ConfigError):
-            connect_to_catalog("/nonexistent/config.yaml")
+            catalog.get_connection()
 
 
 class TestConnectToCatalogCm:
@@ -180,8 +205,11 @@ class TestConnectToCatalogCm:
 
     def test_context_manager_with_path_override(self, sample_config_path: str):
         """Test context manager with database path override."""
-        with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as tmp:
-            tmp_path = tmp.name
+        # Use a path that doesn't exist yet
+        tmp_dir = tempfile.gettempdir()
+        tmp_path = str(Path(tmp_dir) / "test_cm_override.duckdb")
+        if Path(tmp_path).exists():
+            Path(tmp_path).unlink()
 
         try:
             # Create a database at the custom path
@@ -219,8 +247,11 @@ class TestConnectAndBuildCatalog:
 
     def test_build_and_connect_with_custom_path(self, sample_config_path: str):
         """Test build and connect with custom database path."""
-        with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as tmp:
-            tmp_path = tmp.name
+        # Use a path that doesn't exist yet
+        tmp_dir = tempfile.gettempdir()
+        tmp_path = str(Path(tmp_dir) / "test_build_connect.duckdb")
+        if Path(tmp_path).exists():
+            Path(tmp_path).unlink()
 
         try:
             conn = connect_and_build_catalog(sample_config_path, database_path=tmp_path)
@@ -240,31 +271,45 @@ class TestConnectAndBuildCatalog:
         result = connect_and_build_catalog(sample_config_path, dry_run=True)
 
         assert isinstance(result, str)
-        assert "CREATE VIEW" in result or "CREATE TABLE" in result
+        assert "VIEW" in result  # "CREATE OR REPLACE VIEW" contains "VIEW"
         # Should not be a connection object
         assert not hasattr(result, "execute")
         assert not hasattr(result, "close")
 
-    def test_build_and_connect_read_only(self, sample_config_path: str):
-        """Test build and connect in read-only mode."""
-        conn = connect_and_build_catalog(sample_config_path, read_only=True)
+    def test_build_and_connect_read_only(self, sample_config):
+        """Test build and connect in read-only mode with persistent DB."""
+        # Need persistent DB for read-only
+        with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as tmp:
+            db_path = tmp.name
+        Path(db_path).unlink()
 
-        # Should be a connection object, not a string
-        assert hasattr(conn, "execute")
-        assert hasattr(conn, "close")
-        assert isinstance(conn, duckdb.DuckDBPyConnection)
+        sample_config.duckdb.database = db_path
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(sample_config.model_dump(), f, default_flow_style=False)
+            cfg_path = f.name
 
-        # Should be able to read
-        result = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
-        assert isinstance(result, list)
+        try:
+            conn = connect_and_build_catalog(cfg_path, read_only=True)
 
-        # Should not be able to write
-        with pytest.raises(duckdb.Error):
-            conn.execute("CREATE TABLE test_table (id INTEGER)")
+            # Should be a connection object, not a string
+            assert hasattr(conn, "execute")
+            assert hasattr(conn, "close")
+            assert isinstance(conn, duckdb.DuckDBPyConnection)
 
-        conn.close()
+            # Should be able to read
+            result = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+            assert isinstance(result, list)
+
+            # Should not be able to write
+            with pytest.raises(duckdb.Error):
+                conn.execute("CREATE TABLE test_table (id INTEGER)")
+
+            conn.close()
+        finally:
+            Path(db_path).unlink(missing_ok=True)
+            Path(cfg_path).unlink(missing_ok=True)
 
     def test_build_and_connect_with_verbose(self, sample_config_path: str):
         """Test build and connect with verbose mode."""
@@ -286,12 +331,13 @@ class TestConnectAndBuildCatalog:
         """Test that build failures prevent connection creation."""
         # Create a config that will fail during build
         invalid_config = """
+version: 1
 duckdb:
   database: ":memory:"
 
 views:
   - name: test_view
-    query: "INVALID SQL SYNTAX"
+    sql: "INVALID SQL SYNTAX"
 """
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp:
@@ -328,7 +374,8 @@ class TestIntegrationWorkflow:
 
         build_catalog(sample_config_path)
 
-        conn = connect_to_catalog(sample_config_path)
+        catalog = connect_to_catalog(sample_config_path)
+        conn = catalog.get_connection()
 
         # Execute some queries
         tables = conn.execute(
@@ -336,7 +383,7 @@ class TestIntegrationWorkflow:
         ).fetchall()
         assert isinstance(tables, list)
 
-        conn.close()
+        catalog.close()
 
     def test_single_function_workflow(self, sample_config_path: str):
         """Test workflow using single function for build and connect."""

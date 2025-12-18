@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+import time
 import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import duckdb
 
 from .config import Config, load_config, is_relative_path, resolve_relative_path
-from .config import get_logger, log_debug, log_info, log_error
+from .config import get_logger, log_debug, log_info, log_error, log_warning
 
 # Optional imports for remote export functionality
 try:
@@ -64,6 +65,7 @@ class CatalogBuilder:
         db_path: str | None = None,
         verbose: bool = False,
         duckalog_results: dict[str, BuildResult] | None = None,
+        use_connection: bool = False,
     ):
         self.config = config
         self.dry_run = dry_run
@@ -76,12 +78,17 @@ class CatalogBuilder:
         self.temp_paths = []
         self.remote_uri = None
         self.duckalog_results = duckalog_results or {}
+        self.use_connection = use_connection
+        self.catalog_conn = None
 
     def build(self) -> str | None:
         """Build the catalog using the orchestrated workflow."""
         try:
             if self.dry_run:
                 return self._handle_dry_run()
+
+            if self.use_connection and self.config_path:
+                return self._build_with_connection()
 
             self._setup_connection()
             self._apply_pragmas()
@@ -91,6 +98,42 @@ class CatalogBuilder:
             return self._export_if_needed()
         finally:
             self._cleanup()
+
+    def _build_with_connection(self) -> str | None:
+        """Build the catalog using CatalogConnection for incremental updates."""
+        from .connection import CatalogConnection
+
+        target_db = _resolve_db_path(self.config, self.db_path)
+        log_info("Using connection-based build", db_path=target_db)
+
+        # CatalogConnection handles the session state restoration and incremental views
+        self.catalog_conn = CatalogConnection(
+            self.config_path,
+            database_path=target_db,
+            force_rebuild=True,  # Ensure views are recreated if they changed
+        )
+        self.conn = self.catalog_conn.get_connection()
+
+        # We still need to handle remote export if target_db was a remote URI
+        # and we used a temp file. But CatalogConnection doesn't know about
+        # remote URIs in the same way CatalogBuilder does.
+
+        # If the target_db is remote, we should have handled it in _setup_connection
+        # but here we are bypassing _setup_connection.
+
+        # Let's refine this to handle remote export too.
+        if is_remote_export_uri(_resolve_db_path(self.config, self.db_path)):
+            # We need to use the temp file logic from _setup_connection
+            self._setup_connection()
+            # Now re-initialize CatalogConnection with the temp db path
+            self.catalog_conn = CatalogConnection(
+                self.config_path,
+                database_path=str(self.temp_paths[-1]),
+                force_rebuild=True,
+            )
+            self.conn = self.catalog_conn.get_connection()
+
+        return self._export_if_needed()
 
     def _handle_dry_run(self) -> str:
         """Handle dry run mode to generate SQL without connecting to DuckDB."""
@@ -503,13 +546,9 @@ def build_catalog(
     filesystem: Any | None = None,
     include_secrets: bool = True,
     load_dotenv: bool = True,
+    use_connection: bool = False,
 ) -> str | None:
     """Build or update a DuckDB catalog from a configuration file.
-
-    .. deprecated:: 0.5.0
-        Use ``run`` command or ``connect_and_build_catalog`` function instead
-        for incremental updates and smart connection management. This function
-        performs full rebuilds only and may be deprecated in future releases.
 
     This function is the high-level entry point used by both the CLI and
     Python API. It loads the config, optionally performs a dry-run SQL
@@ -529,6 +568,8 @@ def build_catalog(
         include_secrets: If ``True``, include secret creation statements in the output.
         load_dotenv: If ``True``, automatically load and process .env files. If ``False``,
             skip .env file loading entirely.
+        use_connection: If ``True``, use the new CatalogConnection manager for
+            smart connection handling and incremental updates.
 
     Returns:
         The generated SQL script as a string when ``dry_run`` is ``True``,
@@ -623,6 +664,7 @@ def build_catalog(
         db_path=db_path,
         verbose=verbose,
         duckalog_results=duckalog_results,
+        use_connection=use_connection,
     )
 
     return builder.build()
@@ -697,23 +739,61 @@ def _resolve_db_path(config: Config, override: str | None) -> str:
 def _create_secrets(
     conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool
 ) -> None:
-    """Create DuckDB secrets from configuration."""
+    """Create DuckDB secrets from configuration.
+
+    This function handles both temporary and persistent secrets. For persistent
+    secrets, it checks if they already exist to avoid unnecessary writes,
+    especially in read-only sessions.
+    """
     db_conf = config.duckdb
     if not db_conf.secrets:
         return
 
-    log_info("Creating DuckDB secrets", count=len(db_conf.secrets))
+    log_info("Syncing DuckDB secrets", count=len(db_conf.secrets))
 
     # Import the SQL generation function
     from .sql_generation import generate_secret_sql
 
+    # Get existing secrets to check for persistence and existence
+    existing_secrets = {}
+    try:
+        # DuckDB renamed 'serializable' to 'persistent' in recent versions
+        # We try to detect which one to use
+        secret_info = conn.execute("DESCRIBE SELECT * FROM duckdb_secrets()").fetchall()
+        column_names = [row[0] for row in secret_info]
+
+        persistence_col = (
+            "persistent" if "persistent" in column_names else "serializable"
+        )
+
+        results = conn.execute(
+            f"SELECT name, type, {persistence_col} FROM duckdb_secrets()"
+        ).fetchall()
+        existing_secrets = {
+            row[0]: {"type": row[1], "persistent": row[2]} for row in results
+        }
+    except Exception as e:
+        log_debug("Could not query existing secrets", error=str(e))
+
     for index, secret in enumerate(db_conf.secrets, start=1):
+        secret_name = secret.name or secret.type
+        is_persistent = secret.persistent
+
         log_debug(
-            "Creating secret",
+            "Processing secret",
             index=index,
             type=secret.type,
-            name=secret.name or secret.type,
+            name=secret_name,
+            persistent=is_persistent,
         )
+
+        # Skip if it's a persistent secret that already exists
+        if is_persistent and secret_name in existing_secrets:
+            if existing_secrets[secret_name]["persistent"]:
+                log_debug(
+                    "Persistent secret already exists, skipping", name=secret_name
+                )
+                continue
 
         # Validate that secret doesn't contain unresolved environment variables
         sql = generate_secret_sql(secret)
@@ -724,34 +804,48 @@ def _create_secrets(
             unresolved_vars = re.findall(r"\$\{env:([^}]+)\}", sql)
             if unresolved_vars:
                 raise EngineError(
-                    f"Secret '{secret.name or secret.type}' contains unresolved environment variables: {', '.join(unresolved_vars)}. "
+                    f"Secret '{secret_name}' contains unresolved environment variables: {', '.join(unresolved_vars)}. "
                     f"Please ensure these environment variables are set before running duckalog."
                 )
 
         # Drop existing secret if it exists to prevent conflicts
-        secret_name = secret.name or secret.type
+        # But only if we're not in a read-only session and it's not a persistent secret we're skipping
         try:
+            # Check if connection is read-only
+            is_read_only = (
+                conn.execute("PRAGMA database_list").fetchall()[0][2] == "readonly"
+            )
+
+            if is_read_only and is_persistent:
+                log_warning(
+                    "Cannot create persistent secret in read-only session",
+                    name=secret_name,
+                )
+                continue
+
             conn.execute(f"DROP SECRET IF EXISTS {quote_ident(secret_name)}")
             log_debug("Dropped existing secret", name=secret_name)
-        except Exception:
-            # Ignore errors if secret doesn't exist
-            pass
+        except Exception as e:
+            # If we fail to drop, it might be due to read-only or other issues
+            log_debug("Failed to drop secret", name=secret_name, error=str(e))
+            if (
+                is_persistent
+            ):  # For persistent secrets, this is more likely to fail in RO
+                continue
+
         log_debug("Executing secret SQL", index=index, sql=sql)
 
         try:
             conn.execute(sql)
             log_info(
                 "Secret created successfully",
-                name=secret.name or secret.type,
+                name=secret_name,
                 type=secret.type,
+                persistent=is_persistent,
             )
         except Exception as e:
-            log_error(
-                "Failed to create secret", name=secret.name or secret.type, error=str(e)
-            )
-            raise EngineError(
-                f"Failed to create secret '{secret.name or secret.type}': {e}"
-            ) from e
+            log_error("Failed to create secret", name=secret_name, error=str(e))
+            raise EngineError(f"Failed to create secret '{secret_name}': {e}") from e
 
 
 def _apply_duckdb_settings(
@@ -785,8 +879,17 @@ def _apply_duckdb_settings(
 
 
 def _setup_attachments(
-    conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool
+    conn: duckdb.DuckDBPyConnection,
+    config: Config,
+    verbose: bool,
+    max_retries: int = 3,
+    retry_delay: float = 1.0,
 ) -> None:
+    """Setup all database attachments (DuckDB, SQLite, Postgres).
+
+    Includes retry logic for potentially flaky remote attachments.
+    """
+    # DuckDB attachments
     for duckdb_attachment in config.attachments.duckdb:
         clause = " (READ_ONLY)" if duckdb_attachment.read_only else ""
         log_info(
@@ -795,20 +898,30 @@ def _setup_attachments(
             path=duckdb_attachment.path,
             read_only=duckdb_attachment.read_only,
         )
-        conn.execute(
-            f"ATTACH DATABASE {quote_literal(duckdb_attachment.path)} AS {quote_ident(duckdb_attachment.alias)}{clause}"
+        _execute_with_retry(
+            conn,
+            f"ATTACH DATABASE {quote_literal(duckdb_attachment.path)} AS {quote_ident(duckdb_attachment.alias)}{clause}",
+            max_retries=max_retries,
+            retry_delay=retry_delay,
+            context=f"DuckDB attachment '{duckdb_attachment.alias}'",
         )
 
+    # SQLite attachments
     for sqlite_attachment in config.attachments.sqlite:
         log_info(
             "Attaching SQLite database",
             alias=sqlite_attachment.alias,
             path=sqlite_attachment.path,
         )
-        conn.execute(
-            f"ATTACH DATABASE {quote_literal(sqlite_attachment.path)} AS {quote_ident(sqlite_attachment.alias)} (TYPE SQLITE)"
+        _execute_with_retry(
+            conn,
+            f"ATTACH DATABASE {quote_literal(sqlite_attachment.path)} AS {quote_ident(sqlite_attachment.alias)} (TYPE SQLITE)",
+            max_retries=max_retries,
+            retry_delay=retry_delay,
+            context=f"SQLite attachment '{sqlite_attachment.alias}'",
         )
 
+    # Postgres attachments
     for pg_attachment in config.attachments.postgres:
         log_info(
             "Attaching Postgres database",
@@ -836,10 +949,54 @@ def _setup_attachments(
             clauses.append(f"SSLMODE {quote_literal(pg_attachment.sslmode)}")
         for key, value in pg_attachment.options.items():
             clauses.append(f"{key.upper()} {quote_literal(str(value))}")
+
+        # Add a default connect_timeout if not provided in options
+        if "connect_timeout" not in {k.lower() for k in pg_attachment.options.keys()}:
+            clauses.append("CONNECT_TIMEOUT 10")
+
         clause_sql = ", ".join(clauses)
-        conn.execute(
-            f"ATTACH DATABASE {quote_literal(pg_attachment.database)} AS {quote_ident(pg_attachment.alias)} ({clause_sql})"
+        _execute_with_retry(
+            conn,
+            f"ATTACH DATABASE {quote_literal(pg_attachment.database)} AS {quote_ident(pg_attachment.alias)} ({clause_sql})",
+            max_retries=max_retries,
+            retry_delay=retry_delay,
+            context=f"Postgres attachment '{pg_attachment.alias}'",
         )
+
+
+def _execute_with_retry(
+    conn: duckdb.DuckDBPyConnection,
+    sql: str,
+    max_retries: int = 3,
+    retry_delay: float = 1.0,
+    context: str = "SQL execution",
+) -> None:
+    """Execute a SQL statement with retry logic."""
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            conn.execute(sql)
+            if attempt > 1:
+                log_info(f"Successfully completed {context} after {attempt} attempts")
+            return
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries:
+                log_warning(
+                    f"Failed {context} (attempt {attempt}/{max_retries}). Retrying in {retry_delay}s...",
+                    error=str(e),
+                )
+                time.sleep(retry_delay)
+            else:
+                log_error(
+                    f"Final failure for {context} after {max_retries} attempts",
+                    error=str(e),
+                )
+
+    if last_error:
+        raise EngineError(
+            f"Failed {context} after {max_retries} retries: {last_error}"
+        ) from last_error
 
 
 def _setup_iceberg_catalogs(

@@ -70,6 +70,7 @@ from .validators import (
     validate_file_accessibility,
     log_info,
     log_debug,
+    log_warning,
     log_error,
     get_logger,
 )
@@ -145,5 +146,6 @@ __all__ = [
     "get_logger",
     "log_info",
     "log_debug",
+    "log_warning",
     "log_error",
 ]

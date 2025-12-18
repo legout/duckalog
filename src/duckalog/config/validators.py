@@ -72,6 +72,7 @@ def _log(level: int, message: str, **details: Any) -> None:
     level_map = {
         20: "INFO",  # logging.INFO
         10: "DEBUG",  # logging.DEBUG
+        30: "WARNING",  # logging.WARNING
         40: "ERROR",  # logging.ERROR
     }
     level_name = level_map.get(level, "INFO")
@@ -86,6 +87,11 @@ def log_info(message: str, **details: Any) -> None:
 def log_debug(message: str, **details: Any) -> None:
     """Log a redacted DEBUG-level message."""
     _log(10, message, **details)
+
+
+def log_warning(message: str, **details: Any) -> None:
+    """Log a redacted WARNING-level message."""
+    _log(30, message, **details)
 
 
 def log_error(message: str, **details: Any) -> None:

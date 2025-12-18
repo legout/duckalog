@@ -19,12 +19,11 @@ try:
 except ImportError:
     fsspec = None  # Will be handled in the function
 
-from .config import load_config, validate_file_accessibility
-
+from .config import load_config, validate_file_accessibility, log_error, log_info
 from .config_init import create_config_template, validate_generated_config
+from .connection import CatalogConnection, connect_to_catalog
 from .engine import build_catalog
 from .errors import ConfigError, EngineError
-from .config import log_error, log_info
 from .sql_generation import generate_all_views_sql
 
 app = typer.Typer(help="Duckalog CLI for building and inspecting DuckDB catalogs.")
@@ -384,6 +383,11 @@ def build(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Generate SQL without executing against DuckDB."
     ),
+    use_connection: bool = typer.Option(
+        False,
+        "--use-connection",
+        help="Use the new connection-based workflow (recommended).",
+    ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose logging output."
     ),
@@ -398,46 +402,22 @@ def build(
     This command loads a configuration file and applies it to a DuckDB
     catalog, or prints the generated SQL when ``--dry-run`` is used.
 
+    Note: This command is being deprecated in favor of 'run'.
+
     Examples:
         # Local configuration file
         duckalog build config.yaml
 
-        # S3 with access key and secret
-        duckalog build s3://my-bucket/config.yaml --fs-key AKIA... --fs-secret wJalr...
-
-        # S3 with AWS profile
-        duckalog build s3://my-bucket/config.yaml --aws-profile my-profile
-
-        # GitHub with personal access token
-        duckalog build github://user/repo/config.yaml --fs-token ghp_xxxxxxxxxxxx
-
-        # Azure with connection string
-        duckalog build abfs://account@container/config.yaml --azure-connection-string "..."
-
-        # SFTP with key authentication
-        duckalog build sftp://server/config.yaml --sftp-host server.com --sftp-key-file ~/.ssh/id_rsa
-
-        # Anonymous S3 access (public bucket)
-        duckalog build s3://public-bucket/config.yaml --fs-anon
-
-        # Export catalog to remote storage
-        duckalog build config.yaml --db-path s3://my-bucket/catalog.duckdb
-
-        # Export to GCS with service account credentials
-        duckalog build config.yaml --db-path gs://my-project-bucket/catalog.duckdb --gcs-credentials-file /path/to/creds.json
-
-        # Export to Azure with connection string
-        duckalog build config.yaml --db-path abfs://account@container/catalog.duckdb --azure-connection-string "..."
-
-        # Export to SFTP server
-        duckalog build config.yaml --db-path sftp://server/path/catalog.duckdb --sftp-host server.com --sftp-key-file ~/.ssh/id_rsa
+        # Use new connection-based workflow
+        duckalog build config.yaml --use-connection
 
     Args:
         config_path: Path to configuration file or remote URI (e.g., s3://bucket/config.yaml).
-        db_path: Optional override for the DuckDB database file path. Supports local paths and remote URIs for cloud storage export.
+        db_path: Optional override for the DuckDB database file path.
         dry_run: If ``True``, print SQL instead of modifying the database.
+        use_connection: If ``True``, use the new connection-based workflow.
         verbose: If ``True``, enable more verbose logging.
-        load_dotenv: If ``True``, automatically load and process .env files. If ``False``, skip .env file loading entirely.
+        load_dotenv: If ``True``, automatically load and process .env files.
     """
     _configure_logging(verbose)
 
@@ -464,15 +444,33 @@ def build(
         config_path=config_path,
         db_path=db_path,
         dry_run=dry_run,
+        use_connection=use_connection,
         filesystem=filesystem is not None,
     )
 
     # Add deprecation warning for build command
     typer.echo(
-        "Note: 'build' command is for full rebuilds only. "
-        "Consider using 'run' command for incremental updates and smart connection management.",
+        "Deprecation Warning: 'build' is being deprecated in favor of 'run'.\n"
+        "Use 'duckalog run' for incremental updates and better connection management.",
         err=True,
     )
+
+    if use_connection and not dry_run:
+        try:
+            with connect_to_catalog(
+                str(config_path),
+                database_path=db_path,
+                force_rebuild=True,  # build always rebuilds
+                filesystem=filesystem,
+                load_dotenv=load_dotenv,
+            ) as catalog:
+                catalog.get_connection()
+                typer.echo("Catalog build completed.")
+                return
+        except Exception as exc:
+            log_error("Build via connection failed", error=str(exc))
+            _fail(f"Error: {exc}", 1)
+
     try:
         sql = build_catalog(
             str(config_path),
@@ -488,7 +486,7 @@ def build(
     except EngineError as exc:
         log_error("Build failed due to engine error", error=str(exc))
         _fail(f"Engine error: {exc}", 3)
-    except Exception as exc:  # pragma: no cover - unexpected failures
+    except Exception as exc:  # pragma: no cover
         if verbose:
             raise
         log_error("Build failed unexpectedly", error=str(exc))
@@ -498,6 +496,65 @@ def build(
         typer.echo(sql)
     elif not dry_run:
         typer.echo("Catalog build completed.")
+
+
+def _interactive_loop(conn: Any) -> None:
+    """Run an interactive SQL shell for the catalog."""
+    import duckdb
+
+    typer.echo("Duckalog Interactive SQL Shell")
+    typer.echo("Type '.help' for help, '.quit' to exit.")
+
+    while True:
+        try:
+            sql = typer.prompt("duckalog> ", prompt_suffix="").strip()
+            if not sql:
+                continue
+
+            if sql.lower() in (".quit", ".exit", "exit", "quit"):
+                break
+
+            if sql.lower() == ".help":
+                typer.echo("\nCommands:")
+                typer.echo("  .quit, .exit  - Exit the shell")
+                typer.echo("  .tables       - List all tables")
+                typer.echo("  .views        - List all views")
+                typer.echo("  .help         - Show this help")
+                typer.echo("  <SQL>         - Execute SQL query\n")
+                continue
+
+            if sql.lower() == ".tables":
+                res = conn.execute(
+                    "SELECT table_name, table_schema FROM duckdb_tables()"
+                ).fetchall()
+                _display_table(["table_name", "table_schema"], res)
+                continue
+
+            if sql.lower() == ".views":
+                res = conn.execute(
+                    "SELECT view_name, schema_name FROM duckdb_views()"
+                ).fetchall()
+                _display_table(["view_name", "schema_name"], res)
+                continue
+
+            # Execute SQL
+            res = conn.execute(sql)
+            if res.description:
+                columns = [desc[0] for desc in res.description]
+                rows = res.fetchall()
+                if rows:
+                    _display_table(columns, rows)
+                else:
+                    typer.echo("Query executed successfully. No rows returned.")
+            else:
+                typer.echo("Query executed successfully.")
+
+        except EOFError:
+            break
+        except duckdb.Error as e:
+            typer.echo(f"SQL Error: {e}", err=True)
+        except Exception as e:
+            typer.echo(f"Error: {e}", err=True)
 
 
 @app.command(help="Run a catalog with smart connection management.")
@@ -520,6 +577,18 @@ def run(
         "--force-rebuild",
         help="Force full catalog rebuild instead of incremental updates.",
     ),
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        "-i",
+        help="Keep connection alive and enter interactive SQL prompt.",
+    ),
+    query_sql: Optional[str] = typer.Option(
+        None,
+        "--query",
+        "-q",
+        help="Execute a specific SQL query and exit.",
+    ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose logging output."
     ),
@@ -541,22 +610,24 @@ def run(
         # Force full rebuild
         duckalog run config.yaml --force-rebuild
 
+        # Interactive mode for multiple queries
+        duckalog run config.yaml --interactive
+
+        # Single query execution
+        duckalog run config.yaml --query "SELECT * FROM my_view"
+
         # S3 with access key and secret
         duckalog run s3://my-bucket/config.yaml --fs-key AKIA... --fs-secret wJalr...
 
-        # GitHub with personal access token
-        duckalog run github://user/repo/config.yaml --fs-token ghp_xxxxxxxxxxxx
-
-        # Export catalog to remote storage
-        duckalog run config.yaml --db-path s3://my-bucket/catalog.duckdb
-
     Args:
         config_path: Path to configuration file or remote URI (e.g., s3://bucket/config.yaml).
-        db_path: Optional override for DuckDB database file path. Supports local paths and remote URIs for cloud storage export.
+        db_path: Optional override for DuckDB database file path.
         dry_run: If ``True``, print SQL instead of modifying database.
         force_rebuild: If ``True``, force full catalog rebuild instead of incremental updates.
+        interactive: If ``True``, start interactive SQL shell.
+        query_sql: Optional SQL query to execute and exit.
         verbose: If ``True``, enable more verbose logging.
-        load_dotenv: If ``True``, automatically load and process .env files. If ``False``, skip .env file loading entirely.
+        load_dotenv: If ``True``, automatically load and process .env files.
     """
     _configure_logging(verbose)
 
@@ -584,42 +655,66 @@ def run(
         db_path=db_path,
         dry_run=dry_run,
         force_rebuild=force_rebuild,
+        interactive=interactive,
+        query=query_sql,
         filesystem=filesystem is not None,
     )
 
-    # For now, delegate to build_catalog - smart connection logic will come in future implementation
-    # This maintains backward compatibility while providing the new command interface
-    if verbose and not force_rebuild:
-        typer.echo(
-            "Note: Using build-once behavior. Smart connection management coming in a future release."
-        )
+    if dry_run:
+        try:
+            sql = build_catalog(
+                str(config_path),
+                db_path=db_path,
+                dry_run=True,
+                verbose=verbose,
+                filesystem=filesystem,
+                load_dotenv=load_dotenv,
+            )
+            if sql:
+                typer.echo(sql)
+            return
+        except Exception as exc:
+            log_error("Dry run failed", error=str(exc))
+            _fail(f"Error: {exc}", 1)
 
     try:
-        sql_result = build_catalog(
+        with connect_to_catalog(
             str(config_path),
-            db_path=db_path,
-            dry_run=dry_run,
-            verbose=verbose,
+            database_path=db_path,
+            force_rebuild=force_rebuild,
             filesystem=filesystem,
             load_dotenv=load_dotenv,
-        )
+        ) as catalog:
+            conn = catalog.get_connection()
+
+            if query_sql:
+                res = conn.execute(query_sql)
+                if res.description:
+                    columns = [desc[0] for desc in res.description]
+                    rows = res.fetchall()
+                    if rows:
+                        _display_table(columns, rows)
+                    else:
+                        typer.echo("Query executed successfully. No rows returned.")
+                else:
+                    typer.echo("Query executed successfully.")
+            elif interactive:
+                _interactive_loop(conn)
+            else:
+                action = "rebuilt" if force_rebuild else "updated"
+                typer.echo(f"Catalog {action} successfully.")
+
     except ConfigError as exc:
         log_error("Run failed due to config error", error=str(exc))
         _fail(f"Config error: {exc}", 2)
     except EngineError as exc:
         log_error("Run failed due to engine error", error=str(exc))
         _fail(f"Engine error: {exc}", 3)
-    except Exception as exc:  # pragma: no cover - unexpected failures
+    except Exception as exc:  # pragma: no cover
         if verbose:
             raise
         log_error("Run failed unexpectedly", error=str(exc))
         _fail(f"Unexpected error: {exc}", 1)
-
-    if dry_run and sql_result:
-        typer.echo(sql_result)
-    elif not dry_run:
-        action = "rebuilt" if force_rebuild else "updated"
-        typer.echo(f"Catalog {action} successfully.")
 
 
 @app.command(name="generate-sql", help="Validate config and emit CREATE VIEW SQL only.")
@@ -1484,28 +1579,6 @@ def _display_table(columns: list[str], rows: list[tuple]) -> None:
     separator = "+" + "+".join("-" * (width + 2) for width in col_widths) + "+"
 
     # Print header
-    typer.echo(separator)
-    header_row = (
-        "|"
-        + "|".join(f" {col:<{col_widths[i]}} " for i, col in enumerate(str_columns))
-        + "|"
-    )
-    typer.echo(header_row)
-    typer.echo(separator)
-
-    # Print data rows
-    for row in str_rows:
-        # Pad row with empty strings if it has fewer columns than headers
-        padded_row = row + [""] * (len(str_columns) - len(row))
-        data_row = (
-            "|"
-            + "|".join(
-                f" {padded_row[i]:<{col_widths[i]}} " for i in range(len(str_columns))
-            )
-            + "|"
-        )
-        typer.echo(data_row)
-
     typer.echo(separator)
     header_row = (
         "|"

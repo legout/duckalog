@@ -41,6 +41,7 @@ from .sql_utils import (
     quote_literal,
     render_options,
 )
+from .connection import CatalogConnection
 from .python_api import (
     generate_sql,
     validate_config,
@@ -51,6 +52,7 @@ from .python_api import (
 from .config_init import create_config_template, validate_generated_config, ConfigFormat
 
 __all__ = [
+    "CatalogConnection",
     "Config",
     "ConfigError",
     "DuckDBConfig",
