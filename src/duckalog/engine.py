@@ -492,7 +492,7 @@ class ConfigDependencyGraph:
                 )
 
 
-from .errors import EngineError, DuckalogError
+from .errors import EngineError
 
 
 def build_catalog(

@@ -118,9 +118,9 @@
 - [x] **Acceptance**: Documentation reflects the new behavior
 
 ### Task 7.2: Update CHANGELOG.md
-- [ ] **File**: `CHANGELOG.md`
-- [ ] **Change**: Add entry for early secret creation and endpoint handling improvements
-- [ ] **Acceptance**: Users can find information about the changes
+- [x] **File**: `CHANGELOG.md`
+- [x] **Change**: Add entry for early secret creation and endpoint handling improvements
+- [x] **Acceptance**: Users can find information about the changes
 
 ### Task 7.3: Final validation
 - [x] **Command**: Run full test suite

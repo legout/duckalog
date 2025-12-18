@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, AsyncGenerator
+from typing import TYPE_CHECKING
 
-from litestar import Litestar, get, Request
+from litestar import Litestar, get
 from litestar.response import Response
 from litestar.static_files import create_static_files_router
 from litestar.di import Provide

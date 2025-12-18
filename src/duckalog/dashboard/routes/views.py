@@ -8,7 +8,7 @@ from litestar import Controller, get
 from litestar.response import Response
 from litestar.exceptions import NotFoundException
 
-from ..components import base_layout, page_header, card, table_component
+from ..components import base_layout, page_header, card
 from ..state import DashboardContext
 from htpy import a, code, div, input, p, pre, span
 

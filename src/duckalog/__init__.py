@@ -12,14 +12,11 @@ from .config import (
     SecretConfig,
     load_config,
 )
-from .remote_config import load_config_from_uri
+
 from .engine import build_catalog
 from .errors import (
-    DuckalogError,
     ConfigError,
     EngineError,
-    PathResolutionError,
-    RemoteConfigError,
     SQLFileError,
     SQLFileNotFoundError,
     SQLFilePermissionError,

@@ -25,9 +25,7 @@ from .config_init import create_config_template, validate_generated_config
 from .engine import build_catalog
 from .errors import ConfigError, EngineError
 from .config import log_error, log_info
-from .config.validators import log_debug
 from .sql_generation import generate_all_views_sql
-from .config.loader import ImportContext
 
 app = typer.Typer(help="Duckalog CLI for building and inspecting DuckDB catalogs.")
 
@@ -946,8 +944,6 @@ def _print_import_tree(
 
         # For local files, try to show relative to current directory
         try:
-            from pathlib import Path
-
             p = Path(path).resolve()
 
             # Try to make it relative to current directory
@@ -1257,7 +1253,6 @@ def query(
         verbose: If True, enable verbose logging.
     """
     import duckdb
-    from pathlib import Path
 
     _configure_logging(verbose)
 
@@ -1463,8 +1458,6 @@ def init(
         # Force overwrite existing file
         duckalog init --force
     """
-    from pathlib import Path
-
     _configure_logging(verbose)
 
     # Validate format

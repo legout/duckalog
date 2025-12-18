@@ -12,7 +12,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from .config import Config
-from .errors import ConfigError, DuckalogError, RemoteConfigError
+from .errors import RemoteConfigError
 from .logging_utils import log_debug, log_info
 
 # Optional imports for remote functionality

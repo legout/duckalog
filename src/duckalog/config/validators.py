@@ -7,7 +7,7 @@ used throughout the configuration system.
 import os
 import re
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from loguru import logger
 from duckalog.errors import ConfigError, PathResolutionError

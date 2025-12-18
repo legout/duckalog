@@ -6,11 +6,9 @@ handling both local file loading and remote URI loading.
 
 import json
 import os
-import stat
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional, Union
-from collections import defaultdict
 
 import yaml
 from dotenv import dotenv_values
@@ -823,7 +821,6 @@ def _normalize_imports_for_processing(
     # Handle SelectiveImports object
     if hasattr(imports, "model_fields"):
         # This is a SelectiveImports object
-        from .models import SelectiveImports
 
         normalized = []
 

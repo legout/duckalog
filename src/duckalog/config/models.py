@@ -5,8 +5,6 @@ and typing. These models form the foundation of the configuration system
 and must not import from other config modules to avoid circular dependencies.
 """
 
-import re
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Union, Optional
 
 from pydantic import (
@@ -18,10 +16,9 @@ from pydantic import (
     model_validator,
 )
 
-from duckalog.errors import ConfigError
 
 if TYPE_CHECKING:  # pragma: no cover - used for type checking only
-    from duckalog.sql_file_loader import SQLFileLoader
+    pass
 
 EnvSource = Literal["parquet", "delta", "iceberg", "duckdb", "sqlite", "postgres"]
 SecretType = Literal["s3", "azure", "gcs", "http", "postgres", "mysql"]

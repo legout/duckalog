@@ -64,12 +64,11 @@ duckdb:
   database: azure_catalog.duckdb
   install_extensions:
     - httpfs
-  
-secrets:
-  - name: azure_prod
-    type: azure
-    connection_string: ${env:AZURE_STORAGE_CONNECTION_STRING}
-    account_name: ${env:AZURE_STORAGE_ACCOUNT}
+  secrets:
+    - name: azure_prod
+      type: azure
+      connection_string: ${env:AZURE_STORAGE_CONNECTION_STRING}
+      account_name: ${env:AZURE_STORAGE_ACCOUNT}
 
 views:
   - name: azure_logs
@@ -84,135 +83,9 @@ views:
 version: 1
 
 duckdb:
-  database: gcs_catalog.duckdb
-  install_extensions:
-    - httpfs
-  
-secrets:
-  - name: gcs_service_account
-    type: gcs
-    service_account_key: ${env:GCS_SERVICE_ACCOUNT_JSON}
-
-views:
-  - name: gcs_data
-    source: parquet
-    uri: "gs://my-bucket/data/*.parquet"
-    description: "GCS data using defined service account secret"
-```
-
-## Advanced Secret Configurations
-
-### Credential Chain Provider
-
-For automatic credential detection (useful in AWS environments):
-
-```yaml
-version: 1
-
-duckdb:
-  database: auto_cred_catalog.duckdb
-  install_extensions:
-    - httpfs
-  
-  secrets:
-    - type: s3
-      name: s3_auto
-      provider: credential_chain
-      region: us-east-1
-      # No key_id/secret needed - DuckDB will auto-detect
-
-views:
-  - name: auto_s3_data
-    source: parquet
-    uri: "s3://auto-bucket/data/*.parquet"
-    description: "S3 data with automatic credentials"
-```
-
-### Database Secrets
-
-#### PostgreSQL Secret
-
-```yaml
-version: 1
-
-duckdb:
-  database: pg_catalog.duckdb
-  
-secrets:
-  - name: analytics_db
-    type: postgres
-    connection_string: ${env:DATABASE_URL}
-    # Alternative: Individual parameters
-    # host: localhost
-    # port: 5432
-    # database: analytics
-    # user: ${env:PG_USER}
-    # password: ${env:PG_PASSWORD}
-
-views:
-  - name: postgres_users
-    source: postgres
-    database: analytics_db
-    table: users
-```
-
-#### MySQL Secret
-
-```yaml
-version: 1
-
-duckdb:
-  database: mysql_catalog.duckdb
-  
-secrets:
-  - name: webapp_db
-    type: postgres  # MySQL uses postgres secret type in DuckDB
-    connection_string: ${env:MYSQL_DATABASE_URL}
-
-views:
-  - name: mysql_products
-    source: postgres
-    database: webapp_db
-    table: products
-```
-
-### HTTP Basic Auth Secret
-
-```yaml
-version: 1
-
-duckdb:
-  database: api_catalog.duckdb
-  
-  secrets:
-    - type: http
-      name: api_auth
-      key_id: my-api-username
-      secret: my-api-password
-      # Optional: Add custom headers
-      options:
-        custom_header: "Bearer-Token"
-        timeout: 30
-
-views:
-  - name: api_data
-    sql: |
-      SELECT * FROM read_csv_auto('https://api.example.com/data.csv')
-    description: "Data from HTTP API with basic authentication"
-```
-
-### S3 Secret with Options
-
-For advanced S3 configurations, use the `options` field to specify DuckDB-specific parameters:
-
-```yaml
-version: 1
-
-duckdb:
   database: s3_advanced_catalog.duckdb
   install_extensions:
     - httpfs
-  
   secrets:
     - type: s3
       name: advanced_s3
@@ -249,17 +122,16 @@ duckdb:
   database: env_secrets_catalog.duckdb
   install_extensions:
     - httpfs
-  
   secrets:
     - type: s3
       name: secure_s3
-      key_id: ${env:AWS_ACCESS_KEY_ID}
-      secret: ${env:AWS_SECRET_ACCESS_KEY}
-      region: ${env:AWS_DEFAULT_REGION}
-      
+        key_id: ${env:AWS_ACCESS_KEY_ID}
+        secret: ${env:AWS_SECRET_ACCESS_KEY}
+        region: ${env:AWS_DEFAULT_REGION}
+        
     - type: postgres
       name: db_auth
-      connection_string: ${env:DATABASE_URL}
+        connection_string: ${env:DATABASE_URL}
 
 views:
   - name: secure_data
@@ -333,41 +205,53 @@ Different configurations require different S3 options. Here are common scenarios
 
 #### MinIO/S3-Compatible Storage
 ```yaml
-secrets:
-  - type: s3
-    name: minio_storage
-    key_id: ${env:MINIO_ACCESS_KEY}
-    secret: ${env:MINIO_SECRET_KEY}
-    endpoint: http://minio-server:9000
-    options:
-      use_ssl: false          # Often disabled for local MinIO
-      url_style: path          # Path style common for MinIO
+version: 1
+
+duckdb:
+  database: minio_catalog.duckdb
+  secrets:
+    - type: s3
+      name: minio_storage
+      key_id: ${env:MINIO_ACCESS_KEY}
+      secret: ${env:MINIO_SECRET_KEY}
+      endpoint: http://minio-server:9000
+      options:
+        use_ssl: false          # Often disabled for local MinIO
+        url_style: path          # Path style common for MinIO
 ```
 
 #### AWS S3 with Session Token
 ```yaml
-secrets:
-  - type: s3
-    name: aws_s3_temp
-    key_id: ${env:AWS_ACCESS_KEY_ID}
-    secret: ${env:AWS_SECRET_ACCESS_KEY}
-    region: us-east-1
-    options:
-      session_token: ${env:AWS_SESSION_TOKEN}
-      url_style: virtual        # Virtual style for standard AWS S3
+version: 1
+
+duckdb:
+  database: aws_temp_catalog.duckdb
+  secrets:
+    - type: s3
+      name: aws_s3_temp
+        key_id: ${env:AWS_ACCESS_KEY_ID}
+        secret: ${env:AWS_SECRET_ACCESS_KEY}
+        region: us-east-1
+        options:
+          session_token: ${env:AWS_SESSION_TOKEN}
+          url_style: virtual        # Virtual style for standard AWS S3
 ```
 
 #### Custom S3 Endpoint
 ```yaml
-secrets:
-  - type: s3
-    name: custom_endpoint
-    key_id: ${env:MY_ACCESS_KEY}
-    secret: ${env:MY_SECRET_KEY}
-    endpoint: https://s3.example.com
-    options:
-      use_ssl: true
-      region: custom-region-1
+version: 1
+
+duckdb:
+  database: custom_s3_catalog.duckdb
+  secrets:
+    - type: s3
+      name: custom_endpoint
+        key_id: ${env:MY_ACCESS_KEY}
+        secret: ${env:MY_SECRET_KEY}
+        endpoint: https://s3.example.com
+        options:
+          use_ssl: true
+          region: custom-region-1
 ```
 
 ## Secret Types Reference

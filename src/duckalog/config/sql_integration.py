@@ -7,7 +7,6 @@ as part of the configuration processing pipeline.
 from pathlib import Path
 from typing import Any
 
-from duckalog.errors import ConfigError
 
 
 def _load_sql_files_from_config(

@@ -11,9 +11,9 @@ from litestar.response import Response
 from litestar.exceptions import HTTPException
 
 from datastar_py import ServerSentEventGenerator as SSE
-from datastar_py.litestar import DatastarResponse, datastar_response, read_signals
+from datastar_py.litestar import datastar_response, read_signals
 
-from ..components import base_layout, page_header, card, table_component, table_header_component, table_rows_component
+from ..components import base_layout, page_header, card, table_header_component, table_rows_component
 from ..state import DashboardContext
 from ...engine import build_catalog, EngineError
 from htpy import button, div, form, label, p, span, textarea

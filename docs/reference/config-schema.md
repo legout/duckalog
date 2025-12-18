@@ -53,7 +53,6 @@ Configuration for DuckDB database connection and behavior.
 | `load_extensions` | array[string] | ❌ | `[]` | Extensions to load after connecting |
 | `pragmas` | array[string] | ❌ | `[]` | DuckDB pragmas to set |
 | `settings` | string or array[string] | ❌ | - | DuckDB SET statements executed after pragmas |
-| `secrets` | array[SecretConfig] | ❌ | `[]` | List of secret definitions for external services |
 
 #### Examples
 

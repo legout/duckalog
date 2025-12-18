@@ -74,20 +74,7 @@ from .validators import (
     get_logger,
 )
 
-# Import interpolation functions
-from .interpolation import _interpolate_env
-
-# Import SQL integration functions
-from .sql_integration import _load_sql_files_from_config
-
-# Implement load_config directly here to avoid circular imports
-import json
-import os
-import re
-from pathlib import Path
 from typing import Any, Optional
-
-import yaml
 
 
 def load_config(
@@ -176,54 +163,6 @@ def load_config(
         load_dotenv=load_dotenv,
     )
 
-
-# Import path resolution functions
-from .validators import (
-    is_relative_path,
-    resolve_relative_path,
-    validate_path_security,
-    normalize_path_for_sql,
-    is_within_allowed_roots,
-    is_windows_path_absolute,
-    detect_path_type,
-    validate_file_accessibility,
-)
-
-# Import logging utilities
-from .validators import (
-    get_logger,
-    log_info,
-    log_debug,
-    log_error,
-)
-
-# Import errors
-from duckalog.errors import ConfigError
-
-
-# Import loader functions
-from .loader import load_config
-
-
-# Import path resolution functions (temporary placeholder - will be updated when validators.py is created)
-from duckalog.config import (
-    is_relative_path,
-    resolve_relative_path,
-    validate_path_security,
-    normalize_path_for_sql,
-    is_within_allowed_roots,
-    is_windows_path_absolute,
-    detect_path_type,
-    validate_file_accessibility,
-)
-
-# Import logging utilities (temporary placeholder - will be updated when validators.py is created)
-from duckalog.config import (
-    get_logger,
-    log_info,
-    log_debug,
-    log_error,
-)
 
 # Define the public API - all symbols that should be available for import
 __all__ = [
