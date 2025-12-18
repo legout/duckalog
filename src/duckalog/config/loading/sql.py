@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlparse
@@ -18,6 +19,7 @@ def process_sql_file_references(
     log_info_func,
     log_debug_func,
     filesystem=None,
+    loader_settings=None,
 ):
     """Process SQL file references in views and replace with inline SQL content.
 
@@ -31,6 +33,7 @@ def process_sql_file_references(
         log_info_func: Function for info-level logging
         log_debug_func: Function for debug-level logging
         filesystem: Optional filesystem object for remote file operations
+        loader_settings: Optional settings for the configuration loader
 
     Returns:
         Tuple of (updated_views, file_based_views_count)
@@ -70,10 +73,8 @@ def process_sql_file_references(
             response.raise_for_status()
             return response.text
 
-    updated_views = []
-    file_based_views = 0
-
-    for view in views:
+    def _process_view(view):
+        """Process a single view, loading SQL if needed."""
         if view.sql_file is not None:
             # Handle direct SQL file reference
             file_path = view.sql_file.path
@@ -94,11 +95,10 @@ def process_sql_file_references(
                     updated_view = view.model_copy(
                         update={"sql": sql_content, "sql_file": None}
                     )
-                    updated_views.append(updated_view)
-                    file_based_views += 1
                     log_debug_func(
                         "Loaded remote SQL file for view", view_name=view.name
                     )
+                    return updated_view, True
 
                 except Exception as exc:
                     raise ConfigError(
@@ -119,9 +119,8 @@ def process_sql_file_references(
                     updated_view = view.model_copy(
                         update={"sql": sql_content, "sql_file": None}
                     )
-                    updated_views.append(updated_view)
-                    file_based_views += 1
                     log_debug_func("Loaded SQL file for view", view_name=view.name)
+                    return updated_view, True
 
                 except SQLFileError as exc:
                     raise ConfigError(
@@ -145,11 +144,10 @@ def process_sql_file_references(
                     updated_view = view.model_copy(
                         update={"sql": sql_content, "sql_template": None}
                     )
-                    updated_views.append(updated_view)
-                    file_based_views += 1
                     log_debug_func(
                         "Loaded remote SQL template for view", view_name=view.name
                     )
+                    return updated_view, True
 
                 except Exception as exc:
                     raise ConfigError(
@@ -170,9 +168,8 @@ def process_sql_file_references(
                     updated_view = view.model_copy(
                         update={"sql": sql_content, "sql_template": None}
                     )
-                    updated_views.append(updated_view)
-                    file_based_views += 1
                     log_debug_func("Loaded SQL template for view", view_name=view.name)
+                    return updated_view, True
 
                 except SQLFileError as exc:
                     raise ConfigError(
@@ -181,7 +178,43 @@ def process_sql_file_references(
 
         else:
             # No SQL file reference, keep original view
-            updated_views.append(view)
+            return view, False
+
+    updated_views = []
+    file_based_views = 0
+
+    # Determine concurrency
+    concurrency_enabled = (
+        loader_settings.concurrency_enabled if loader_settings else True
+    )
+    max_threads = loader_settings.max_threads if loader_settings else None
+
+    if (
+        concurrency_enabled
+        and len([v for v in views if v.sql_file or v.sql_template]) > 1
+    ):
+        log_debug_func("Processing SQL files in parallel", max_threads=max_threads)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
+            # Create a list of futures to maintain order
+            futures = [executor.submit(_process_view, view) for view in views]
+
+            for future in futures:
+                try:
+                    updated_view, was_file_based = future.result()
+                    updated_views.append(updated_view)
+                    if was_file_based:
+                        file_based_views += 1
+                except Exception:
+                    # Cancel pending futures if one fails
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    raise
+    else:
+        # Sequential processing
+        for view in views:
+            updated_view, was_file_based = _process_view(view)
+            updated_views.append(updated_view)
+            if was_file_based:
+                file_based_views += 1
 
     return updated_views, file_based_views
 
@@ -215,6 +248,7 @@ def load_sql_files_from_config(
         log_info_func=log_info,
         log_debug_func=log_debug,
         filesystem=filesystem,
+        loader_settings=getattr(config, "loader_settings", None),
     )
 
     updated_config = config.model_copy(update={"views": updated_views})

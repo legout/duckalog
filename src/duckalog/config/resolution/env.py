@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -72,9 +73,11 @@ class EnvCache:
     """Cache for loaded .env files to avoid duplicate filesystem access."""
 
     dotenv_cache: dict[str, tuple[dict[str, str], float]] = field(default_factory=dict)
+    _lock: threading.RLock = field(default_factory=threading.RLock)
 
     def clear(self) -> None:
-        self.dotenv_cache.clear()
+        with self._lock:
+            self.dotenv_cache.clear()
 
 
 @contextmanager
@@ -222,15 +225,16 @@ def _load_dotenv_file(
                 mtime = 0
             cache_key = f"{type(filesystem).__name__}:{file_path}"
 
-        if cache_key in cache.dotenv_cache:
-            cached_vars, cached_mtime = cache.dotenv_cache[cache_key]
-            if cached_mtime == mtime:
-                log_debug(
-                    "Using cached .env variables",
-                    file_path=file_path,
-                    var_count=len(cached_vars),
-                )
-                return cached_vars
+        with cache._lock:
+            if cache_key in cache.dotenv_cache:
+                cached_vars, cached_mtime = cache.dotenv_cache[cache_key]
+                if cached_mtime == mtime:
+                    log_debug(
+                        "Using cached .env variables",
+                        file_path=file_path,
+                        var_count=len(cached_vars),
+                    )
+                    return cached_vars
 
         if filesystem is not None:
             with filesystem.open(file_path, "r") as f:
@@ -249,7 +253,8 @@ def _load_dotenv_file(
         for warning in warnings:
             log_debug(" .env validation warning", file_path=file_path, warning=warning)
 
-        cache.dotenv_cache[cache_key] = (dotenv_vars, mtime)
+        with cache._lock:
+            cache.dotenv_cache[cache_key] = (dotenv_vars, mtime)
         log_debug("Loaded .env file", file_path=file_path, var_count=len(dotenv_vars))
         return dotenv_vars
     except OSError as exc:

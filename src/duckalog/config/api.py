@@ -11,9 +11,11 @@ from duckalog.errors import ConfigError
 from .models import Config
 from .resolution.imports import (
     DefaultImportResolver,
+    RequestContext,
     request_cache_scope,
     _load_config_with_imports,
 )
+from .security.path import path_resolution_context
 from .resolution.imports import _is_remote_uri  # re-use existing detection
 from .validators import log_info
 
@@ -25,6 +27,7 @@ def load_config(
     resolve_paths: bool = True,
     filesystem: Optional[Any] = None,
     load_dotenv: bool = True,
+    context: Optional[RequestContext] = None,
 ) -> Config:
     """Load, interpolate, and validate a Duckalog configuration file."""
     try:
@@ -38,6 +41,7 @@ def load_config(
                 resolve_paths=False,
                 filesystem=filesystem,
                 load_dotenv=load_dotenv,
+                context=context,
             )
     except ImportError:
         pass
@@ -49,6 +53,7 @@ def load_config(
         resolve_paths=resolve_paths,
         filesystem=filesystem,
         load_dotenv=load_dotenv,
+        context=context,
     )
 
 
@@ -88,10 +93,14 @@ def _load_config_from_local_file_impl(
     resolve_paths: bool = True,
     filesystem: Optional[Any] = None,
     load_dotenv: bool = True,
+    context: Optional[RequestContext] = None,
 ) -> Config:
     log_info("Loading config", path=path)
 
-    with request_cache_scope() as request_context:
+    with (
+        request_cache_scope(context=context) as request_context,
+        path_resolution_context(),
+    ):
         resolver = DefaultImportResolver(context=request_context)
         return _load_config_with_imports(
             file_path=path,

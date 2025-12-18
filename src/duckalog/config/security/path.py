@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import os
 import re
+import threading
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional, Union
 
@@ -20,6 +22,77 @@ LogFn = Optional[Callable[..., None]]
 
 def _noop_log(*_: Any, **__: Any) -> None:  # pragma: no cover - simple default
     """Default no-op logger to avoid optional checks."""
+
+
+# Global state for path resolution caching
+_path_cache = threading.local()
+
+
+class PathResolutionCache:
+    """Cache for resolved paths to avoid redundant syscalls."""
+
+    def __init__(self) -> None:
+        self._cache: dict[tuple[str, str], Path] = {}
+        self._resolve_cache: dict[str, Path] = {}
+        self.hits = 0
+        self.misses = 0
+
+    def get_resolved(self, path: str, base_dir: Path) -> Optional[Path]:
+        """Get a resolved path from the cache."""
+        key = (path, str(base_dir))
+        result = self._cache.get(key)
+        if result:
+            self.hits += 1
+        else:
+            self.misses += 1
+        return result
+
+    def set_resolved(self, path: str, base_dir: Path, resolved: Path) -> None:
+        """Set a resolved path in the cache."""
+        key = (path, str(base_dir))
+        self._cache[key] = resolved
+
+    def get_path_resolve(self, path_str: str) -> Optional[Path]:
+        """Get a Path.resolve() result from the cache."""
+        result = self._resolve_cache.get(path_str)
+        if result:
+            self.hits += 1
+        else:
+            self.misses += 1
+        return result
+
+    def set_path_resolve(self, path_str: str, resolved: Path) -> None:
+        """Set a Path.resolve() result in the cache."""
+        self._resolve_cache[path_str] = resolved
+
+
+@contextmanager
+def path_resolution_context(cache: Optional[PathResolutionCache] = None):
+    """Context manager to enable path resolution caching.
+
+    This should be used during configuration loading operations to
+    eliminate redundant path resolution syscalls.
+
+    If a cache is already active, it reuses it instead of creating a new one.
+    """
+    if not hasattr(_path_cache, "current"):
+        _path_cache.current = None
+
+    token = _path_cache.current
+
+    # Use provided cache, or existing active cache, or create new one
+    active_cache = cache or token or PathResolutionCache()
+    _path_cache.current = active_cache
+
+    try:
+        yield _path_cache.current
+    finally:
+        _path_cache.current = token
+
+
+def get_current_path_cache() -> Optional[PathResolutionCache]:
+    """Get the current path resolution cache if one is active."""
+    return getattr(_path_cache, "current", None)
 
 
 class DefaultPathResolver(PathResolver):
@@ -37,20 +110,45 @@ class DefaultPathResolver(PathResolver):
 
         path = path.strip()
 
+        # Check cache if available
+        cache = get_current_path_cache()
+        if cache:
+            cached_result = cache.get_resolved(path, base_dir)
+            if cached_result:
+                if check_exists and not cached_result.exists():
+                    raise ValueError(f"Resolved path does not exist: {cached_result}")
+                return cached_result
+
         # If path is already absolute, return as-is
         if not is_relative_path(path):
             # For remote URIs, return the original string to avoid path normalization
             if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path):
-                return Path(path)
-            return Path(path)
+                res = Path(path)
+            else:
+                res = Path(path)
+
+            if cache:
+                cache.set_resolved(path, base_dir, res)
+            return res
 
         # Resolve relative path against base directory
         try:
-            base_dir_resolved = base_dir.resolve()
-            resolved_path = (base_dir_resolved / path).resolve()
+            if cache:
+                base_dir_resolved = cache.get_path_resolve(str(base_dir))
+                if not base_dir_resolved:
+                    base_dir_resolved = base_dir.resolve()
+                    cache.set_path_resolve(str(base_dir), base_dir_resolved)
+
+                resolved_path = (base_dir_resolved / path).resolve()
+            else:
+                base_dir_resolved = base_dir.resolve()
+                resolved_path = (base_dir_resolved / path).resolve()
 
             if check_exists and not resolved_path.exists():
                 raise ValueError(f"Resolved path does not exist: {resolved_path}")
+
+            if cache:
+                cache.set_resolved(path, base_dir, resolved_path)
 
             return resolved_path
 
@@ -165,13 +263,31 @@ def resolve_relative_path(
 
 def is_within_allowed_roots(candidate_path: str, allowed_roots: list[Path]) -> bool:
     """Check if a resolved path is within allowed roots."""
+    cache = get_current_path_cache()
+
     try:
-        resolved_candidate = Path(candidate_path).resolve()
+        if cache:
+            resolved_candidate = cache.get_path_resolve(candidate_path)
+            if not resolved_candidate:
+                resolved_candidate = Path(candidate_path).resolve()
+                cache.set_path_resolve(candidate_path, resolved_candidate)
+        else:
+            resolved_candidate = Path(candidate_path).resolve()
     except (OSError, ValueError, RuntimeError) as exc:
         raise ValueError(f"Cannot resolve path '{candidate_path}': {exc}") from exc
 
     try:
-        resolved_roots = [root.resolve() for root in allowed_roots]
+        resolved_roots = []
+        for root in allowed_roots:
+            if cache:
+                root_str = str(root)
+                res_root = cache.get_path_resolve(root_str)
+                if not res_root:
+                    res_root = root.resolve()
+                    cache.set_path_resolve(root_str, res_root)
+                resolved_roots.append(res_root)
+            else:
+                resolved_roots.append(root.resolve())
     except (OSError, ValueError, RuntimeError) as exc:
         raise ValueError(f"Cannot resolve allowed root: {exc}") from exc
 
@@ -200,16 +316,40 @@ def validate_path_security(
         if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path):
             return True
 
+    cache = get_current_path_cache()
+
     try:
         if is_relative_path(path):
+            config_dir_res = None
+            if cache:
+                config_dir_res = cache.get_path_resolve(str(config_dir))
+
+            if not config_dir_res:
+                config_dir_res = config_dir.resolve()
+                if cache:
+                    cache.set_path_resolve(str(config_dir), config_dir_res)
+
             resolved_path_str = resolve_relative_path(
-                path, config_dir.resolve(), log_debug=log_debug
+                path, config_dir_res, log_debug=log_debug
             )
             resolved_path = Path(resolved_path_str)
         else:
-            resolved_path = Path(path).resolve()
+            if cache:
+                resolved_path = cache.get_path_resolve(path)
+                if not resolved_path:
+                    resolved_path = Path(path).resolve()
+                    cache.set_path_resolve(path, resolved_path)
+            else:
+                resolved_path = Path(path).resolve()
 
-        config_dir_resolved = config_dir.resolve()
+        if cache:
+            config_dir_resolved = cache.get_path_resolve(str(config_dir))
+            if not config_dir_resolved:
+                config_dir_resolved = config_dir.resolve()
+                cache.set_path_resolve(str(config_dir), config_dir_resolved)
+        else:
+            config_dir_resolved = config_dir.resolve()
+
         roots = (
             [Path(r) for r in allowed_roots] if allowed_roots else [config_dir_resolved]
         )
@@ -316,4 +456,5 @@ __all__ = [
     "is_windows_path_absolute",
     "detect_path_type",
     "validate_file_accessibility",
+    "path_resolution_context",
 ]

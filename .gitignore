@@ -27,4 +27,7 @@ dev/
 code_review
 .worktrees
 mms2.db
+# Benchmarks
+benchmarks/results/
+benchmarks/REPORT.md
 mms2.db.wal

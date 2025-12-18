@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import os
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, TYPE_CHECKING
+import threading
+
+if TYPE_CHECKING:
+    from ..models import Config
 
 import yaml
 
@@ -27,9 +32,12 @@ from ..validators import (
     _resolve_path_core,
     _resolve_paths_in_config,
 )
-from ..loading.sql import load_sql_files_from_config
+from ..loading.sql import load_sql_files_from_config, process_sql_file_references
 from ..validators import validate_path_security
+from ..security.path import path_resolution_context
 from .env import EnvCache, DefaultEnvProcessor, _load_dotenv_files_for_config
+from ...performance import PerformanceMetrics
+
 from .base import ImportContext, ImportResolver
 
 
@@ -38,40 +46,36 @@ class RequestContext:
     """Context for request-scoped caching and state management."""
 
     env_cache: EnvCache = field(default_factory=EnvCache)
-    import_context: ImportContext = field(default_factory=ImportContext)
+    metrics: PerformanceMetrics = field(default_factory=PerformanceMetrics)
+    import_context: ImportContext = field(init=False)
     max_cache_size: int = 1000  # Maximum number of configs to cache
+
+    def __post_init__(self):
+        self.import_context = ImportContext(
+            metrics=self.metrics, max_cache_size=self.max_cache_size
+        )
 
     def clear(self) -> None:
         self.env_cache.clear()
-        self.import_context.visited_files.clear()
-        self.import_context.import_stack.clear()
-        self.import_context.config_cache.clear()
-        self.import_context.import_chain.clear()
+        with self.import_context._lock:
+            self.import_context.visited_files.clear()
+            self.import_context.import_stack.clear()
+            self.import_context.config_cache.clear()
+            self.import_context.import_chain.clear()
 
     def _enforce_cache_limit(self) -> None:
         """Enforce cache size limit to prevent memory issues with large config trees."""
-        if len(self.import_context.config_cache) > self.max_cache_size:
-            # Remove oldest entries (simple FIFO strategy)
-            oldest_keys = list(self.import_context.config_cache.keys())[
-                : len(self.import_context.config_cache) - self.max_cache_size
-            ]
-            for key in oldest_keys:
-                del self.import_context.config_cache[key]
-            log_debug(
-                "Cache size limit enforced",
-                removed_count=len(oldest_keys),
-                current_size=len(self.import_context.config_cache),
-                max_size=self.max_cache_size,
-            )
+        self.import_context._enforce_cache_limit()
 
 
 @contextmanager
 def request_cache_scope(context: Optional[RequestContext] = None):
     ctx = context or RequestContext()
-    try:
-        yield ctx
-    finally:
-        ctx.clear()
+    with path_resolution_context():
+        try:
+            yield ctx
+        finally:
+            ctx.clear()
 
 
 def _normalize_uri(uri: str) -> str:
@@ -115,6 +119,13 @@ def _is_remote_uri(path: str) -> bool:
         return any(path.startswith(scheme) for scheme in remote_schemes)
 
 
+def _normalize_path(path: str) -> str:
+    """Normalize path for consistent comparison, handling macOS /var symlink."""
+    if _is_remote_uri(path):
+        return _normalize_uri(path)
+    return str(Path(path).resolve())
+
+
 def _expand_glob_patterns(
     patterns: list[str],
     base_path: str,
@@ -138,7 +149,7 @@ def _expand_glob_patterns(
                     matches = filesystem.glob(exclude_pattern)
                 else:
                     matches = glob_module.glob(exclude_pattern, recursive=True)
-                excluded_files.update(matches)
+                excluded_files.update(_normalize_path(m) for m in matches)
             except Exception:
                 continue
             continue
@@ -170,13 +181,19 @@ def _expand_glob_patterns(
                             exists = Path(resolved_pattern).exists()
 
                         if exists:
-                            resolved_files.append(resolved_pattern)
+                            resolved_files.append(_normalize_path(resolved_pattern))
+                        else:
+                            raise ImportFileNotFoundError(
+                                f"Imported file not found: {pattern}",
+                                import_path=pattern,
+                            )
                     else:
                         raise ImportFileNotFoundError(
-                            f"No files match pattern: {pattern}"
+                            f"No files match pattern: {pattern}",
+                            import_path=pattern,
                         )
                 else:
-                    resolved_files.extend(sorted(matches))
+                    resolved_files.extend(sorted(_normalize_path(m) for m in matches))
             except Exception as exc:
                 if isinstance(exc, ImportFileNotFoundError):
                     raise
@@ -191,12 +208,6 @@ def _expand_glob_patterns(
         if f not in seen:
             seen.add(f)
             final_result.append(f)
-
-    log_debug(
-        "Expanded glob patterns",
-        input_patterns=patterns,
-        resolved_files=final_result,
-    )
 
     return final_result
 
@@ -233,10 +244,37 @@ def _normalize_imports_for_processing(
                 normalized.append((item, True, None))
             elif isinstance(item, ImportEntry):
                 normalized.append((item.path, item.override, None))
+            elif isinstance(item, dict):
+                path = item.get("path")
+                override = item.get("override", True)
+                if path:
+                    normalized.append((path, override, None))
             else:
                 raise ConfigError(
                     f"Invalid import format: expected string or ImportEntry, got {type(item)}"
                 )
+        return normalized
+
+    if isinstance(imports, dict):
+        normalized = []
+        for section_name, field_value in imports.items():
+            if field_value is None:
+                continue
+            if not isinstance(field_value, list):
+                field_value = [field_value]
+
+            for item in field_value:
+                if isinstance(item, str):
+                    normalized.append((item, True, section_name))
+                elif isinstance(item, dict):
+                    path = item.get("path")
+                    override = item.get("override", True)
+                    if path:
+                        normalized.append((path, override, section_name))
+                elif hasattr(item, "path"):
+                    normalized.append(
+                        (item.path, getattr(item, "override", True), section_name)
+                    )
         return normalized
 
     if hasattr(imports, "model_fields"):
@@ -248,12 +286,9 @@ def _normalize_imports_for_processing(
             for item in field_value:
                 if isinstance(item, str):
                     normalized.append((item, True, section_name))
-                elif isinstance(item, ImportEntry):
-                    override = item.override
-                    normalized.append((item.path, override, section_name))
-                else:
-                    raise ConfigError(
-                        f"Invalid import format in {section_name}: expected string or ImportEntry, got {type(item)}"
+                elif hasattr(item, "path"):
+                    normalized.append(
+                        (item.path, getattr(item, "override", True), section_name)
                     )
         return normalized
 
@@ -276,167 +311,89 @@ def _deep_merge_dict(base: dict, override: dict) -> dict:
     return result
 
 
-def _merge_config_with_override(
-    base: Any,
-    override: Any,
+def _merge_config_dicts(
+    base: dict[str, Any],
+    override: dict[str, Any],
     override_mode: bool = True,
-) -> Any:
-    from ..models import Config
+) -> dict[str, Any]:
+    """Merge two config dictionaries with override control.
 
-    base_dict = base.model_dump(mode="json")
-    override_dict = override.model_dump(mode="json")
-
-    log_debug("Deep merge base keys", keys=list(base_dict.keys()))
-    log_debug("Deep merge override keys", keys=list(override_dict.keys()))
-
-    override_imports = override_dict.get("imports", [])
-    base_dict = base_dict.copy()
-    base_dict.pop("imports", None)
-    override_dict = override_dict.copy()
-    override_dict.pop("imports", None)
-
-    log_debug("After removing imports - base_dict keys", keys=list(base_dict.keys()))
-    log_debug(
-        "After removing imports - override_dict keys", keys=list(override_dict.keys())
-    )
+    In Duckalog's convention, the second argument (override) wins over the first (base).
+    """
+    override_imports = override.get("imports", [])
+    base_dict = {k: v for k, v in base.items() if k != "imports"}
+    override_dict = {k: v for k, v in override.items() if k != "imports"}
 
     if override_mode:
         merged_dict = _deep_merge_dict(base_dict, override_dict)
     else:
-        merged_dict = base_dict.copy()
-        for key, value in override_dict.items():
-            if key not in merged_dict or merged_dict[key] is None:
-                merged_dict[key] = value
+        # Non-overriding merge: fill in missing fields recursively
+        # We want base_dict to win over override_dict
+        merged_dict = _deep_merge_dict(override_dict, base_dict)
 
     merged_dict["imports"] = override_imports
-
-    log_debug("Deep merge result keys", keys=list(merged_dict.keys()))
-
-    try:
-        result = Config(**merged_dict)
-        log_debug("Config created successfully", views=len(result.views))
-        return result
-    except ValueError as e:
-        if "Duplicate view name" in str(e):
-            import re
-
-            match = re.search(r"Duplicate view name\(s\) found: (.+)", str(e))
-            if match:
-                duplicates = match.group(1)
-                raise DuplicateNameError(
-                    f"Duplicate view name(s) found: {duplicates}",
-                    name_type="view",
-                    duplicate_names=[d.strip() for d in duplicates.split(",")],
-                ) from e
-        elif "Duplicate Iceberg catalog name" in str(e):
-            raise DuplicateNameError(str(e), name_type="iceberg_catalog") from e
-        elif "Duplicate semantic model name" in str(e):
-            raise DuplicateNameError(str(e), name_type="semantic_model") from e
-        elif "Duplicate attachment alias" in str(e):
-            raise DuplicateNameError(str(e), name_type="attachment") from e
-        log_debug("Failed to create Config", error=str(e))
-        log_debug("merged_dict details", merged_dict=str(merged_dict))
-        raise
-    except Exception as e:
-        log_debug("Failed to create Config", error=str(e))
-        log_debug("merged_dict details", merged_dict=str(merged_dict))
-        raise
+    return merged_dict
 
 
-def _merge_section_specific(
-    imported_config: Any,
-    base_config: Any,
+def _merge_section_specific_dicts(
+    target_dict: dict[str, Any],
+    source_dict: dict[str, Any],
     section_name: str,
     override_mode: bool = True,
-) -> Any:
-    from ..models import Config
+) -> dict[str, Any]:
+    """Merge only a specific section from source_dict into target_dict."""
+    if section_name not in source_dict:
+        return target_dict
 
-    imported_dict = imported_config.model_dump(mode="json")
-    base_dict = base_config.model_dump(mode="json")
+    source_section = source_dict.get(section_name)
+    result = target_dict.copy()
 
-    log_debug(
-        "Merging section-specific imports",
-        section=section_name,
-        override_mode=override_mode,
-    )
-
-    if section_name not in imported_dict:
-        log_debug("Section not found in imported config", section=section_name)
-        return base_config
-
-    imported_section = imported_dict.get(section_name)
-    imported_dict.pop("imports", None)
-    base_dict.pop("imports", None)
-    merged_dict = base_dict.copy()
-
-    if section_name in merged_dict:
-        base_section = merged_dict[section_name]
+    if section_name in result:
+        target_section = result[section_name]
 
         if override_mode:
-            if isinstance(base_section, dict) and isinstance(imported_section, dict):
-                merged_dict[section_name] = _deep_merge_dict(
-                    base_section, imported_section
-                )
-            elif isinstance(base_section, list) and isinstance(imported_section, list):
-                merged_dict[section_name] = base_section + imported_section
+            if isinstance(target_section, dict) and isinstance(source_section, dict):
+                result[section_name] = _deep_merge_dict(target_section, source_section)
+            elif isinstance(target_section, list) and isinstance(source_section, list):
+                result[section_name] = target_section + source_section
             else:
-                merged_dict[section_name] = imported_section
+                result[section_name] = source_section
         else:
-            if isinstance(base_section, dict) and isinstance(imported_section, dict):
-                for key, value in imported_section.items():
-                    if key not in base_section or base_section[key] is None:
-                        merged_dict[section_name][key] = value
-            elif isinstance(base_section, list) and isinstance(imported_section, list):
-                for item in imported_section:
-                    if item not in base_section:
-                        merged_dict[section_name].append(item)
+            if isinstance(target_section, dict) and isinstance(source_section, dict):
+                for key, value in source_section.items():
+                    if key not in target_section or target_section[key] is None:
+                        if not isinstance(result[section_name], dict):
+                            result[section_name] = {}
+                        else:
+                            result[section_name] = result[section_name].copy()
+                        result[section_name][key] = value
+            elif isinstance(target_section, list) and isinstance(source_section, list):
+                for item in source_section:
+                    if item not in target_section:
+                        result[section_name].append(item)
             else:
-                if base_section is None:
-                    merged_dict[section_name] = imported_section
+                if target_section is None:
+                    result[section_name] = source_section
     else:
-        merged_dict[section_name] = imported_section
+        result[section_name] = source_section
 
-    merged_dict["imports"] = base_dict.get("imports", [])
-
-    try:
-        result = Config(**merged_dict)
-        log_debug("Section merged successfully", section=section_name)
-        return result
-    except ValueError as e:
-        if "Duplicate view name" in str(e):
-            import re
-
-            match = re.search(r"Duplicate view name\(s\) found: (.+)", str(e))
-            if match:
-                duplicates = match.group(1)
-                raise DuplicateNameError(
-                    f"Duplicate view name(s) found: {duplicates}",
-                    name_type="view",
-                    duplicate_names=[d.strip() for d in duplicates.split(",")],
-                ) from e
-        elif "Duplicate Iceberg catalog name" in str(e):
-            raise DuplicateNameError(str(e), name_type="iceberg_catalog") from e
-        elif "Duplicate semantic model name" in str(e):
-            raise DuplicateNameError(str(e), name_type="semantic_model") from e
-        elif "Duplicate attachment alias" in str(e):
-            raise DuplicateNameError(str(e), name_type="attachment") from e
-        log_debug("Failed to create Config", error=str(e))
-        log_debug("merged_dict details", merged_dict=str(merged_dict))
-        raise
-    except Exception as e:
-        log_debug("Failed to create Config", error=str(e))
-        log_debug("merged_dict details", merged_dict=str(merged_dict))
-        raise
+    return result
 
 
 def _validate_unique_names(config: Any, context: ImportContext) -> None:
     view_names: dict[tuple[Optional[str], str], int] = {}
     duplicates = []
-    for view in config.views:
-        key = (view.db_schema, view.name)
+
+    views = config.views if hasattr(config, "views") else config.get("views", [])
+    for view in views:
+        name = view.name if hasattr(view, "name") else view.get("name")
+        db_schema = (
+            view.db_schema if hasattr(view, "db_schema") else view.get("db_schema")
+        )
+        key = (db_schema, name)
         if key in view_names:
-            schema_part = f"{view.db_schema}." if view.db_schema else ""
-            duplicates.append(f"{schema_part}{view.name}")
+            schema_part = f"{db_schema}." if db_schema else ""
+            duplicates.append(f"{schema_part}{name}")
         else:
             view_names[key] = 1
 
@@ -449,11 +406,17 @@ def _validate_unique_names(config: Any, context: ImportContext) -> None:
 
     catalog_names: dict[str, int] = {}
     duplicates = []
-    for catalog in config.iceberg_catalogs:
-        if catalog.name in catalog_names:
-            duplicates.append(catalog.name)
+    iceberg_catalogs = (
+        config.iceberg_catalogs
+        if hasattr(config, "iceberg_catalogs")
+        else config.get("iceberg_catalogs", [])
+    )
+    for catalog in iceberg_catalogs:
+        name = catalog.name if hasattr(catalog, "name") else catalog.get("name")
+        if name in catalog_names:
+            duplicates.append(name)
         else:
-            catalog_names[catalog.name] = 1
+            catalog_names[name] = 1
 
     if duplicates:
         raise DuplicateNameError(
@@ -464,11 +427,17 @@ def _validate_unique_names(config: Any, context: ImportContext) -> None:
 
     semantic_model_names: dict[str, int] = {}
     duplicates = []
-    for semantic_model in config.semantic_models:
-        if semantic_model.name in semantic_model_names:
-            duplicates.append(semantic_model.name)
+    semantic_models = (
+        config.semantic_models
+        if hasattr(config, "semantic_models")
+        else config.get("semantic_models", [])
+    )
+    for sm in semantic_models:
+        name = sm.name if hasattr(sm, "name") else sm.get("name")
+        if name in semantic_model_names:
+            duplicates.append(name)
         else:
-            semantic_model_names[semantic_model.name] = 1
+            semantic_model_names[name] = 1
 
     if duplicates:
         raise DuplicateNameError(
@@ -479,29 +448,65 @@ def _validate_unique_names(config: Any, context: ImportContext) -> None:
 
     attachment_aliases: dict[str, int] = {}
     duplicates = []
-    for attachment in config.attachments.duckdb:
-        if attachment.alias in attachment_aliases:
-            duplicates.append(f"duckdb.{attachment.alias}")
-        else:
-            attachment_aliases[attachment.alias] = 1
+    attachments = (
+        config.attachments
+        if hasattr(config, "attachments")
+        else config.get("attachments", {})
+    )
+    if hasattr(attachments, "duckdb"):
+        duckdb_attachments = attachments.duckdb
+        sqlite_attachments = attachments.sqlite
+        postgres_attachments = attachments.postgres
+        duckalog_attachments = attachments.duckalog
+    else:
+        duckdb_attachments = attachments.get("duckdb", [])
+        sqlite_attachments = attachments.get("sqlite", [])
+        postgres_attachments = attachments.get("postgres", [])
+        duckalog_attachments = attachments.get("duckalog", [])
 
-    for attachment in config.attachments.sqlite:
-        if attachment.alias in attachment_aliases:
-            duplicates.append(f"sqlite.{attachment.alias}")
+    for attachment in duckdb_attachments:
+        alias = (
+            attachment.alias
+            if hasattr(attachment, "alias")
+            else attachment.get("alias")
+        )
+        if alias in attachment_aliases:
+            duplicates.append(f"duckdb.{alias}")
         else:
-            attachment_aliases[attachment.alias] = 1
+            attachment_aliases[alias] = 1
 
-    for attachment in config.attachments.postgres:
-        if attachment.alias in attachment_aliases:
-            duplicates.append(f"postgres.{attachment.alias}")
+    for attachment in sqlite_attachments:
+        alias = (
+            attachment.alias
+            if hasattr(attachment, "alias")
+            else attachment.get("alias")
+        )
+        if alias in attachment_aliases:
+            duplicates.append(f"sqlite.{alias}")
         else:
-            attachment_aliases[attachment.alias] = 1
+            attachment_aliases[alias] = 1
 
-    for attachment in config.attachments.duckalog:
-        if attachment.alias in attachment_aliases:
-            duplicates.append(f"duckalog.{attachment.alias}")
+    for attachment in postgres_attachments:
+        alias = (
+            attachment.alias
+            if hasattr(attachment, "alias")
+            else attachment.get("alias")
+        )
+        if alias in attachment_aliases:
+            duplicates.append(f"postgres.{alias}")
         else:
-            attachment_aliases[attachment.alias] = 1
+            attachment_aliases[alias] = 1
+
+    for attachment in duckalog_attachments:
+        alias = (
+            attachment.alias
+            if hasattr(attachment, "alias")
+            else attachment.get("alias")
+        )
+        if alias in attachment_aliases:
+            duplicates.append(f"duckalog.{alias}")
+        else:
+            attachment_aliases[alias] = 1
 
     if duplicates:
         raise DuplicateNameError(
@@ -519,9 +524,19 @@ def _resolve_and_load_import(
     load_sql_files: bool,
     sql_file_loader: Optional[Any],
     import_context: ImportContext,
-) -> Any:
+    current_stack: Optional[list[str]] = None,
+) -> dict[str, Any]:
+    if current_stack is None:
+        current_stack = []
+
     try:
-        resolved_path = _resolve_import_path(import_path, base_path)
+        metrics = import_context.metrics
+        with (
+            metrics.timer("path_resolution", path=import_path)
+            if metrics
+            else nullcontext()
+        ):
+            resolved_path = _resolve_import_path(import_path, base_path)
     except Exception as exc:
         raise ImportFileNotFoundError(
             f"Failed to resolve import path '{import_path}' from '{base_path}': {exc}",
@@ -529,33 +544,27 @@ def _resolve_and_load_import(
             cause=exc,
         ) from exc
 
-    log_debug("Resolving import", import_path=import_path, resolved_path=resolved_path)
+    normalized_path = _normalize_path(resolved_path)
 
-    normalized_path = _normalize_uri(resolved_path)
+    if normalized_path in current_stack:
+        chain = " -> ".join(_normalize_uri(p) for p in current_stack + [resolved_path])
+        raise CircularImportError(
+            f"Circular import detected in import chain: {chain}",
+            import_chain=current_stack + [resolved_path],
+        )
 
-    if normalized_path in import_context.visited_files:
-        if normalized_path in import_context.import_stack:
-            chain = " -> ".join(
-                _normalize_uri(p) for p in import_context.import_stack + [resolved_path]
-            )
-            raise CircularImportError(
-                f"Circular import detected in import chain: {chain}",
-                import_chain=import_context.import_stack + [resolved_path],
-            )
-        else:
-            log_debug(
-                "Using cached config for already-loaded import", path=resolved_path
-            )
-            return import_context.config_cache.get(resolved_path)
+    with import_context._lock:
+        if normalized_path in import_context.visited_files:
+            return {}
+        import_context.visited_files.add(normalized_path)
 
-    import_context.import_stack.append(resolved_path)
-    import_context.visited_files.add(normalized_path)
+    new_stack = current_stack + [resolved_path]
 
     try:
         if _is_remote_uri(resolved_path):
-            try:
-                from duckalog.remote_config import load_config_from_uri
+            from duckalog.remote_config import load_config_from_uri
 
+            try:
                 imported_config = load_config_from_uri(
                     uri=resolved_path,
                     load_sql_files=load_sql_files,
@@ -563,6 +572,7 @@ def _resolve_and_load_import(
                     resolve_paths=False,
                     filesystem=filesystem,
                 )
+                imported_dict = imported_config.model_dump(mode="json")
             except Exception as exc:
                 raise ImportValidationError(
                     f"Failed to load remote config '{resolved_path}': {exc}",
@@ -571,31 +581,23 @@ def _resolve_and_load_import(
                 ) from exc
         else:
             config_path = Path(resolved_path)
-
-            exists = False
-            if filesystem is not None:
-                exists = filesystem.exists(resolved_path)
-            else:
-                exists = config_path.exists()
-
-            if not exists:
+            if not config_path.exists():
                 raise ImportFileNotFoundError(
                     f"Imported file not found: {resolved_path}",
                     import_path=resolved_path,
                 )
 
             try:
-                if filesystem is not None:
-                    if not hasattr(filesystem, "open") or not hasattr(
-                        filesystem, "exists"
-                    ):
-                        raise ImportError(
-                            "filesystem object must provide 'open' and 'exists' methods"
-                        )
-                    with filesystem.open(resolved_path, "r") as f:
-                        raw_text = f.read()
-                else:
-                    raw_text = config_path.read_text()
+                with (
+                    metrics.timer("file_io", path=resolved_path)
+                    if metrics
+                    else nullcontext()
+                ):
+                    if filesystem is not None:
+                        with filesystem.open(resolved_path, "r") as f:
+                            raw_text = f.read()
+                    else:
+                        raw_text = config_path.read_text()
             except OSError as exc:
                 raise ImportValidationError(
                     f"Failed to read imported file '{resolved_path}': {exc}",
@@ -604,96 +606,101 @@ def _resolve_and_load_import(
                 ) from exc
 
             suffix = config_path.suffix.lower()
-            if suffix in {".yaml", ".yml"}:
-                parsed = yaml.safe_load(raw_text)
-            elif suffix == ".json":
-                parsed = json.loads(raw_text)
-            else:
-                raise ImportValidationError(
-                    f"Imported file must use .yaml, .yml, or .json extension: {resolved_path}",
-                    import_path=resolved_path,
-                )
+            with (
+                metrics.timer("parsing", path=resolved_path)
+                if metrics
+                else nullcontext()
+            ):
+                if suffix in {".yaml", ".yml"}:
+                    parsed = yaml.safe_load(raw_text)
+                elif suffix == ".json":
+                    parsed = json.loads(raw_text)
+                else:
+                    raise ImportValidationError(
+                        f"Imported file must use .yaml, .yml, or .json extension: {resolved_path}",
+                        import_path=resolved_path,
+                    )
 
-            if parsed is None:
-                raise ImportValidationError(
-                    f"Imported file is empty: {resolved_path}",
-                    import_path=resolved_path,
-                )
-            if not isinstance(parsed, dict):
+            if parsed is None or not isinstance(parsed, dict):
                 raise ImportValidationError(
                     f"Imported file must define a mapping at the top level: {resolved_path}",
                     import_path=resolved_path,
                 )
 
-            interpolated = _interpolate_env(parsed)
+            with (
+                metrics.timer("env_interpolation", path=resolved_path)
+                if metrics
+                else nullcontext()
+            ):
+                interpolated = _interpolate_env(parsed)
+            imported_dict = interpolated
 
-            from ..models import Config
+            if load_sql_files and "views" in imported_dict:
+                from ..models import ViewConfig
 
-            try:
-                imported_config = Config.model_validate(interpolated)
-            except Exception as exc:
-                raise ImportValidationError(
-                    f"Imported config validation failed: {exc}",
-                    import_path=resolved_path,
-                    cause=exc,
-                ) from exc
+                views_data = imported_dict.get("views", [])
+                if isinstance(views_data, list):
+                    views = []
+                    for v_data in views_data:
+                        try:
+                            if isinstance(v_data, dict):
+                                views.append(ViewConfig.model_validate(v_data))
+                        except Exception:
+                            pass
+                    if views:
+                        with (
+                            metrics.timer("sql_processing", path=resolved_path)
+                            if metrics
+                            else nullcontext()
+                        ):
+                            updated_views, _ = process_sql_file_references(
+                                views=views,
+                                sql_file_loader=sql_file_loader,
+                                config_file_path=str(resolved_path),
+                                log_info_func=log_info,
+                                log_debug_func=log_debug,
+                                filesystem=filesystem,
+                            )
+                        imported_dict["views"] = [
+                            v.model_dump(mode="json") for v in updated_views
+                        ]
 
-            if load_sql_files:
-                imported_config = load_sql_files_from_config(
-                    imported_config, config_path, sql_file_loader
-                )
+        with import_context._lock:
+            import_context.config_cache[resolved_path] = imported_dict
+            import_context.config_cache[normalized_path] = imported_dict
+            import_context._enforce_cache_limit()
 
-        import_context.config_cache[resolved_path] = imported_config
-        import_context.config_cache[normalized_path] = imported_config
-
-        # Enforce cache size limit to prevent memory issues
-        import_context._enforce_cache_limit(log_debug)
-
-        if imported_config.imports:
-            try:
-                import_count = len(imported_config.imports)  # type: ignore[arg-type]
-            except TypeError:
-                import_count = 1
-
-            log_debug(
-                "Processing nested imports",
-                path=resolved_path,
-                import_count=import_count,
+        raw_imports = imported_dict.get("imports", [])
+        if raw_imports:
+            normalized_nested = _normalize_imports_for_processing(
+                raw_imports, base_path=resolved_path, filesystem=filesystem
             )
-
-            try:
-                import_items = list(imported_config.imports)  # type: ignore[arg-type]
-            except TypeError:
-                import_items = [imported_config.imports]  # type: ignore[arg-type]
-
-            for import_item in import_items:
-                try:
-                    nested_import_path = import_item.path  # type: ignore[attr-defined]
-                except AttributeError:
-                    nested_import_path = str(import_item)
-
-                nested_config = _resolve_and_load_import(
-                    import_path=nested_import_path,
+            for nested_path, nested_override, _ in normalized_nested:
+                nested_imported_dict = _resolve_and_load_import(
+                    import_path=nested_path,
                     base_path=resolved_path,
                     filesystem=filesystem,
                     resolve_paths=resolve_paths,
                     load_sql_files=load_sql_files,
                     sql_file_loader=sql_file_loader,
                     import_context=import_context,
+                    current_stack=new_stack,
                 )
-                imported_config = _merge_config_with_override(
-                    nested_config, imported_config, True
-                )
+                with (
+                    metrics.timer("merge", path=nested_path)
+                    if metrics
+                    else nullcontext()
+                ):
+                    imported_dict = _merge_config_dicts(
+                        nested_imported_dict, imported_dict, nested_override
+                    )
 
-        # Update cache with fully merged config
-        import_context.config_cache[resolved_path] = imported_config
-        import_context.config_cache[normalized_path] = imported_config
-        import_context._enforce_cache_limit(log_debug)
-
-        return imported_config
-
-    finally:
-        import_context.import_stack.pop()
+        with import_context._lock:
+            import_context.config_cache[resolved_path] = imported_dict
+            import_context.config_cache[normalized_path] = imported_dict
+        return imported_dict
+    except Exception:
+        raise
 
 
 def _load_config_with_imports(
@@ -707,131 +714,114 @@ def _load_config_with_imports(
     import_context: Optional[ImportContext] = None,
     load_dotenv: bool = True,
     env_cache: Optional[EnvCache] = None,
+    current_stack: Optional[list[str]] = None,
 ) -> Any:
     if import_context is None:
         import_context = ImportContext()
+    metrics = import_context.metrics
     env_cache = env_cache or EnvCache()
+    if current_stack is None:
+        current_stack = []
 
     config_path = Path(file_path)
     resolved_path = str(config_path.resolve())
+    normalized_path = _normalize_path(resolved_path)
 
-    log_debug("Loading config with imports", path=resolved_path)
+    with import_context._lock:
+        if resolved_path in import_context.config_cache:
+            cached = import_context.config_cache[resolved_path]
+            from ..models import Config
 
-    normalized_path = _normalize_uri(resolved_path)
+            if isinstance(cached, Config):
+                return cached
+        import_context.visited_files.add(normalized_path)
 
-    if resolved_path in import_context.config_cache:
-        log_debug("Using cached config", path=resolved_path)
-        return import_context.config_cache[resolved_path]
-    if normalized_path in import_context.config_cache:
-        log_debug("Using cached config (via normalized path)", path=resolved_path)
-        return import_context.config_cache[normalized_path]
+    if normalized_path in current_stack:
+        chain = " -> ".join(_normalize_uri(p) for p in current_stack + [resolved_path])
+        raise CircularImportError(
+            f"Circular import detected in import chain: {chain}",
+            import_chain=current_stack + [resolved_path],
+        )
 
-    import_context.visited_files.add(normalized_path)
-    import_context.import_stack.append(resolved_path)
+    new_stack = current_stack + [resolved_path]
 
     try:
         env_file_patterns = [".env"]
         try:
-            raw_config_path = Path(file_path)
-            if raw_config_path.exists():
-                with open(raw_config_path, "r") as f:
+            if Path(file_path).exists():
+                with open(file_path, "r") as f:
                     raw_config = yaml.safe_load(f)
                     if (
                         raw_config
                         and isinstance(raw_config, dict)
                         and "env_files" in raw_config
                     ):
-                        custom_patterns = raw_config["env_files"]
-                        if isinstance(custom_patterns, list) and custom_patterns:
-                            env_file_patterns = custom_patterns
-                            log_debug(
-                                "Using custom .env file patterns",
-                                patterns=env_file_patterns,
-                            )
+                        env_file_patterns = raw_config["env_files"]
         except Exception:
-            log_debug("Failed to read custom .env patterns, using defaults")
             pass
 
         if load_dotenv:
-            _load_dotenv_files_for_config(
-                file_path, env_file_patterns, cache=env_cache, filesystem=filesystem
-            )
+            with (
+                metrics.timer("dotenv_loading", path=file_path)
+                if metrics
+                else nullcontext()
+            ):
+                _load_dotenv_files_for_config(
+                    file_path, env_file_patterns, cache=env_cache, filesystem=filesystem
+                )
 
         try:
-            if filesystem is not None:
-                if not hasattr(filesystem, "open") or not hasattr(filesystem, "exists"):
-                    raise ConfigError(
-                        "filesystem object must provide 'open' and 'exists' methods"
-                    )
-                if not filesystem.exists(resolved_path):
-                    raise ConfigError(f"Config file not found: {file_path}")
-                with filesystem.open(resolved_path, "r") as f:
-                    raw_text = f.read()
-            else:
-                if not config_path.exists():
-                    raise ConfigError(f"Config file not found: {file_path}")
-                raw_text = config_path.read_text()
+            with (
+                metrics.timer("file_io", path=resolved_path)
+                if metrics
+                else nullcontext()
+            ):
+                if filesystem is not None:
+                    with filesystem.open(resolved_path, "r") as f:
+                        raw_text = f.read()
+                else:
+                    raw_text = config_path.read_text()
         except OSError as exc:
-            if isinstance(exc, ConfigError):
-                raise
             raise ConfigError(
                 f"Failed to read config file '{file_path}': {exc}"
             ) from exc
 
-        if format == "yaml":
-            parsed = yaml.safe_load(raw_text)
-        elif format == "json":
-            parsed = json.loads(raw_text)
-        else:
-            raise ConfigError("Config files must use .yaml, .yml, or .json extensions")
+        with metrics.timer("parsing", path=resolved_path) if metrics else nullcontext():
+            if format == "yaml":
+                parsed = yaml.safe_load(raw_text)
+            elif format == "json":
+                parsed = json.loads(raw_text)
+            else:
+                raise ConfigError(
+                    "Config files must use .yaml, .yml, or .json extensions"
+                )
 
-        if parsed is None:
-            raise ConfigError("Config file is empty")
-        if not isinstance(parsed, dict):
+        if parsed is None or not isinstance(parsed, dict):
             raise ConfigError("Config file must define a mapping at the top level")
 
-        interpolated = _interpolate_env(parsed)
+        with (
+            metrics.timer("env_interpolation", path=resolved_path)
+            if metrics
+            else nullcontext()
+        ):
+            config_dict = _interpolate_env(parsed)
 
-        from ..models import Config
+        with import_context._lock:
+            import_context.config_cache[resolved_path] = config_dict
+            import_context.config_cache[normalized_path] = config_dict
 
-        try:
-            config = Config.model_validate(interpolated)
-        except Exception as exc:
-            log_debug(
-                "Validation failed interpolated keys", keys=list(interpolated.keys())
-            )
-            if "views" in interpolated:
-                log_debug("views value", views=interpolated["views"])
-            else:
-                log_debug("views missing from interpolated dict")
-            raise ConfigError(f"Configuration validation failed: {exc}") from exc
+        loader_settings_data = config_dict.get("loader_settings", {})
+        concurrency_enabled = loader_settings_data.get("concurrency_enabled", True)
+        max_threads = loader_settings_data.get("max_threads", None)
 
-        import_context.config_cache[resolved_path] = config
-        import_context.config_cache[normalized_path] = config
-
-        if config.imports:
-            if isinstance(config.imports, list):
-                import_count = len(config.imports)  # type: ignore[arg-type]
-            else:
-                try:
-                    import_count = sum(
-                        len(field_value) if field_value else 0  # type: ignore[arg-type]
-                        for field_value in config.imports
-                        if field_value is not None
-                    )
-                except TypeError:
-                    import_count = 1
-            log_debug("Processing imports", import_count=import_count)
-
+        raw_imports = config_dict.get("imports", [])
+        if raw_imports:
             normalized_imports = _normalize_imports_for_processing(
-                config.imports,
-                base_path=resolved_path,
-                filesystem=filesystem,
+                raw_imports, base_path=resolved_path, filesystem=filesystem
             )
 
             global_imports = []
             section_imports: dict[str, list[tuple[str, bool]]] = {}
-
             for path, override, section in normalized_imports:
                 if section is None:
                     global_imports.append((path, override))
@@ -840,134 +830,216 @@ def _load_config_with_imports(
                         section_imports[section] = []
                     section_imports[section].append((path, override))
 
-            for import_path, override in global_imports:
-                expanded_paths = _expand_glob_patterns(
-                    [import_path],
-                    base_path=resolved_path,
-                    filesystem=filesystem,
+            if global_imports:
+                all_patterns = [p for p, _ in global_imports]
+                exclude_patterns = [p for p in all_patterns if p.startswith("!")]
+
+                ordered_paths = []
+                seen_p = set()
+                for p, override in global_imports:
+                    if p.startswith("!"):
+                        continue
+                    expanded = _expand_glob_patterns(
+                        [p] + exclude_patterns,
+                        base_path=resolved_path,
+                        filesystem=filesystem,
+                    )
+                    for exp_p in expanded:
+                        if exp_p not in seen_p:
+                            ordered_paths.append((exp_p, override))
+                            seen_p.add(exp_p)
+
+                path_to_result = {}
+                if concurrency_enabled and len(ordered_paths) > 1:
+                    with concurrent.futures.ThreadPoolExecutor(
+                        max_workers=max_threads
+                    ) as executor:
+                        fut_to_p = {
+                            executor.submit(
+                                _resolve_and_load_import,
+                                p,
+                                resolved_path,
+                                filesystem,
+                                resolve_paths,
+                                load_sql_files,
+                                sql_file_loader,
+                                import_context,
+                                new_stack,
+                            ): p
+                            for p, _ in ordered_paths
+                        }
+                        for fut in concurrent.futures.as_completed(fut_to_p):
+                            path_to_result[fut_to_p[fut]] = fut.result()
+                else:
+                    for p, _ in ordered_paths:
+                        path_to_result[p] = _resolve_and_load_import(
+                            p,
+                            resolved_path,
+                            filesystem,
+                            resolve_paths,
+                            load_sql_files,
+                            sql_file_loader,
+                            import_context,
+                            new_stack,
+                        )
+
+                merged_imports_dict = {}
+                for p, override in ordered_paths:
+                    merged_imports_dict = _merge_config_dicts(
+                        merged_imports_dict, path_to_result[p], override
+                    )
+
+                config_dict = _merge_config_dicts(
+                    merged_imports_dict, config_dict, True
                 )
 
-                for expanded_path in expanded_paths:
-                    imported_config = _resolve_and_load_import(
-                        import_path=expanded_path,
-                        base_path=resolved_path,
-                        filesystem=filesystem,
-                        resolve_paths=resolve_paths,
-                        load_sql_files=load_sql_files,
-                        sql_file_loader=sql_file_loader,
-                        import_context=import_context,
-                    )
-                    config = _merge_config_with_override(
-                        config, imported_config, override_mode=override
-                    )
-
             for section_name, imports_list in section_imports.items():
-                for import_path, override in imports_list:
-                    expanded_paths = _expand_glob_patterns(
-                        [import_path],
+                all_patterns = [p for p, _ in imports_list]
+                exclude_patterns = [p for p in all_patterns if p.startswith("!")]
+
+                ordered_paths = []
+                seen_p = set()
+                for p, override in imports_list:
+                    if p.startswith("!"):
+                        continue
+                    expanded = _expand_glob_patterns(
+                        [p] + exclude_patterns,
                         base_path=resolved_path,
                         filesystem=filesystem,
                     )
+                    for exp_p in expanded:
+                        if exp_p not in seen_p:
+                            ordered_paths.append((exp_p, override))
+                            seen_p.add(exp_p)
 
-                    for expanded_path in expanded_paths:
-                        imported_config = _resolve_and_load_import(
-                            import_path=expanded_path,
-                            base_path=resolved_path,
-                            filesystem=filesystem,
-                            resolve_paths=resolve_paths,
-                            load_sql_files=load_sql_files,
-                            sql_file_loader=sql_file_loader,
-                            import_context=import_context,
+                path_to_result = {}
+                if concurrency_enabled and len(ordered_paths) > 1:
+                    with concurrent.futures.ThreadPoolExecutor(
+                        max_workers=max_threads
+                    ) as executor:
+                        fut_to_p = {
+                            executor.submit(
+                                _resolve_and_load_import,
+                                p,
+                                resolved_path,
+                                filesystem,
+                                resolve_paths,
+                                load_sql_files,
+                                sql_file_loader,
+                                import_context,
+                                new_stack,
+                            ): p
+                            for p, _ in ordered_paths
+                        }
+                        for fut in concurrent.futures.as_completed(fut_to_p):
+                            path_to_result[fut_to_p[fut]] = fut.result()
+                else:
+                    for p, _ in ordered_paths:
+                        path_to_result[p] = _resolve_and_load_import(
+                            p,
+                            resolved_path,
+                            filesystem,
+                            resolve_paths,
+                            load_sql_files,
+                            sql_file_loader,
+                            import_context,
+                            new_stack,
                         )
 
-                        config = _merge_section_specific(
-                            imported_config,
-                            config,
-                            section_name,
-                            override_mode=override,
-                        )
+                merged_section = {}
+                for p, override in ordered_paths:
+                    merged_section = _merge_config_dicts(
+                        merged_section, path_to_result[p], override
+                    )
 
-        # Update cache with fully merged config
-        import_context.config_cache[resolved_path] = config
-        import_context.config_cache[normalized_path] = config
+                temp_merged_config = _merge_config_dicts(
+                    merged_section, config_dict, True
+                )
+                if section_name in temp_merged_config:
+                    config_dict[section_name] = temp_merged_config[section_name]
 
-        _validate_unique_names(config, import_context)
+        from ..models import Config
 
+        try:
+            with (
+                metrics.timer("validation", path=resolved_path)
+                if metrics
+                else nullcontext()
+            ):
+                config = Config.model_validate(config_dict)
+        except Exception as e:
+            error_str = str(e)
+            if "Duplicate view name" in error_str:
+                import re
+
+                match = re.search(r"Duplicate view name\(s\) found: (.+)", error_str)
+                if match:
+                    duplicates = match.group(1)
+                    raise DuplicateNameError(
+                        f"Duplicate view name(s) found: {duplicates}",
+                        name_type="view",
+                        duplicate_names=[d.strip() for d in duplicates.split(",")],
+                    ) from e
+                raise DuplicateNameError(error_str, name_type="view") from e
+            elif "Duplicate Iceberg catalog name" in error_str:
+                raise DuplicateNameError(error_str, name_type="iceberg_catalog") from e
+            elif "Duplicate semantic model name" in error_str:
+                raise DuplicateNameError(error_str, name_type="semantic_model") from e
+            elif "Duplicate attachment alias" in error_str:
+                raise DuplicateNameError(error_str, name_type="attachment") from e
+            raise ConfigError(f"Configuration validation failed: {e}") from e
+
+        with import_context._lock:
+            import_context.config_cache[resolved_path] = config
+            import_context.config_cache[normalized_path] = config
+
+        with (
+            metrics.timer("unique_name_validation", path=resolved_path)
+            if metrics
+            else nullcontext()
+        ):
+            _validate_unique_names(config, import_context)
         if resolve_paths:
-            config = _resolve_paths_in_config(config, config_path)
-
+            with (
+                metrics.timer("path_resolution", path=resolved_path)
+                if metrics
+                else nullcontext()
+            ):
+                config = _resolve_paths_in_config(config, config_path)
         if load_sql_files:
-            config = load_sql_files_from_config(
-                config, config_path, sql_file_loader, filesystem=filesystem
-            )
-
-        log_debug(
-            "Config loaded with imports", path=resolved_path, views=len(config.views)
-        )
+            with (
+                metrics.timer("sql_loading", path=resolved_path)
+                if metrics
+                else nullcontext()
+            ):
+                config = load_sql_files_from_config(
+                    config, config_path, sql_file_loader, filesystem=filesystem
+                )
         return config
-
     finally:
-        import_context.import_stack.pop()
+        pass
 
 
 class DefaultImportResolver(ImportResolver):
-    """ImportResolver implementation that wraps the helper functions."""
-
     def __init__(self, context: Optional[RequestContext] = None):
         self.context = context or RequestContext()
 
     def resolve(
         self, config_data: dict[str, Any], context: ImportContext
     ) -> dict[str, Any]:
-        base_path = (
-            config_data.get("file_path") if isinstance(config_data, dict) else None
-        )
+        base_path = config_data.get("file_path")
         if not base_path:
-            raise ConfigError(
-                "config_data must include 'file_path' for import resolution"
-            )
-        raw_content = (
-            config_data.get("content") if isinstance(config_data, dict) else None
-        )
-        format_hint = (
-            config_data.get("format", "yaml")
-            if isinstance(config_data, dict)
-            else "yaml"
-        )
-        filesystem = (
-            config_data.get("filesystem") if isinstance(config_data, dict) else None
-        )
-        resolve_paths = (
-            config_data.get("resolve_paths", True)
-            if isinstance(config_data, dict)
-            else True
-        )
-        load_sql_files = (
-            config_data.get("load_sql_files", True)
-            if isinstance(config_data, dict)
-            else True
-        )
-        sql_loader = (
-            config_data.get("sql_file_loader")
-            if isinstance(config_data, dict)
-            else None
-        )
-        load_dotenv = (
-            config_data.get("load_dotenv", True)
-            if isinstance(config_data, dict)
-            else True
-        )
-
+            raise ConfigError("config_data must include 'file_path'")
         return _load_config_with_imports(
             file_path=str(base_path),
-            content=raw_content,
-            format=format_hint,
-            filesystem=filesystem,
-            resolve_paths=resolve_paths,
-            load_sql_files=load_sql_files,
-            sql_file_loader=sql_loader,
+            content=config_data.get("content"),
+            format=config_data.get("format", "yaml"),
+            filesystem=config_data.get("filesystem"),
+            resolve_paths=config_data.get("resolve_paths", True),
+            load_sql_files=config_data.get("load_sql_files", True),
+            sql_file_loader=config_data.get("sql_file_loader"),
             import_context=context,
-            load_dotenv=load_dotenv,
+            load_dotenv=config_data.get("load_dotenv", True),
             env_cache=self.context.env_cache,
         )
 
