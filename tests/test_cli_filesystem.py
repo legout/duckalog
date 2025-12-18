@@ -42,7 +42,9 @@ class TestCLIFileSystem:
             )
 
             assert result == mock_fs
-            mock_fsspec.filesystem.assert_called_once_with("s3", profile="test-profile")
+            mock_fsspec.filesystem.assert_called_once_with(
+                "s3", profile="test-profile", timeout=30
+            )
 
     def test_create_filesystem_from_options_s3_with_key_secret(self):
         """Test S3 filesystem creation with access key and secret."""
@@ -56,7 +58,12 @@ class TestCLIFileSystem:
 
             assert result == mock_fs
             mock_fsspec.filesystem.assert_called_once_with(
-                "s3", key="test-key", secret="test-secret", anon=False, timeout=30
+                "s3",
+                key="test-key",
+                secret="test-secret",
+                anon=False,
+                timeout=30,
+                client_kwargs={},
             )
 
     def test_create_filesystem_from_options_s3_anon(self):
@@ -125,7 +132,9 @@ class TestCLIFileSystem:
             result = _create_filesystem_from_options(aws_profile="test-profile")
 
             assert result == mock_fs
-            mock_fsspec.filesystem.assert_called_once_with("s3", profile="test-profile")
+            mock_fsspec.filesystem.assert_called_once_with(
+                "s3", profile="test-profile", timeout=30
+            )
 
     def test_create_filesystem_from_options_protocol_inference_github(self):
         """Test that protocol is inferred from token for GitHub."""
