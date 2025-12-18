@@ -130,6 +130,19 @@ views:
 - **Join order**: DuckDB optimizes, but smaller tables first helps
 - **Partitioning**: Align partitioning strategies across datasets
 
+### 5. **Configuration Loading Performance**
+
+Duckalog 0.4.0+ features a refactored configuration architecture with request-scoped caching, which significantly improves performance for complex configurations with many imports.
+
+**Performance Characteristics:**
+- **Initial Load**: Parsing, interpolating, and merging a complex configuration tree takes tens of milliseconds.
+- **Cached Load**: Repeatedly loading the same configuration (e.g., in a long-running service) using a shared cache is ~1000x faster, typically completing in tens of microseconds.
+- **Deep Import Trees**: Caching prevents redundant processing of files imported multiple times within the same configuration tree.
+
+**Best Practices:**
+- In long-running applications (like web servers), reuse the `RequestContext` or use the provided `request_cache_scope` to benefit from cross-request caching.
+- Keep configuration trees manageable; while caching handles deep imports efficiently, extremely large trees still incur initial parsing overhead.
+
 ## Benchmark Scenarios
 
 ### Scene 1: E-commerce Analytics (10GB Parquet)

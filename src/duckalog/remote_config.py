@@ -8,12 +8,14 @@ Azure Blob Storage, SFTP, and HTTPS.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from urllib.parse import urlparse
 
-from .config import Config
 from .errors import RemoteConfigError
 from .logging_utils import log_debug, log_info
+
+if TYPE_CHECKING:
+    from duckalog.config.models import Config
 
 # Optional imports for remote functionality
 try:
@@ -406,7 +408,8 @@ def load_config_from_uri(
 
     # Process the configuration using the same logic as local configs
     # but adapted for remote content
-    from duckalog.config.interpolation import _interpolate_env
+    from duckalog.config.resolution.env import _interpolate_env
+    from duckalog.config.models import Config
 
     log_debug("Remote config keys", keys=list(parsed_config.keys()))
     interpolated = _interpolate_env(parsed_config)
@@ -425,151 +428,34 @@ def load_config_from_uri(
 
     # Load SQL from external files if requested
     if load_sql_files:
-        config = _load_sql_files_from_remote_config(
-            config, uri, sql_file_loader, filesystem
+        # Get the base directory for resolving relative paths
+        parsed_uri = urlparse(uri)
+        base_path = Path(parsed_uri.path).parent
+        fake_config_path = str(base_path / "config.yaml")
+
+        from duckalog.config.loading.sql import process_sql_file_references
+
+        updated_views, file_based_views = process_sql_file_references(
+            views=config.views,
+            sql_file_loader=sql_file_loader,
+            config_file_path=fake_config_path,
+            log_info_func=log_info,
+            log_debug_func=log_debug,
+            filesystem=filesystem,
+        )
+
+        # Create updated config with processed views
+        config = config.model_copy(update={"views": updated_views})
+
+        log_info(
+            "SQL files loaded from remote config",
+            uri=uri,
+            total_views=len(config.views),
+            file_based_views=file_based_views,
         )
 
     log_info("Remote config loaded", uri=uri, views=len(config.views))
     return config
-
-
-def _load_sql_files_from_remote_config(
-    config: Config,
-    config_uri: str,
-    sql_file_loader: Any | None = None,
-    filesystem: Any | None = None,
-) -> Config:
-    """Load SQL content from external files referenced in a remote config.
-
-    This handles SQL file references that might be relative to the remote
-    config location or might themselves be remote URIs.
-    """
-    # Import here to avoid circular import
-    from .sql_file_loader import SQLFileError, SQLFileLoader
-
-    if sql_file_loader is None:
-        sql_file_loader = SQLFileLoader()
-
-    # Get the base directory for resolving relative paths
-    parsed_uri = urlparse(config_uri)
-    base_path = Path(parsed_uri.path).parent
-
-    # Check if any views have SQL file references
-    has_sql_files = any(
-        view.sql_file is not None or view.sql_template is not None
-        for view in config.views
-    )
-
-    if not has_sql_files:
-        # No SQL files to process
-        return config
-
-    log_info("Loading SQL files from remote config", uri=config_uri)
-
-    updated_views = []
-    for view in config.views:
-        if view.sql_file is not None:
-            # Handle direct SQL file reference
-            file_path = view.sql_file.path
-
-            # Check if the SQL file path is a remote URI
-            if is_remote_uri(file_path):
-                # Load from remote URI
-                try:
-                    sql_content = fetch_remote_content(file_path, filesystem=filesystem)
-
-                    # Process as template if needed
-                    if view.sql_file.as_template:
-                        sql_content = sql_file_loader._process_template(
-                            sql_content, view.sql_file.variables or {}, file_path
-                        )
-                except Exception as exc:
-                    raise RemoteConfigError(
-                        f"Failed to load remote SQL file for view '{view.name}': {exc}"
-                    ) from exc
-            else:
-                # Load as local file (relative to remote config location)
-                try:
-                    # For remote configs, we construct a fake config file path
-                    # for relative resolution
-                    fake_config_path = str(base_path / "config.yaml")
-                    sql_content = sql_file_loader.load_sql_file(
-                        file_path=file_path,
-                        config_file_path=fake_config_path,
-                        variables=view.sql_file.variables,
-                        as_template=view.sql_file.as_template,
-                    )
-                except SQLFileError as exc:
-                    raise RemoteConfigError(
-                        f"Failed to load SQL file for view '{view.name}': {exc}"
-                    ) from exc
-
-            # Create new view with inline SQL
-            updated_view = view.model_copy(
-                update={"sql": sql_content, "sql_file": None}
-            )
-            updated_views.append(updated_view)
-
-        elif view.sql_template is not None:
-            # Handle SQL template reference
-            file_path = view.sql_template.path
-
-            # Check if the SQL template path is a remote URI
-            if is_remote_uri(file_path):
-                try:
-                    sql_content = fetch_remote_content(file_path, filesystem=filesystem)
-                    # Process template variables
-                    sql_content = sql_file_loader._process_template(
-                        sql_content, view.sql_template.variables or {}, file_path
-                    )
-                except Exception as exc:
-                    raise RemoteConfigError(
-                        f"Failed to load remote SQL template for view '{view.name}': {exc}"
-                    ) from exc
-            else:
-                try:
-                    fake_config_path = str(base_path / "config.yaml")
-                    sql_content = sql_file_loader.load_sql_file(
-                        file_path=file_path,
-                        config_file_path=fake_config_path,
-                        variables=view.sql_template.variables,
-                        as_template=True,  # Templates are always processed as templates
-                    )
-                except SQLFileError as exc:
-                    raise RemoteConfigError(
-                        f"Failed to load SQL template for view '{view.name}': {exc}"
-                    ) from exc
-
-            # Create new view with inline SQL
-            updated_view = view.model_copy(
-                update={"sql": sql_content, "sql_template": None}
-            )
-            updated_views.append(updated_view)
-
-        else:
-            # No SQL file reference, keep original view
-            updated_views.append(view)
-
-    # Create updated config with processed views
-    updated_config = config.model_copy(update={"views": updated_views})
-
-    file_based_views = len(
-        [
-            v
-            for v in updated_views
-            if v.sql
-            and v != next((ov for ov in config.views if ov.name == v.name), None)
-        ]
-    )
-
-    log_info(
-        "SQL files loaded from remote config",
-        uri=config_uri,
-        total_views=len(config.views),
-        file_based_views=file_based_views,
-    )
-
-    return updated_config
 
 
 __all__ = [

@@ -10,6 +10,12 @@ from .config import (
     SQLiteAttachment,
     ViewConfig,
     SecretConfig,
+    SemanticModelConfig,
+    SemanticDimensionConfig,
+    SemanticMeasureConfig,
+    SemanticJoinConfig,
+    SemanticDefaultsConfig,
+    SQLFileReference,
     load_config,
 )
 
@@ -29,6 +35,8 @@ from .sql_generation import (
     generate_all_views_sql,
     generate_view_sql,
     generate_secret_sql,
+)
+from .sql_utils import (
     quote_ident,
     quote_literal,
     render_options,
@@ -53,6 +61,12 @@ __all__ = [
     "IcebergCatalogConfig",
     "ViewConfig",
     "SecretConfig",
+    "SemanticModelConfig",
+    "SemanticDimensionConfig",
+    "SemanticMeasureConfig",
+    "SemanticJoinConfig",
+    "SemanticDefaultsConfig",
+    "SQLFileReference",
     "load_config",
     "build_catalog",
     "EngineError",

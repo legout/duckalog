@@ -1,53 +1,41 @@
-"""Environment variable interpolation utilities for configuration loading.
+"""Environment variable interpolation utilities (Legacy Proxy).
 
-This module handles the resolution of ${env:VAR_NAME} placeholders in configuration
-values, providing environment variable interpolation functionality.
+.. deprecated:: 0.4.0
+    Use :mod:`duckalog.config.resolution.env` and :mod:`duckalog.config.loading.sql` instead.
 """
 
-import os
-import re
+import warnings
+from typing import Any
 
-from duckalog.errors import ConfigError
+# Add module-level deprecation warning
+warnings.warn(
+    "The 'duckalog.config.interpolation' module is deprecated (introduced in 0.4.0) and will be removed in version 1.0.0. "
+    "Please use 'duckalog.config.resolution.env' and 'duckalog.config.loading.sql' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-# Regular expression pattern for environment variable interpolation
-ENV_PATTERN = re.compile(r"\$\{env:([A-Za-z_][A-Za-z0-9_]*)\}")
-
-
-def _interpolate_env(value):
-    """Recursively interpolate ${env:VAR} placeholders in config data.
-
-    Args:
-        value: The value to interpolate. Can be a string, list, dict, or other type.
-
-    Returns:
-        The interpolated value with environment variables resolved.
-
-    Raises:
-        ConfigError: If an environment variable is not set.
-    """
-    if isinstance(value, str):
-        return ENV_PATTERN.sub(_replace_env_match, value)
-    if isinstance(value, list):
-        return [_interpolate_env(item) for item in value]
-    if isinstance(value, dict):
-        return {key: _interpolate_env(val) for key, val in value.items()}
-    return value
+from .resolution.env import _interpolate_env as _new_interpolate_env
+from .loading.sql import process_sql_file_references as _new_process_sql_file_references
 
 
-def _replace_env_match(match):
-    """Replace environment variable match with its actual value.
+def _interpolate_env(value: Any) -> Any:
+    """Proxy for legacy _interpolate_env."""
+    warnings.warn(
+        "duckalog.config.interpolation._interpolate_env is deprecated. "
+        "Please use duckalog.config.resolution.env._interpolate_env instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _new_interpolate_env(value)
 
-    Args:
-        match: Regular expression match object containing the variable name.
 
-    Returns:
-        The value of the environment variable.
-
-    Raises:
-        ConfigError: If the environment variable is not set.
-    """
-    var_name = match.group(1)
-    try:
-        return os.environ[var_name]
-    except KeyError as exc:
-        raise ConfigError(f"Environment variable '{var_name}' is not set") from exc
+def process_sql_file_references(*args: Any, **kwargs: Any) -> Any:
+    """Proxy for legacy process_sql_file_references."""
+    warnings.warn(
+        "duckalog.config.interpolation.process_sql_file_references is deprecated. "
+        "Please use duckalog.config.loading.sql.process_sql_file_references instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _new_process_sql_file_references(*args, **kwargs)

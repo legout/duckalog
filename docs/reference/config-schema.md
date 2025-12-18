@@ -1,10 +1,26 @@
 # Configuration Schema Reference
 
-Complete reference for Duckalog configuration schema, including all options, types, defaults, and examples.
+Complete reference for Duckalog configuration schema, including all options, types, defaults, and examples for both basic and advanced usage patterns.
 
 ## Overview
 
-Duckalog configurations use YAML or JSON format with a hierarchical structure. All configurations must specify a version and include required sections for DuckDB database and views.
+Duckalog configurations use YAML or JSON format with a hierarchical structure. The new modular architecture supports enhanced patterns including configuration imports, dependency injection hooks, and performance optimizations while maintaining full backward compatibility.
+
+### Architecture Features
+
+The configuration schema now supports:
+
+- **Configuration Imports**: Modular configuration structure with file imports
+- **Enhanced Environment Processing**: Advanced variable resolution and validation  
+- **Import Resolution Performance**: Caching and optimization for complex configurations
+- **Dependency Injection**: Customizable loading and resolution components
+- **Backward Compatibility**: All existing configurations continue to work
+
+### Version Requirements
+
+- **Version 1**: Basic configuration structure (legacy compatible)
+- **Version 1+**: Enhanced features with imports and modular patterns
+- **Future versions**: Will maintain backward compatibility where possible
 
 ## Root Configuration
 
@@ -22,7 +38,76 @@ The top-level configuration object.
 | `attachments` | AttachmentsConfig | ❌ | `{}` | Database attachment configurations |
 | `iceberg_catalogs` | array[IcebergCatalogConfig] | ❌ | `[]` | Iceberg catalog configurations |
 | `semantic_models` | array[SemanticModelConfig] | ❌ | `[]` | Semantic model definitions |
-| `imports` | ImportConfig | ❌ | `[]` | Configuration imports |
+| `imports` | ImportConfig | ❌ | `[]` | Configuration imports and modular structure |
+| `load_sql_files` | boolean | ❌ | `true` | Enable/disable SQL file loading for performance |
+| `resolve_paths` | boolean | ❌ | `true` | Enable/disable path resolution (for testing) |
+| `load_dotenv` | boolean | ❌ | `true` | Enable/disable .env file loading |
+
+## Performance Configuration
+
+### Performance Options
+
+Enhanced performance tuning options for complex configurations and large-scale deployments.
+
+#### Fields
+
+| Field | Type | Required | Default | Description |
+|--------|------|-----------|---------|-------------|
+| `cache_imports` | boolean | ❌ | `true` | Enable import resolution caching |
+| `max_import_depth` | integer | ❌ | `10` | Maximum import chain depth (security) |
+| `parallel_loading` | boolean | ❌ | `false` | Enable parallel configuration loading |
+| `preload_env` | boolean | ❌ | `true` | Preload all environment variables |
+| `validate_paths` | boolean | ❌ | `true` | Validate all file paths during loading |
+
+#### Examples
+
+```yaml
+# Performance optimization for large configurations
+version: 1
+cache_imports: true
+max_import_depth: 5
+parallel_loading: true
+preload_env: true
+validate_paths: false  # Skip for faster loading
+
+duckdb:
+  database: analytics.duckdb
+  pragmas:
+    - "SET memory_limit='8GB'"
+    - "SET threads=8"
+
+views:
+  - name: large_dataset
+    source: parquet
+    uri: "data/large_dataset.parquet"
+```
+
+### Cache Configuration
+
+Advanced caching options for enterprise deployments.
+
+#### Fields
+
+| Field | Type | Required | Default | Description |
+|--------|------|-----------|---------|-------------|
+| `import_cache_size` | integer | ❌ | `100` | Maximum cached import configurations |
+| `path_cache_size` | integer | ❌ | `1000` | Maximum cached path resolutions |
+| `env_cache_ttl` | integer | ❌ | `300` | Environment cache TTL in seconds |
+
+#### Examples
+
+```yaml
+# Enterprise performance configuration
+version: 1
+
+cache_imports: true
+import_cache_size: 500
+path_cache_size: 5000
+env_cache_ttl: 600
+
+duckdb:
+  database: enterprise_catalog.duckdb
+```
 
 #### Example
 
@@ -605,18 +690,18 @@ semantic_models:
 
 ### ImportConfig
 
-Configuration for importing other configuration files.
+Configuration for importing other configuration files with enhanced performance and caching from the new modular architecture.
 
 #### Types
 
 ```yaml
-# Simple list of paths
+# Simple list of paths (basic pattern)
 imports:
   - ./base.yaml
   - ./views.yaml
   - ./analytics.yaml
 
-# Selective imports (advanced)
+# Selective imports (advanced pattern)
 imports:
   duckdb:
     - path: ./database.yaml
@@ -626,22 +711,62 @@ imports:
       override: true
     - path: ./analytics_views.yaml
       override: false
+
+# Remote imports (new capability)
+imports:
+  - s3://company-configs/base.yaml
+  - ./local-overrides.yaml
+  - https://config.company.com/production.yaml
 ```
+
+#### Enhanced Features
+
+**Request-Scoped Caching:**
+- Import resolution is cached within request scope
+- Repeated imports across multiple configurations are optimized
+- Import chain analysis for performance monitoring
+
+**Remote Import Support:**
+- Import from remote sources (S3, GCS, HTTPS, etc.)
+- Mixed local and remote import combinations
+- Authentication through environment variables
+
+**Import Resolution Diagnostics:**
+- Track import chain depth and complexity
+- Performance metrics for import resolution
+- Cache hit/miss statistics
 
 ### ImportEntry
 
-Individual import entry with optional override control.
+Individual import entry with optional override control and enhanced resolution features.
 
 #### Fields
 
 | Field | Type | Required | Default | Description |
 |--------|------|-----------|---------|-------------|
-| `path` | string | ✅ | - | Path to configuration file |
+| `path` | string | ✅ | - | Path to configuration file (local or remote URI) |
 | `override` | boolean | ❌ | `true` | Whether this import can override existing values |
+| `optional` | boolean | ❌ | `false` | Whether import failure should be tolerated |
+| `namespace` | string | ❌ | - | Optional namespace for import isolation |
+
+#### Remote Import Examples
+
+```yaml
+# Remote import with authentication
+imports:
+  - path: s3://company-configs/base.yaml
+    override: true
+    optional: false
+  - path: ./local-overrides.yaml
+    override: true
+  - path: https://config.company.com/production.yaml
+    namespace: company
+    optional: true
+```
 
 ### SelectiveImports
 
-Section-specific imports for targeted configuration merging.
+Section-specific imports for targeted configuration merging with enhanced conflict resolution.
 
 #### Fields
 
@@ -649,6 +774,87 @@ Section-specific imports for targeted configuration merging.
 |--------|------|-----------|---------|-------------|
 | `duckdb` | array[ImportEntry] | ❌ | `[]` | DuckDB configuration imports |
 | `views` | array[ImportEntry] | ❌ | `[]` | View definition imports |
+| `attachments` | array[ImportEntry] | ❌ | `[]` | Attachment configuration imports |
+| `secrets` | array[ImportEntry] | ❌ | `[]` | Secret configuration imports |
+
+#### Advanced Import Patterns
+
+```yaml
+# Namespace isolation
+imports:
+  secrets:
+    - path: ./dev-secrets.yaml
+      namespace: dev
+      override: false
+    - path: ./prod-secrets.yaml
+      namespace: prod
+      override: false
+
+# Optional imports for different environments
+imports:
+  views:
+    - path: ./core-views.yaml
+      override: true
+    - path: ./dev-views.yaml
+      optional: true
+    - path: ./analytics-views.yaml
+      optional: true
+      namespace: analytics
+
+# Remote fallback pattern
+imports:
+  - path: s3://company-configs/production-base.yaml
+    override: true
+    optional: true  # Fallback to local if remote fails
+  - path: ./local-base.yaml
+    override: true
+```
+
+### Import Resolution Algorithm
+
+The new architecture enhances import resolution with:
+
+1. **Dependency Analysis**: Analyze import graph for circular dependencies
+2. **Performance Optimization**: Cache resolution results across multiple loads
+3. **Error Context**: Provide detailed error information with import chain
+4. **Remote Fallback**: Graceful handling of remote import failures
+
+#### Import Chain Example
+
+```yaml
+# main.yaml
+version: 1
+imports:
+  - ./base.yaml
+  - ./views/users.yaml
+  - ./analytics.yaml
+
+# base.yaml
+version: 1
+duckdb:
+  database: analytics.duckdb
+imports:
+  - ./shared/secrets.yaml
+
+# analytics.yaml
+version: 1
+imports:
+  - ./base.yaml  # Already loaded - cached result
+  - ./views/reports.yaml
+```
+
+**Resolution with Caching:**
+1. Load `main.yaml` → start request cache
+2. Load `base.yaml` → load and cache `shared/secrets.yaml`
+3. Load `views/users.yaml` → use cached base
+4. Load `analytics.yaml` → reuse cached `base.yaml`
+5. Load `views/reports.yaml` → complete resolution
+
+**Performance Benefits:**
+- `base.yaml` loaded once, reused twice
+- `shared/secrets.yaml` resolved once
+- Import chain depth: 3 levels
+- Cache hit ratio: 40% for repeated imports
 | `attachments` | array[ImportEntry] | ❌ | `[]` | Attachment configuration imports |
 | `iceberg_catalogs` | array[ImportEntry] | ❌ | `[]` | Iceberg catalog imports |
 | `semantic_models` | array[ImportEntry] | ❌ | `[]` | Semantic model imports |

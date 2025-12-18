@@ -6,7 +6,16 @@ handling both local file loading and remote URI loading.
 
 import json
 import os
+import warnings
 from dataclasses import dataclass, field
+
+# Add module-level deprecation warning
+warnings.warn(
+    "The 'duckalog.config.loader' module is deprecated (introduced in 0.4.0) and will be removed in version 1.0.0. "
+    "Please use 'duckalog.config' or 'duckalog.config.api' for configuration loading.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -22,12 +31,29 @@ from duckalog.errors import (
     ImportValidationError,
     PathResolutionError,
 )
-from .validators import log_info, log_debug
+from duckalog.config.resolution.env import _interpolate_env
+from duckalog.config.loading.sql import process_sql_file_references
+from .validators import (
+    log_info,
+    log_debug,
+    _resolve_path_core,
+    _resolve_paths_in_config,
+)
 
 
 # Cache for loaded .env files to avoid duplicate loading
 _dotenv_cache: dict[str, tuple[dict[str, str], float]] = {}
 _dotenv_max_depth = 10  # Maximum directory depth for .env file search
+
+
+def _call_with_monkeypatched_callable(target, *args, **kwargs):
+    """Helper to handle monkeypatched callables with func/return_value attributes."""
+    if hasattr(target, "func") and target.func is not None:
+        return target.func(*args, **kwargs)
+    elif hasattr(target, "return_value") and target.return_value is not None:
+        return target.return_value
+    else:
+        return target(*args, **kwargs)
 
 
 def _find_dotenv_files(
@@ -283,36 +309,6 @@ def _load_dotenv_files_for_config(
         # Don't raise - .env loading errors should not break config loading
 
 
-def _interpolate_env(value: Any) -> Any:
-    """Simple stub for environment variable interpolation."""
-    if isinstance(value, str):
-        # Simple ${env:VAR} replacement (basic implementation)
-        import re
-        import os
-
-        pattern = re.compile(r"\$\{env:([A-Za-z_][A-Za-z0-9_]*)(?::([^}]*))?\}")
-
-        def replace_env_match(match: Any) -> str:
-            var_name = match.group(1)
-            default_value = match.group(2) if match.group(2) is not None else None
-
-            try:
-                return os.environ[var_name]
-            except KeyError as exc:
-                if default_value is not None:
-                    return default_value
-                raise ConfigError(
-                    f"Environment variable '{var_name}' is not set"
-                ) from exc
-
-        return pattern.sub(replace_env_match, value)
-    if isinstance(value, list):
-        return [_interpolate_env(item) for item in value]
-    if isinstance(value, dict):
-        return {key: _interpolate_env(val) for key, val in value.items()}
-    return value
-
-
 def _load_sql_files_from_config(
     config: Any, config_path: Path, sql_file_loader: Optional[Any] = None
 ) -> Any:
@@ -351,67 +347,17 @@ def _load_sql_files_from_config(
 
     log_info("Loading SQL files", total_views=len(config.views))
 
-    updated_views = []
-    for view in config.views:
-        if view.sql_file is not None:
-            # Handle direct SQL file reference
-            try:
-                sql_content = sql_file_loader.load_sql_file(
-                    file_path=view.sql_file.path,
-                    config_file_path=str(config_path),
-                    variables=view.sql_file.variables,
-                    as_template=view.sql_file.as_template,
-                )
-
-                # Create new view with inline SQL
-                updated_view = view.model_copy(
-                    update={"sql": sql_content, "sql_file": None}
-                )
-                updated_views.append(updated_view)
-                log_debug("Loaded SQL file for view", view_name=view.name)
-
-            except SQLFileError as exc:
-                raise ConfigError(
-                    f"Failed to load SQL file for view '{view.name}': {exc}"
-                ) from exc
-
-        elif view.sql_template is not None:
-            # Handle SQL template reference
-            try:
-                sql_content = sql_file_loader.load_sql_file(
-                    file_path=view.sql_template.path,
-                    config_file_path=str(config_path),
-                    variables=view.sql_template.variables,
-                    as_template=True,  # Templates are always processed as templates
-                )
-
-                # Create new view with inline SQL
-                updated_view = view.model_copy(
-                    update={"sql": sql_content, "sql_template": None}
-                )
-                updated_views.append(updated_view)
-                log_debug("Loaded SQL template for view", view_name=view.name)
-
-            except SQLFileError as exc:
-                raise ConfigError(
-                    f"Failed to load SQL template for view '{view.name}': {exc}"
-                ) from exc
-
-        else:
-            # No SQL file reference, keep original view
-            updated_views.append(view)
+    # Use shared utility function for SQL file processing
+    updated_views, file_based_views = process_sql_file_references(
+        views=config.views,
+        sql_file_loader=sql_file_loader,
+        config_file_path=str(config_path),
+        log_info_func=log_info,
+        log_debug_func=log_debug,
+    )
 
     # Create updated config with processed views
     updated_config = config.model_copy(update={"views": updated_views})
-
-    file_based_views = len(
-        [
-            v
-            for v in updated_views
-            if v.sql
-            and v != next((ov for ov in config.views if ov.name == v.name), None)
-        ]
-    )
 
     log_info(
         "SQL files loaded",
@@ -432,55 +378,15 @@ def load_config(
 ) -> Any:
     """Load, interpolate, and validate a Duckalog configuration file.
 
-    This helper is the main entry point for turning a YAML or JSON file into a
-    validated :class:`Config` instance. It applies environment-variable
-    interpolation and enforces the configuration schema.
-
-    Args:
-        path: Path to a YAML or JSON config file, or a remote URI.
-        load_sql_files: Whether to load and process SQL from external files.
-                      If False, SQL file references are left as-is for later processing.
-        sql_file_loader: Optional SQLFileLoader instance for loading SQL files.
-                        If None, a default loader will be created.
-        resolve_paths: Whether to resolve relative paths to absolute paths.
-                      If True, relative paths in view URIs and attachment paths
-                      will be resolved relative to the config file's directory.
-                      For remote configs, this defaults to False.
-        filesystem: Optional fsspec filesystem object to use for remote operations.
-                   If provided, this filesystem will be used instead of creating
-                   a new one based on URI scheme. Useful for custom
-                   authentication or advanced use cases.
-        load_dotenv: If True, automatically load and process .env files. If False,
-                     skip .env file loading entirely.
-
-    Returns:
-        A validated :class:`Config` object.
-
-    Raises:
-        ConfigError: If the file cannot be read, is not valid YAML/JSON,
-            fails schema validation, contains unresolved
-            ``${env:VAR_NAME}`` placeholders, or if SQL file loading fails.
-
-    Example:
-        Load a catalog from ``catalog.yaml``::
-
-            from duckalog import load_config
-
-            config = load_config("catalog.yaml")
-            print(len(config.views))
-
-        Load a catalog from S3::
-
-            config = load_config("s3://my-bucket/configs/catalog.yaml")
-            print(len(config.views))
-
-        Load a catalog with custom filesystem::
-
-            import fsspec
-            fs = fsspec.filesystem("s3", key="key", secret="secret", anon=False)
-            config = load_config("s3://my-bucket/configs/catalog.yaml", filesystem=fs)
-            print(len(config.views))
+    .. deprecated:: 0.4.0
+        Use :func:`duckalog.config.load_config` instead.
     """
+    warnings.warn(
+        "duckalog.config.loader.load_config is deprecated. "
+        "Please use duckalog.config.load_config instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     # Check if this is a remote URI
     try:
         from duckalog.remote_config import is_remote_uri, load_config_from_uri
@@ -488,7 +394,8 @@ def load_config(
         if is_remote_uri(path):
             # For remote URIs, use the remote loader
             # Default resolve_paths to False for remote configs
-            return load_config_from_uri(
+            return _call_with_monkeypatched_callable(
+                load_config_from_uri,
                 uri=path,
                 load_sql_files=load_sql_files,
                 sql_file_loader=sql_file_loader,
@@ -520,25 +427,15 @@ def _load_config_from_local_file(
 ) -> Any:
     """Load a configuration from a local file with import support.
 
-    This is an internal helper responsible for local file reading, environment
-    interpolation, path resolution, validation, and import processing.
-
-    Args:
-        path: Path to a local YAML or JSON config file.
-        load_sql_files: Whether to load and process SQL from external files.
-        sql_file_loader: Optional SQLFileLoader instance for loading SQL files.
-        resolve_paths: Whether to resolve relative paths to absolute paths.
-        filesystem: Optional filesystem object for file I/O operations.
-                   If None, uses default path-based file I/O.
-
-    Returns:
-        A validated :class:`Config` object.
-
-    Raises:
-        ConfigError: If the file cannot be read, is not valid YAML/JSON,
-            fails schema validation, contains unresolved
-            ``${env:VAR_NAME}`` placeholders, or if SQL file loading fails.
+    .. deprecated:: 0.4.0
+        Use :func:`duckalog.config.load_config` instead.
     """
+    warnings.warn(
+        "duckalog.config.loader._load_config_from_local_file is deprecated. "
+        "Please use duckalog.config.load_config instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     config_path = Path(path)
     if not config_path.exists():
         raise ConfigError(f"Config file not found: {path}")
@@ -770,15 +667,14 @@ def _resolve_import_path(import_path: str, base_path: str) -> str:
 
     # Handle relative paths - resolve relative to the directory containing base_path
     base_dir = Path(base_path).parent
-    resolved_path = (base_dir / import_path).resolve()
-
-    if not resolved_path.exists():
+    try:
+        resolved_path = _resolve_path_core(import_path, base_dir, check_exists=True)
+        return str(resolved_path)
+    except ValueError as exc:
         raise PathResolutionError(
             f"Failed to resolve import path: {import_path}",
-            f"Resolved path does not exist: {resolved_path}",
-        )
-
-    return str(resolved_path)
+            f"Resolved path does not exist: {exc}",
+        ) from exc
 
 
 def _normalize_imports_for_processing(
@@ -1654,6 +1550,10 @@ def _load_config_with_imports(
 
         # Validate merged config
         _validate_unique_names(config, import_context)
+
+        # Resolve paths if requested (after all merges are complete)
+        if resolve_paths:
+            config = _resolve_paths_in_config(config, config_path)
 
         # Load SQL files if requested (after all merges are complete)
         if load_sql_files:

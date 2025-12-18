@@ -26,7 +26,7 @@ except ImportError:
 
 # Import quoting functions after other imports to avoid circular imports
 try:
-    from .sql_generation import quote_ident, quote_literal
+    from .sql_utils import quote_ident, quote_literal
 except ImportError:
     # Fallback for circular import issues
     def quote_ident(value: str) -> str:

@@ -11,6 +11,18 @@ from typing import Any, Optional
 
 from loguru import logger
 from duckalog.errors import ConfigError, PathResolutionError
+from duckalog.config.security.path import (
+    DefaultPathResolver,
+    DefaultPathValidator,
+    detect_path_type as _detect_path_type_core,
+    is_relative_path as _is_relative_path_core,
+    is_windows_path_absolute as _is_windows_path_absolute_core,
+    is_within_allowed_roots as _is_within_allowed_roots_core,
+    normalize_path_for_sql as _normalize_path_for_sql_core,
+    resolve_relative_path as _resolve_relative_path_core,
+    validate_file_accessibility as _validate_file_accessibility_core,
+    validate_path_security as _validate_path_security_core,
+)
 
 
 # Logging and redaction utilities
@@ -40,7 +52,9 @@ def _redact_value(value: Any, key_hint: str = "") -> Any:
     return value
 
 
-def _emit_loguru_logger(level_name: str, message: str, safe_details: dict[str, Any]) -> None:
+def _emit_loguru_logger(
+    level_name: str, message: str, safe_details: dict[str, Any]
+) -> None:
     """Emit a log message using loguru."""
     if safe_details:
         logger.log(level_name, "{} {}", message, safe_details)
@@ -56,7 +70,7 @@ def _log(level: int, message: str, **details: Any) -> None:
 
     # Map stdlib logging levels to loguru
     level_map = {
-        20: "INFO",   # logging.INFO
+        20: "INFO",  # logging.INFO
         10: "DEBUG",  # logging.DEBUG
         40: "ERROR",  # logging.ERROR
     }
@@ -79,223 +93,77 @@ def log_error(message: str, **details: Any) -> None:
     _log(40, message, **details)
 
 
+# Dependency-injected path helpers
+_path_resolver = DefaultPathResolver(log_debug=log_debug)
+_path_validator = DefaultPathValidator(
+    path_resolver=_path_resolver, log_debug=log_debug
+)
+
 # Path resolution and validation functions
+
+
+def _resolve_path_core(path: str, base_dir: Path, check_exists: bool = False) -> Path:
+    """Core path resolution logic shared between different path resolution functions.
+
+    Args:
+        path: The path to resolve
+        base_dir: The base directory to resolve relative paths against
+        check_exists: If True, check that the resolved path exists
+
+    Returns:
+        Resolved Path object
+
+    Raises:
+        ValueError: If path resolution fails
+    """
+    return _path_resolver._resolve_path_core(path, base_dir, check_exists=check_exists)
 
 
 def is_relative_path(path: str) -> bool:
     """Detect if a path is relative based on platform-specific rules."""
-    if not path or not path.strip():
-        return False
-
-    # Check for protocols (http, s3, gs, https, etc.)
-    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path):
-        return False
-
-    # Platform-specific checks
-    try:
-        if Path(path).is_absolute():
-            return False
-    except (OSError, ValueError):
-        # Path might contain invalid characters for the current platform
-        pass
-
-    # Windows drive letter check (C:, D:, etc.)
-    if re.match(r"^[a-zA-Z]:[\\\\/]", path):
-        return False
-
-    # Windows UNC path check (\\server\share)
-    if path.startswith("\\\\"):
-        return False
-
-    return True
+    return _is_relative_path_core(path)
 
 
 def resolve_relative_path(path: str, config_dir: Path) -> str:
     """Resolve a relative path to an absolute path relative to config directory."""
-    if not path or not path.strip():
-        raise ValueError("Path cannot be empty")
-
-    path = path.strip()
-
-    # If path is already absolute, return as-is
-    if not is_relative_path(path):
-        return path
-
-    # Resolve relative path against config directory
-    try:
-        config_dir = config_dir.resolve()
-        resolved_path = config_dir / path
-        resolved_path = resolved_path.resolve()
-
-        log_debug(
-            f"Resolved relative path: {path} -> {resolved_path}",
-            config_dir=str(config_dir),
-        )
-
-        return str(resolved_path)
-
-    except (OSError, ValueError) as exc:
-        raise ValueError(
-            f"Failed to resolve path '{path}' relative to '{config_dir}': {exc}"
-        ) from exc
+    return _resolve_relative_path_core(path, config_dir, log_debug=log_debug)
 
 
-def validate_path_security(path: str, config_dir: Path) -> bool:
+def validate_path_security(
+    path: str, config_dir: Path, allowed_roots: Optional[list[Path]] = None
+) -> bool:
     """Validate that resolved paths don't violate security boundaries."""
-    if not path or not path.strip():
-        return False
-
-    # Remote URIs are considered safe
-    if not is_relative_path(path):
-        # Check if it's a remote URI (has protocol)
-        if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path):
-            return True
-
-    try:
-        # Resolve relative paths only
-        if is_relative_path(path):
-            resolved_path_str = resolve_relative_path(path, config_dir.resolve())
-            resolved_path = Path(resolved_path_str)
-        else:
-            # For non-relative local paths, validate them
-            resolved_path = Path(path).resolve()
-
-        config_dir_resolved = config_dir.resolve()
-
-        # Check if resolved path is within allowed roots
-        try:
-            if is_within_allowed_roots(str(resolved_path), [config_dir_resolved]):
-                return True
-            else:
-                log_debug(
-                    f"Path resolution security violation: {resolved_path} is outside allowed root {config_dir_resolved}"
-                )
-                return False
-        except ValueError as exc:
-            # Path resolution failed (invalid path)
-            log_debug(
-                f"Path resolution validation failed: {exc}",
-                path=path,
-                resolved_path=str(resolved_path),
-            )
-            return False
-
-    except (OSError, ValueError, RuntimeError):
-        return False
+    return _validate_path_security_core(
+        path,
+        config_dir,
+        allowed_roots=allowed_roots,
+        log_debug=log_debug,
+    )
 
 
 def normalize_path_for_sql(path: str) -> str:
     """Normalize a path for use in SQL statements."""
-    if not path or not path.strip():
-        raise ValueError("Path cannot be empty")
-
-    path = path.strip()
-
-    # Convert to Path object for normalization
-    try:
-        path_obj = Path(path)
-        normalized = str(path_obj)
-    except (OSError, ValueError):
-        # If pathlib can't handle it, use as-is
-        normalized = path
-
-    # Import quote_literal from sql_generation to avoid circular imports
-    from duckalog.sql_generation import quote_literal
-
-    return quote_literal(normalized)
+    return _normalize_path_for_sql_core(path)
 
 
 def is_within_allowed_roots(candidate_path: str, allowed_roots: list[Path]) -> bool:
     """Check if a resolved path is within any of the allowed root directories."""
-    try:
-        # Resolve the candidate path to absolute, following symlinks
-        resolved_candidate = Path(candidate_path).resolve()
-    except (OSError, ValueError, RuntimeError) as exc:
-        raise ValueError(f"Cannot resolve path '{candidate_path}': {exc}") from exc
-
-    # Resolve all allowed roots to absolute paths
-    try:
-        resolved_roots = [root.resolve() for root in allowed_roots]
-    except (OSError, ValueError, RuntimeError) as exc:
-        raise ValueError(f"Cannot resolve allowed root: {exc}") from exc
-
-    # Check if candidate is within any allowed root
-    for root in resolved_roots:
-        try:
-            # Use commonpath to find the common prefix
-            common = Path(os.path.commonpath([resolved_candidate, root]))
-
-            # If the common path equals the root, then candidate is within this root
-            if common == root:
-                return True
-
-        except ValueError:
-            # os.path.commonpath raises ValueError when paths are on different
-            # drives (Windows) or have no common prefix - treat as not within root
-            continue
-
-    return False
+    return _is_within_allowed_roots_core(candidate_path, allowed_roots)
 
 
 def is_windows_path_absolute(path: str) -> bool:
     """Check Windows-specific absolute path patterns."""
-    # Drive letter: C:\path
-    if re.match(r"^[a-zA-Z]:[\\\\/]", path):
-        return True
-
-    # UNC path: \\server\share
-    if path.startswith("\\\\"):
-        return True
-
-    return False
+    return _is_windows_path_absolute_core(path)
 
 
 def detect_path_type(path: str) -> str:
     """Detect the type of path for categorization."""
-    if not path or not path.strip():
-        return "invalid"
-
-    # Check for remote URIs with protocols
-    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", path):
-        return "remote"
-
-    # Check for absolute paths
-    if not is_relative_path(path):
-        return "absolute"
-
-    # Otherwise it's relative
-    return "relative"
+    return _detect_path_type_core(path)
 
 
 def validate_file_accessibility(path: str) -> tuple[bool, Optional[str]]:
     """Validate that a file path is accessible."""
-    if not path or not path.strip():
-        return False, "Path cannot be empty"
-
-    try:
-        path_obj = Path(path)
-
-        # Check if file exists
-        if not path_obj.exists():
-            return False, f"File does not exist: {path}"
-
-        # Check if it's a file (not a directory)
-        if not path_obj.is_file():
-            return False, f"Path is not a file: {path}"
-
-        # Check if file is readable
-        try:
-            with open(path_obj, "rb"):
-                pass
-        except PermissionError:
-            return False, f"Permission denied reading file: {path}"
-        except OSError as exc:
-            return False, f"Error accessing file {path}: {exc}"
-
-        return True, None
-
-    except (OSError, ValueError) as exc:
-        return False, f"Invalid path: {exc}"
+    return _validate_file_accessibility_core(path)
 
 
 def _resolve_paths_in_config(config, config_path: Path):
@@ -365,9 +233,15 @@ def _resolve_view_paths(view_data: dict, config_dir: Path) -> None:
         original_uri = view_data["uri"]
 
         if is_relative_path(original_uri):
-            # Resolve the path (security validation is handled within resolve_relative_path)
+            # Resolve the path first
             try:
                 resolved_uri = resolve_relative_path(original_uri, config_dir)
+                # Validate security on the resolved path (more secure)
+                if not validate_path_security(resolved_uri, config_dir):
+                    raise PathResolutionError(
+                        f"Security validation failed for resolved URI '{resolved_uri}'",
+                        original_path=original_uri,
+                    )
                 view_data["uri"] = resolved_uri
                 log_debug(
                     "Resolved view URI", original=original_uri, resolved=resolved_uri

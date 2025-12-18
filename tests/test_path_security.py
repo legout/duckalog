@@ -14,7 +14,7 @@ from unittest.mock import patch
 import pytest
 
 from duckalog.config import ConfigError
-from duckalog.path_resolution import (
+from duckalog.config.validators import (
     PathResolutionError,
     resolve_relative_path,
     validate_path_security,

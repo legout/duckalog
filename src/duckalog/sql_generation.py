@@ -2,98 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from .config import log_debug
-
 from .config import Config, SecretConfig, ViewConfig
-
-
-def quote_ident(value: str) -> str:
-    """Quote a SQL identifier using double quotes.
-
-    This helper wraps a string in double quotes and escapes any embedded
-    double quotes according to SQL rules.
-
-    Args:
-        value: Identifier to quote (for example, a view or column name).
-
-    Returns:
-        The identifier wrapped in double quotes.
-
-    Example:
-        >>> quote_ident("events")
-        '"events"'
-    """
-
-    escaped = value.replace('"', '""')
-    return f'"{escaped}"'
-
-
-def quote_literal(value: str) -> str:
-    """Quote a SQL string literal using single quotes.
-
-    This helper wraps a string in single quotes and escapes any embedded
-    single quotes according to SQL rules.
-
-    Args:
-        value: String literal to quote (for example, a file path, secret, or connection string).
-
-    Returns:
-        The string wrapped in single quotes with proper escaping.
-
-    Example:
-        >>> quote_literal("path/to/file.parquet")
-        "'path/to/file.parquet'"
-        >>> quote_literal("user's data")
-        "'user''s data'"
-    """
-    escaped = value.replace("'", "''")
-    return f"'{escaped}'"
-
-
-def _quote_literal(value: str) -> str:
-    """Deprecated: Use quote_literal instead."""
-    return quote_literal(value)
-
-
-def render_options(options: dict[str, Any]) -> str:
-    """Render a mapping of options into scan-function arguments.
-
-    The resulting string is suitable for appending to a ``*_scan`` function
-    call. Keys are sorted alphabetically to keep output deterministic.
-
-    Args:
-        options: Mapping of option name to value (str, bool, int, or float).
-
-    Returns:
-        A string that starts with ``, `` when options are present (for example,
-        ``", hive_partitioning=TRUE"``) or an empty string when no options
-        are provided.
-
-    Raises:
-        TypeError: If a value has a type that cannot be rendered safely.
-    """
-
-    if not options:
-        return ""
-
-    parts = []
-    for key in sorted(options):
-        value = options[key]
-        if isinstance(value, bool):
-            rendered = "TRUE" if value else "FALSE"
-        elif isinstance(value, (int, float)) and not isinstance(value, bool):
-            rendered = str(value)
-        elif isinstance(value, str):
-            rendered = _quote_literal(value)
-        else:
-            raise TypeError(
-                f"Unsupported option value for '{key}': {value!r}. Expected str, bool, int, or float."
-            )
-        parts.append(f"{key}={rendered}")
-
-    return ", " + ", ".join(parts)
+from .sql_utils import quote_ident, quote_literal, render_options
 
 
 def generate_view_sql(view: ViewConfig) -> str:
@@ -128,17 +39,19 @@ def _render_view_body(view: ViewConfig) -> str:
     if source in {"parquet", "delta"}:
         func = f"{source}_scan"
         assert view.uri is not None  # enforced by schema
-        scan_call = f"{func}({_quote_literal(view.uri)}{render_options(view.options)})"
+        scan_call = f"{func}({quote_literal(view.uri)}{render_options(view.options)})"
         return f"SELECT * FROM {scan_call}"
 
     if source == "iceberg":
         if view.uri:
-            scan_call = f"iceberg_scan({_quote_literal(view.uri)}{render_options(view.options)})"
+            scan_call = (
+                f"iceberg_scan({quote_literal(view.uri)}{render_options(view.options)})"
+            )
         else:
             assert view.catalog and view.table  # enforced by schema
             scan_call = (
                 "iceberg_scan("
-                f"{_quote_literal(view.catalog)}, {_quote_literal(view.table)}"
+                f"{quote_literal(view.catalog)}, {quote_literal(view.table)}"
                 f"{render_options(view.options)})"
             )
         return f"SELECT * FROM {scan_call}"
@@ -336,6 +249,7 @@ def generate_secret_sql(secret: SecretConfig) -> str:
     return secret_sql
 
 
+# Re-export for backward compatibility
 __all__ = [
     "quote_ident",
     "quote_literal",

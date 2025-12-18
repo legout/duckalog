@@ -25,6 +25,7 @@ nav:
   - Reference:
       - Overview: reference/index.md
       - Python API: reference/api.md
+      - API Patterns: reference/api-patterns.md
       - CLI Commands: reference/cli.md
       - Configuration Schema: reference/config-schema.md
   - Understanding:

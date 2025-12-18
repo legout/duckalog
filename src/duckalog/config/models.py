@@ -417,6 +417,8 @@ class ViewConfig(BaseModel):
                 raise ValueError("View db_schema cannot be empty")
         return value
 
+    @field_validator("db_schema")
+    @classmethod
     def _validate_schema(cls, value: Optional[str]) -> Optional[str]:
         if value is not None:
             value = value.strip()
@@ -810,6 +812,21 @@ class SemanticModelConfig(BaseModel):
         return self
 
 
+class LoaderSettings(BaseModel):
+    """Settings for the configuration loader.
+
+    Attributes:
+        concurrency_enabled: Whether to enable parallel I/O for imports and SQL files.
+        max_threads: Maximum number of threads for parallel I/O.
+                    Defaults to None (uses default ThreadPoolExecutor behavior).
+    """
+
+    concurrency_enabled: bool = True
+    max_threads: Optional[int] = Field(default=None, ge=1)
+
+    model_config = ConfigDict(extra="forbid")
+
+
 # Import-related models for advanced import options
 
 
@@ -863,6 +880,7 @@ class Config(BaseModel):
                    Supports patterns like ['.env', '.env.local', '.env.production'].
                    Files are loaded in order with later files overriding earlier ones.
                    Defaults to ['.env'] for backward compatibility.
+        loader_settings: Optional settings for the configuration loader.
     """
 
     version: int
@@ -877,6 +895,7 @@ class Config(BaseModel):
     )
     # Custom .env file patterns - defaults to ['.env'] for backward compatibility
     env_files: list[str] = Field(default_factory=lambda: [".env"])
+    loader_settings: LoaderSettings = Field(default_factory=LoaderSettings)
 
     model_config = ConfigDict(extra="forbid")
 
