@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .config import get_logger, log_debug
+
 from .config import Config, SecretConfig, ViewConfig
 from .secret_types import (
     AzureSecretConfig,
@@ -222,7 +224,17 @@ def generate_secret_sql(secret: SecretConfig) -> str:
             if secret.region:
                 params.append(f"REGION {quote_literal(secret.region)}")
             if secret.endpoint:
-                params.append(f"ENDPOINT {quote_literal(secret.endpoint)}")
+                # Strip protocol if present (DuckDB expects endpoints without http:// or https://)
+                clean_endpoint = secret.endpoint
+                original_endpoint = secret.endpoint
+                if clean_endpoint.startswith(("http://", "https://")):
+                    clean_endpoint = clean_endpoint.split("://", 1)[1]
+                    log_debug(
+                        "Stripped protocol from endpoint",
+                        original=original_endpoint,
+                        cleaned=clean_endpoint,
+                    )
+                params.append(f"ENDPOINT {quote_literal(clean_endpoint)}")
 
     elif secret.type == "azure":
         if secret.connection_string:

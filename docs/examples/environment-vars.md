@@ -1,24 +1,25 @@
-# Environment Variables Example
+# Environment Variables and .env Files Example
 
-This example demonstrates how to use environment variables effectively in Duckalog configurations. You'll learn security best practices, environment-specific configurations, and credential management patterns that keep your configs portable and secure.
+This example demonstrates how to use environment variables and `.env` files effectively in Duckalog configurations. You'll learn security best practices, automatic `.env` file loading, environment-specific configurations, and credential management patterns that keep your configs portable and secure.
 
 ## When to Use This Example
 
 Choose this example if:
 - You need to keep credentials out of configuration files
-- You want different configs for development, staging, and production
+- You want automatic `.env` file loading for local development
+- You need different configs for development, staging, and production
 - You're deploying Duckalog across multiple environments
 - You need to comply with security policies (no hardcoded secrets)
-- You want to make configs reusable across different setups
+- You want to make configs
 
-## Prerequisites
+## Prerequisites reusable across different setups
 
 1. **Duckalog installed:**
    ```bash
    pip install duckalog
    ```
 
-2. **Basic understanding of environment variables in your shell:**
+2. **Basic understanding of environment variables and .env files:**
    ```bash
    # Check if a variable exists
    echo $AWS_ACCESS_KEY_ID
@@ -26,8 +27,12 @@ Choose this example if:
    # Set a variable
    export DATABASE_PASSWORD="my-secret-password"
    
-   # Unset a variable
-   unset DATABASE_PASSWORD
+   # Create a .env file
+   echo "API_KEY=secret123" > .env
+   echo "DATABASE_URL=postgres://localhost/mydb" >> .env
+   
+   # Load .env file (optional - Duckalog loads automatically)
+   source .env
    ```
 
 ## Environment Variable Syntax
@@ -52,6 +57,133 @@ config:
 - Undefined variables will cause validation errors (unless default is provided)
 - Variables are resolved during configuration loading
 - No quotes needed around the `${env:...}` syntax
+- `.env` files are automatically discovered and loaded
+
+## Automatic .env File Loading
+
+Duckalog now includes automatic `.env` file discovery and loading:
+
+### How It Works
+
+1. **Automatic Discovery**: When loading any configuration file, Duckalog automatically searches for `.env` files
+2. **Hierarchical Search**: Searches from the config file directory upward (up to 10 levels)
+3. **No Configuration Needed**: Works automatically without any setup
+4. **Secure Handling**: Sensitive data is never logged, malformed files are handled gracefully
+
+### Creating .env Files
+
+```bash
+# Basic .env file
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+DATABASE_PASSWORD=dev-password
+ENVIRONMENT=development
+
+# Comments and empty lines are supported
+# This is a comment
+API_KEY=secret123
+
+EMPTY_VAR=
+NORMAL_VAR=normal_value
+```
+
+### .env File Format
+
+- **Key-Value Pairs**: `KEY=value` or `KEY="value"`
+- **Comments**: Lines starting with `#`
+- **Empty Lines**: Ignored
+- **Inline Comments**: Supported with `#`
+- **Quoted Values**: Both single and double quotes supported
+- **Special Characters**: Handled properly in quoted values
+
+```bash
+# Example .env with various formats
+DATABASE_URL="postgresql://user:pass@localhost:5432/db"
+MESSAGE=Hello World
+JSON_DATA='{"key": "value"}'
+# Comment line
+API_KEY=secret123  # inline comment
+EMPTY_KEY=
+```
+
+### Using .env Files
+
+**Step 1: Create .env file**
+```bash
+cat > .env << EOF
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+DATABASE_URL=postgres://localhost:5432/mydb
+ENVIRONMENT=development
+EOF
+```
+
+**Step 2: Use in configuration**
+```yaml
+# catalog.yaml - variables automatically available from .env
+version: 1
+duckdb:
+  database: "${env:DATABASE_URL}.duckdb"
+  pragmas:
+    - "SET s3_access_key_id='${env:AWS_ACCESS_KEY_ID}'"
+    - "SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"
+
+attachments:
+  postgres:
+    - alias: main_db
+      host: "${env:DB_HOST:localhost}"
+      port: 5432
+      database: "${env:DB_NAME:mydb}"
+      user: "${env:DB_USER:user}"
+      password: "${env:DB_PASSWORD:pass}"
+
+views:
+  - name: data_view
+    source: postgres
+    database: main_db
+    table: users
+    description: "View using .env variables"
+```
+
+**Step 3: Use with Duckalog**
+```bash
+# No need to manually load .env - it's automatic!
+duckalog build catalog.yaml
+
+# Check verbose output to see .env loading
+duckalog build catalog.yaml --verbose
+```
+
+### .env File Discovery Examples
+
+**Example 1: Simple directory structure**
+```
+my-project/
+├── .env              # ← Found and loaded
+└── catalog.yaml
+```
+
+**Example 2: Nested configuration**
+```
+my-project/
+├── .env              # ← Found and loaded
+├── configs/
+│   ├── catalog.yaml  # ← Uses parent .env
+│   └── subdir/
+│       └── config.yaml # ← Also uses parent .env
+└── data/
+```
+
+**Example 3: Multiple .env files (closest wins)**
+```
+project/
+├── .env                 # ← Loaded if no closer .env exists
+├── subdir/
+│   ├── .env             # ← Loaded first (highest priority)
+│   └── config.yaml      # ← Uses subdir/.env
+└── another-level/
+    └── config.yaml      # ← Uses project/.env
+```
 
 ## Security Best Practices
 
@@ -68,7 +200,7 @@ postgres:
   password: "super-secret-password"      # Hardcoded password
 ```
 
-**✅ Correct - Use environment variables:**
+**✅ Correct - Use environment variables or .env files:**
 ```yaml
 # This config file is safe to commit
 duckdb:
@@ -88,6 +220,7 @@ Create a `.gitignore` file to prevent accidentally committing sensitive files:
 .env
 .env.local
 .env.production
+.env.development
 
 # Generated catalogs
 *.duckdb
@@ -101,31 +234,41 @@ tmp/
 temp/
 ```
 
-### 3. Environment-Specific Files
+### 3. Environment-Specific .env Files
 
-Use `.env` files for local development (add to `.gitignore`):
+Use different `.env` files for different environments:
 
 ```bash
-# .env.local (for local development)
+# .env.development (for local development)
 AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
 DATABASE_PASSWORD=dev-password
+ENVIRONMENT=development
 
 # .env.production (for production deployment)
 AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
 DATABASE_PASSWORD=production-password
+ENVIRONMENT=production
+
+# Load specific environment
+source .env.development  # for development
+source .env.production   # for production
 ```
 
-Load with:
-```bash
-# Load environment file
-source .env.local
+### 4. .env File Security
 
-# Or use a tool like direnv
-# (add to .gitignore)
-echo "source .env.local" > .envrc
-direnv allow
+- **Keep .env files out of version control** - Always add to `.gitignore`
+- **Use descriptive names** - `.env.local`, `.env.staging`, `.env.production`
+- **Limit file permissions** - `chmod 600 .env` on Unix systems
+- **Regular rotation** - Update secrets regularly
+- **Environment isolation** - Different .env files for different environments
+
+```bash
+# Secure .env file handling
+chmod 600 .env                    # Read/write for owner only
+echo ".env" >> .gitignore         # Never commit
+echo ".env.*" >> .gitignore       # Never commit any .env variants
 ```
 
 ## Basic Environment Configuration
@@ -617,7 +760,45 @@ echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
 env
 ```
 
-**2. Variable Not Expanding**
+**2. .env File Not Being Loaded**
+
+```bash
+# Check if .env file exists
+ls -la .env
+
+# Verify file permissions
+ls -la .env
+
+# Check file content
+cat .env
+
+# Run with verbose logging to see .env loading
+duckalog build config.yaml --verbose
+```
+
+Expected verbose output:
+```
+Loading config {'path': 'config.yaml'}
+Loading .env files {'config_path': 'config.yaml', 'file_count': 1}
+Loaded .env file {'file_path': '/path/to/.env', 'var_count': 3}
+Completed .env file loading {'total_files': 1}
+```
+
+**3. .env File Discovery Issues**
+
+```bash
+# Check directory structure
+find . -name ".env" -type f
+
+# Verify .env file location relative to config
+tree -a  # Show hidden files
+
+# Test with explicit .env placement
+cp .env ./subdir/  # Copy .env to same directory as config
+```
+
+**4. Variable Not Expanding**
+
 ```yaml
 # Make sure you're using the correct syntax
 good: "${env:VARIABLE_NAME}"
@@ -626,7 +807,8 @@ bad: "${VARIABLE_NAME}"                  # Missing env: prefix
 bad: "${env:}"                           # Empty variable name
 ```
 
-**3. Default Values Not Working**
+**5. Default Values Not Working**
+
 ```yaml
 # Correct syntax for defaults
 with_default: "${env:MISSING_VAR:default_value}"
@@ -637,19 +819,55 @@ correct: "${env:PORT:5432}"              # String default
 incorrect: "${env:PORT:5432}"            # Still string, but looks like number
 ```
 
-**4. Special Characters in Values**
-```yaml
-# For passwords with special characters, quotes might be needed
-password: "${env:DB_PASSWORD}"           # Usually works
-password: "'${env:DB_PASSWORD}'"         # Force quotes if needed
+**6. Special Characters in .env Values**
 
-# If your password contains quotes, escape them
-password: "${env:COMPLEX_PASSWORD:my\"special'pass}"
+```bash
+# For passwords with special characters, quotes might be needed
+# .env file:
+PASSWORD="my'password\"with\"quotes"
+COMPLEX_SECRET="base64==encoded==secret"
+
+# Configuration:
+password: "${env:PASSWORD}"
+secret: "${env:COMPLEX_SECRET}"
+```
+
+**7. .env File Format Errors**
+
+```bash
+# Common .env format issues:
+# - Missing equals sign
+INVALID_LINE_WITHOUT_EQUALS
+
+# - Empty variable names
+=VALUE
+
+# - Invalid variable names
+123INVALID=value
+INVALID-CHAR=value
+
+# Good format:
+VALID_VAR=value
+ANOTHER_VAR="quoted value"
 ```
 
 ### Debug Commands
 
+**Check .env file loading:**
+
+```bash
+# Run with maximum verbosity to see .env loading process
+duckalog build config.yaml --verbose 2>&1 | grep -i env
+
+# Look for these log messages:
+# "Loading .env files" - .env discovery started
+# "Loaded .env file" - .env file was loaded successfully  
+# "No .env files found" - no .env files in search path
+# "Failed to load .env file" - error loading .env file
+```
+
 **Check environment variable resolution:**
+
 ```bash
 # Create a simple config to test variables
 cat > test_vars.yaml << EOF
@@ -663,12 +881,87 @@ duckalog validate test_vars.yaml
 # Set the variable and test again
 export TEST_VAR="resolved_value"
 duckalog validate test_vars.yaml
+
+# Check .env file specifically
+export TEST_VAR=""
+echo "TEST_VAR=test_value" > .env
+duckalog validate test_vars.yaml
 ```
 
 **List all environment variables used in config:**
+
 ```bash
 # Use grep to find env variable usage
 grep -o '\${env:[^}]*}' config.yaml | sort | uniq
+
+# Check what's in your .env file
+cat .env | grep -v '^#' | grep '=' | cut -d'=' -f1
+
+# Compare used vs available variables
+echo "Variables used in config:"
+grep -o '\${env:[^}:]*' config.yaml | sed 's/\${env://' | sort | uniq
+
+echo "Variables available in .env:"
+cat .env | grep -v '^#' | grep '=' | cut -d'=' -f1 | sort | uniq
+```
+
+**Debug .env file discovery:**
+
+```bash
+# Check current working directory
+pwd
+
+# Check relative paths
+ls -la .env* 2>/dev/null || echo "No .env files found in current directory"
+
+# Check if .env is readable
+test -r .env && echo ".env is readable" || echo ".env is not readable"
+
+# Check directory permissions
+ls -ld .
+```
+
+### .env File Security Testing
+
+**Check for accidentally committed .env files:**
+
+```bash
+# Check if .env is tracked by git
+git ls-files | grep "^\.env"
+
+# Check git history for .env files
+git log --full-history -- "*/.env"
+
+# Search for .env files in repository
+find . -name ".env" -type f
+
+# Use git-secrets to scan for credentials
+git-secrets --scan
+```
+
+**Validate .env file content:**
+
+```bash
+# Check for common secrets patterns
+grep -iE "(password|secret|key|token)" .env
+
+# Validate .env file syntax
+python3 -c "
+import os
+with open('.env') as f:
+    for line_num, line in enumerate(f, 1):
+        line = line.strip()
+        if line and not line.startswith('#') and '=' not in line:
+            print(f'Line {line_num}: Invalid format - {line}')
+        elif '=' in line:
+            key, value = line.split('=', 1)
+            if not key.strip():
+                print(f'Line {line_num}: Empty key name')
+"
+
+# Check file permissions
+ls -la .env
+# Should show: -rw------- (600) for security
 ```
 
 ### Security Testing

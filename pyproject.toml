@@ -49,6 +49,7 @@ dependencies = [
     "loguru>=0.7.0",
     "typer>=0.20.0",
     "datastar-py>=0.7.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]

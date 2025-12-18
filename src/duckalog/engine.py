@@ -85,8 +85,8 @@ class CatalogBuilder:
 
             self._setup_connection()
             self._apply_pragmas()
-            self._setup_attachments()
             self._create_secrets()
+            self._setup_attachments()
             self._create_views()
             return self._export_if_needed()
         finally:
@@ -451,6 +451,7 @@ class ConfigDependencyGraph:
         child_conn = duckdb.connect(target_db)
         try:
             _apply_duckdb_settings(child_conn, child_config, False)
+            _create_secrets(child_conn, child_config, False)
             _setup_attachments(child_conn, child_config, False)
 
             # Setup nested Duckalog attachments that were built during dependency resolution
@@ -501,6 +502,7 @@ def build_catalog(
     verbose: bool = False,
     filesystem: Any | None = None,
     include_secrets: bool = True,
+    load_dotenv: bool = True,
 ) -> str | None:
     """Build or update a DuckDB catalog from a configuration file.
 
@@ -520,6 +522,8 @@ def build_catalog(
         filesystem: Optional pre-configured fsspec filesystem object for remote export
             authentication. If not provided, default authentication will be used.
         include_secrets: If ``True``, include secret creation statements in the output.
+        load_dotenv: If ``True``, automatically load and process .env files. If ``False``,
+            skip .env file loading entirely.
 
     Returns:
         The generated SQL script as a string when ``dry_run`` is ``True``,
@@ -549,7 +553,7 @@ def build_catalog(
     # Note: Logging verbosity is configured at the CLI or application level,
     # not per-function. The logging configuration should already be set.
 
-    config = load_config(config_path)
+    config = load_config(config_path, load_dotenv=load_dotenv)
 
     # Handle Duckalog attachments/dependencies first
     dependency_graph = ConfigDependencyGraph()
@@ -695,7 +699,27 @@ def _create_secrets(
             name=secret.name or secret.type,
         )
 
+        # Validate that secret doesn't contain unresolved environment variables
         sql = generate_secret_sql(secret)
+        if "${env:" in sql:
+            # Extract environment variable names that weren't resolved
+            import re
+
+            unresolved_vars = re.findall(r"\$\{env:([^}]+)\}", sql)
+            if unresolved_vars:
+                raise EngineError(
+                    f"Secret '{secret.name or secret.type}' contains unresolved environment variables: {', '.join(unresolved_vars)}. "
+                    f"Please ensure these environment variables are set before running duckalog."
+                )
+
+        # Drop existing secret if it exists to prevent conflicts
+        secret_name = secret.name or secret.type
+        try:
+            conn.execute(f"DROP SECRET IF EXISTS {quote_ident(secret_name)}")
+            log_debug("Dropped existing secret", name=secret_name)
+        except Exception:
+            # Ignore errors if secret doesn't exist
+            pass
         log_debug("Executing secret SQL", index=index, sql=sql)
 
         try:
@@ -724,9 +748,6 @@ def _apply_duckdb_settings(
     for ext in db_conf.load_extensions:
         log_info("Loading DuckDB extension", extension=ext)
         conn.load_extension(ext)
-
-    # Create secrets after extensions but before pragmas
-    _create_secrets(conn, config, verbose)
 
     if db_conf.pragmas:
         log_info("Executing DuckDB pragmas", count=len(db_conf.pragmas))

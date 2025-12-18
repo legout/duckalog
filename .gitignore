@@ -26,3 +26,5 @@ openspec/archive-2025-12-02-validation.md
 dev/
 code_review
 .worktrees
+mms2.db
+mms2.db.wal

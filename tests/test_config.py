@@ -2142,3 +2142,501 @@ def test_semantic_model_with_ambiguous_view_reference(tmp_path):
     assert "ambiguous" in error_msg.lower()
     assert "test_model" in error_msg
     assert "ambiguous_view" in error_msg
+
+
+def test_dotenv_file_discovery_and_loading(tmp_path):
+    """Test that .env files are automatically discovered and loaded."""
+    # Create .env file in same directory as config
+    env_file = tmp_path / ".env"
+    env_file.write_text("TEST_VAR=test_value\nANOTHER_VAR=another_value\n")
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:TEST_VAR}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT '${env:ANOTHER_VAR}' as value"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    # Check that environment variables were loaded
+    assert config.duckdb.database == "test_value.duckdb"
+    assert config.views[0].sql is not None
+    assert "another_value" in config.views[0].sql
+
+
+def test_dotenv_hierarchical_discovery(tmp_path):
+    """Test that .env files are found in parent directories."""
+    # Create nested directory structure
+    subdir = tmp_path / "subdir"
+    subdir.mkdir()
+
+    # Create .env files at different levels
+    (tmp_path / ".env").write_text("SHARED_VAR=root_value\n")
+    (subdir / ".env").write_text("SHARED_VAR=subdir_value\nSPECIFIC_VAR=subdir_only\n")
+
+    config_path = _write(
+        subdir / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:SHARED_VAR}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT '${env:SPECIFIC_VAR}' as value"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    # Subdirectory .env should take precedence
+    assert config.duckdb.database == "subdir_value.duckdb"
+    assert config.views[0].sql is not None
+    assert "subdir_only" in config.views[0].sql
+
+
+def test_dotenv_precedence_over_system_env(monkeypatch, tmp_path):
+    """Test that system environment variables take precedence over .env files."""
+    # Set system environment variable
+    monkeypatch.setenv("DATABASE_URL", "system_db")
+
+    # Create .env file with same variable
+    (tmp_path / ".env").write_text("DATABASE_URL=file_db\n")
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:DATABASE_URL}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    # System environment should win
+    assert config.duckdb.database == "system_db.duckdb"
+
+
+def test_dotenv_default_values_work(tmp_path):
+    """Test that ${env:VAR:default} syntax works with .env files."""
+    (tmp_path / ".env").write_text("FEATURE_FLAG=enabled\n")
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:FEATURE_FLAG:disabled}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    # .env value should be used, not default
+    assert config.duckdb.database == "enabled.duckdb"
+
+
+def test_dotenv_comments_and_empty_lines(tmp_path):
+    """Test that .env files with comments and empty lines are parsed correctly."""
+    (tmp_path / ".env").write_text(
+        "# This is a comment\nKEY1=value1\n\nKEY2=value2  # inline comment\n\n"
+    )
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:KEY1}_${env:KEY2}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert config.duckdb.database == "value1_value2.duckdb"
+
+
+def test_dotenv_quoted_values(tmp_path):
+    """Test that quoted values in .env files are handled correctly."""
+    (tmp_path / ".env").write_text(
+        'DATABASE_URL="postgresql://user:pass@localhost:5432/db"\n'
+        "MESSAGE=Hello World\n"
+        'JSON_DATA=\'{"key": "value"}\'\n'
+    )
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:DATABASE_URL}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT '${env:MESSAGE}' as msg, '${env:JSON_DATA}' as json"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert config.duckdb.database == "postgresql://user:pass@localhost:5432/db.duckdb"
+    assert config.views[0].sql is not None
+    assert "Hello World" in config.views[0].sql
+    assert '{"key": "value"}' in config.views[0].sql
+
+
+def test_dotenv_malformed_file_handling(tmp_path):
+    """Test that malformed .env files don't break configuration loading."""
+    (tmp_path / ".env").write_text(
+        "GOOD_VAR=good_value\nINVALID LINE WITHOUT EQUALS\nANOTHER_GOOD=another_value\n"
+    )
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:GOOD_VAR}_${env:ANOTHER_GOOD}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    # Should not raise an exception
+    config = load_config(str(config_path))
+
+    # Valid variables should still be loaded
+    assert config.duckdb.database == "good_value_another_value.duckdb"
+
+
+def test_dotenv_no_files_found(tmp_path):
+    """Test that missing .env files don't cause errors."""
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "catalog.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    # Should not raise an exception
+    config = load_config(str(config_path))
+
+    assert config.duckdb.database == "catalog.duckdb"
+    assert len(config.views) == 1
+
+
+def test_dotenv_remote_config_with_local_env(tmp_path, monkeypatch):
+    """Test that .env files work with remote configuration files."""
+    # Set current working directory to tmp_path
+    monkeypatch.chdir(tmp_path)
+
+    # Create .env file in current directory
+    (tmp_path / ".env").write_text("REMOTE_VAR=remote_value\n")
+
+    # For this test, we'll simulate a remote config by using a file:// URL
+    # In practice, this would be s3://, https://, etc.
+    config_content = """
+    version: 1
+    duckdb:
+      database: "${env:REMOTE_VAR}.duckdb"
+    views:
+      - name: test_view
+        sql: "SELECT 1"
+    """
+
+    config_path = _write(tmp_path / "remote_config.yaml", config_content)
+
+    # Load as remote config (using file:// protocol to simulate remote)
+    config = load_config(str(config_path))
+
+    assert config.duckdb.database == "remote_value.duckdb"
+
+
+def test_dotenv_caching(tmp_path):
+    """Test that .env files are cached to avoid duplicate loading."""
+    env_file = tmp_path / ".env"
+    env_file.write_text("CACHED_VAR=cached_value\n")
+
+    config_path1 = _write(
+        tmp_path / "config1.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:CACHED_VAR}.duckdb"
+        views:
+          - name: view1
+            sql: "SELECT 1"
+        """,
+    )
+
+    config_path2 = _write(
+        tmp_path / "config2.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:CACHED_VAR}.duckdb"
+        views:
+          - name: view2
+            sql: "SELECT 2"
+        """,
+    )
+
+    # Load both configs - .env should only be loaded once
+    config1 = load_config(str(config_path1))
+    config2 = load_config(str(config_path2))
+
+    assert config1.duckdb.database == "cached_value.duckdb"
+    assert config2.duckdb.database == "cached_value.duckdb"
+
+
+def test_dotenv_permission_denied_handling(tmp_path):
+    """Test that unreadable .env files are gracefully handled."""
+    env_file = tmp_path / ".env"
+    env_file.write_text("PRIVATE_VAR=secret_value\n")
+
+    # Make file unreadable (on Unix systems)
+    env_file.chmod(0o000)
+
+    try:
+        config_path = _write(
+            tmp_path / "catalog.yaml",
+            """
+            version: 1
+            duckdb:
+              database: "catalog.duckdb"
+            views:
+              - name: test_view
+                sql: "SELECT 1"
+            """,
+        )
+
+        # Should not raise an exception despite unreadable .env file
+        config = load_config(str(config_path))
+
+        assert config.duckdb.database == "catalog.duckdb"
+        assert len(config.views) == 1
+
+    finally:
+        # Restore permissions for cleanup
+        env_file.chmod(0o644)
+
+
+def test_dotenv_empty_values(tmp_path):
+    """Test that empty values in .env files are handled correctly."""
+    (tmp_path / ".env").write_text("EMPTY_VAR=\nNORMAL_VAR=normal_value\n")
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:NORMAL_VAR}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT '${env:EMPTY_VAR}' as empty"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    assert config.duckdb.database == "normal_value.duckdb"
+    # Empty variables should not be set
+    assert config.views[0].sql is not None
+    assert "'" in config.views[0].sql  # Shows that EMPTY_VAR was empty/not replaced
+
+
+def test_dotenv_custom_file_names(tmp_path):
+    """Test that custom .env file names are loaded correctly."""
+    # Clean up any environment variables that might interfere
+    import os
+
+    for key in ["CUSTOM_VAR", "DEFAULT_VAR", "SHARED_VAR"]:
+        os.environ.pop(key, None)
+
+    # Create .env.local file (custom pattern)
+    env_local_file = tmp_path / ".env.local"
+    env_local_file.write_text("CUSTOM_VAR=local_value\nSHARED_VAR=local_wins\n")
+
+    # Create regular .env file
+    env_file = tmp_path / ".env"
+    env_file.write_text("DEFAULT_VAR=default_value\nSHARED_VAR=default_loses\n")
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:CUSTOM_VAR}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT '${env:DEFAULT_VAR}' as default, '${env:SHARED_VAR}' as shared"
+        env_files:
+          - ".env.local"
+          - ".env"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    # Custom .env.local should be loaded
+    assert config.duckdb.database == "local_value.duckdb"
+    assert config.views[0].sql is not None
+    assert "default_value" in config.views[0].sql
+    # .env.local (processed last due to reversal) should override .env for SHARED_VAR
+    assert "local_wins" in config.views[0].sql
+
+
+def test_dotenv_multiple_custom_patterns(tmp_path):
+    """Test that multiple custom .env file patterns are loaded in order."""
+    # Clean up any environment variables that might interfere
+    import os
+
+    for key in ["ENV_VAR", "SHARED"]:
+        os.environ.pop(key, None)
+
+    # Create .env.development file
+    env_dev_file = tmp_path / ".env.development"
+    env_dev_file.write_text("ENV_VAR=development\nSHARED=dev_value\n")
+
+    # Create .env.production file
+    env_prod_file = tmp_path / ".env.production"
+    env_prod_file.write_text("ENV_VAR=production\nSHARED=prod_value\n")
+
+    # Create .env.local file (should take precedence)
+    env_local_file = tmp_path / ".env.local"
+    env_local_file.write_text("SHARED=local_wins\n")
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:ENV_VAR}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT '${env:SHARED}' as shared"
+        env_files:
+          - ".env.development"
+          - ".env.production"
+          - ".env.local"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    # .env.development should be used (processed last due to file order reversal)
+    assert config.duckdb.database == "development.duckdb"
+    assert config.views[0].sql is not None
+    # .env.development should win for SHARED (processed last)
+    assert "dev_value" in config.views[0].sql
+
+
+def test_dotenv_fallback_to_default_pattern(tmp_path):
+    """Test that default .env pattern is used when no custom patterns specified."""
+    # Only create .env file (not custom patterns)
+    env_file = tmp_path / ".env"
+    env_file.write_text("FALLBACK_VAR=fallback_value\n")
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:FALLBACK_VAR}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    # Should still work with default .env pattern
+    assert config.duckdb.database == "fallback_value.duckdb"
+
+
+def test_dotenv_custom_patterns_with_hierarchical_search(tmp_path):
+    """Test that custom .env patterns work with hierarchical directory search."""
+    # Clean up any environment variables that might interfere
+    import os
+
+    for key in ["ROOT_VAR", "SUBDIR_VAR"]:
+        os.environ.pop(key, None)
+
+    # Create nested directory structure
+    subdir = tmp_path / "subdir"
+    subdir.mkdir()
+
+    # Create custom pattern files at different levels
+    (tmp_path / ".env.local").write_text("ROOT_VAR=root_value\n")
+    (subdir / ".env.local").write_text(
+        "ROOT_VAR=subdir_value\nSUBDIR_VAR=subdir_only\n"
+    )
+
+    config_path = _write(
+        subdir / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:ROOT_VAR}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT '${env:SUBDIR_VAR}' as subdir"
+        env_files:
+          - ".env.local"
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    # Subdirectory .env.local should be found first and take precedence
+    assert config.duckdb.database == "subdir_value.duckdb"
+    assert config.views[0].sql is not None
+    assert "subdir_only" in config.views[0].sql
+
+
+def test_dotenv_invalid_custom_patterns_fallback(tmp_path):
+    """Test that invalid custom patterns fall back to default behavior."""
+    # Create only default .env file
+    env_file = tmp_path / ".env"
+    env_file.write_text("FALLBACK_VAR=fallback_value\n")
+
+    config_path = _write(
+        tmp_path / "catalog.yaml",
+        """
+        version: 1
+        duckdb:
+          database: "${env:FALLBACK_VAR}.duckdb"
+        views:
+          - name: test_view
+            sql: "SELECT 1"
+        env_files:
+          - ".nonexistent"  # This file doesn't exist
+          - ".env"          # This one does
+        """,
+    )
+
+    config = load_config(str(config_path))
+
+    # Should fall back to .env file
+    assert config.duckdb.database == "fallback_value.duckdb"

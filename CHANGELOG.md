@@ -1,6 +1,18 @@
 # Changelog
-## [2025-12-06] - 0.4.1
 
+## [Unreleased]
+
+### Fixed
+- **Secret Creation Timing**: Fix timing issue where DuckDB secrets were created after database attachments, causing connection failures for S3-based attachments that require the same credentials
+- **Endpoint Protocol Handling**: Automatically strip `http://` and `https://` prefixes from S3 endpoint values before passing to DuckDB, which expects endpoints without protocols
+- **Build Process Order**: Reorder catalog build process to create secrets before attachments, ensuring credentials are available for all remote operations
+
+### Changed
+- **CatalogBuilder.build()**: Updated execution order: setup_connection → apply_pragmas → create_secrets → setup_attachments → create_views
+- **Secret Validation**: Added validation for unresolved environment variables in secrets with clear error messages
+- **Protocol Normalization**: S3 endpoints with protocols are automatically normalized for DuckDB compatibility
+
+## [2025-12-06] - 0.4.1
 ### Added
 - Feat: add cli query command for ad-hoc sql execution (7214308)
 - Archive outdated api docstrings change and implement config imports feature (9913995)

@@ -130,28 +130,212 @@ Let's break down what Duckalog did:
 4. **Created View**: Executed `CREATE VIEW users AS SELECT * FROM 'data/users.parquet'`
 5. **Validated**: Ensured view was created successfully
 
-## Step 2: Adding SQL Transformations
+## Step 2: Environment Variables and .env Files
 
-Add business logic and data transformations using SQL views.
+Learn how to use environment variables and `.env` files for secure, portable configuration.
 
-### 2.1 Create Transformed Views
+### 2.1 Why Use Environment Variables?
 
-Extend your configuration with SQL transformations:
+Environment variables help you:
+- **Keep secrets secure** - No hardcoded passwords in configuration files
+- **Support multiple environments** - Different values for dev, staging, prod
+- **Improve portability** - Same config works everywhere with different variables
+- **Follow security best practices** - Separate configuration from code
+
+### 2.2 Creating Your First .env File
+
+Create a `.env` file in your project directory:
+
+```bash
+# Create .env file
+cat > .env << EOF
+# Database configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=tutorial
+DB_USER=postgres
+DB_PASSWORD=your_password
+
+# Application settings
+MEMORY_LIMIT=1GB
+THREAD_COUNT=2
+ENVIRONMENT=development
+
+# File paths
+DATA_PATH=./data
+CATALOG_NAME=tutorial
+EOF
+
+echo "✅ Created .env file with environment variables"
+```
+
+### 2.3 Using .env Variables in Configuration
+
+Create a new configuration that uses the .env variables:
 
 ```yaml
-# step2_transformations.yaml
+# step2_env_vars.yaml
 version: 1
 
 duckdb:
-  database: tutorial.duckdb
+  database: "${env:CATALOG_NAME:tutorial}.duckdb"
   pragmas:
-    - "SET memory_limit='1GB'"
-    - "SET threads=2"
+    - "SET memory_limit='${env:MEMORY_LIMIT:512MB}'"
+    - "SET threads='${env:THREAD_COUNT:2}'"
+    - "SET environment='${env:ENVIRONMENT:development}'"
 
 views:
   - name: users
     source: parquet
-    uri: "data/users.parquet"
+    uri: "${env:DATA_PATH:./data}/users.parquet"
+    description: "User data from ${env:DATA_PATH:./data}/users.parquet"
+```
+
+**Note the syntax:**
+- `${env:VARIABLE_NAME}` - Use environment variable
+- `${env:VARIABLE_NAME:default_value}` - Use variable with default value
+
+### 2.4 Building with Environment Variables
+
+```bash
+# Build with .env variables (automatically loaded)
+duckalog build step2_env_vars.yaml --verbose
+
+# Check the verbose output for .env loading:
+# Loading .env files {'config_path': 'step2_env_vars.yaml', 'file_count': 1}
+# Loaded .env file {'file_path': '/path/to/.env', 'var_count': 8}
+# Completed .env file loading {'total_files': 1}
+
+# Test the result
+duckdb tutorial.duckdb -c "
+-- Check if view was created
+SHOW TABLES;
+
+-- Query the users view
+SELECT * FROM users LIMIT 3;
+"
+```
+
+### 2.5 Testing Variable Resolution
+
+Create a simple test to verify your environment variables:
+
+```yaml
+# test_env.yaml
+version: 1
+
+test_section:
+  db_host: "${env:DB_HOST:not_set}"
+  memory_limit: "${env:MEMORY_LIMIT:not_set}"
+  data_path: "${env:DATA_PATH:not_set}"
+  missing_var: "${env:DOES_NOT_EXIST:default_value}"
+```
+
+```bash
+# Test environment variable resolution
+duckalog validate test_env.yaml
+
+# Set a missing variable and test again
+export DOES_NOT_EXIST="now_it_works"
+duckalog validate test_env.yaml
+```
+
+### 2.6 Environment-Specific Configuration
+
+Create different .env files for different environments:
+
+```bash
+# .env.development (for local development)
+cat > .env.development << EOF
+ENVIRONMENT=development
+MEMORY_LIMIT=512MB
+THREAD_COUNT=2
+DATA_PATH=./data
+EOF
+
+# .env.production (for production deployment)
+cat > .env.production << EOF
+ENVIRONMENT=production
+MEMORY_LIMIT=4GB
+THREAD_COUNT=8
+DATA_PATH=/data/production
+EOF
+
+# Use specific environment
+source .env.development
+duckalog build step2_env_vars.yaml  # Uses development values
+
+source .env.production
+duckalog build step2_env_vars.yaml  # Uses production values
+```
+
+### 2.7 Understanding .env File Discovery
+
+Duckalog automatically discovers `.env` files in this order:
+
+1. **Configuration file directory** (highest priority)
+2. **Parent directories** (up to 10 levels)
+3. **Current working directory**
+
+```bash
+# Test .env discovery
+mkdir -p subdir/configs
+cp .env subdir/configs/
+
+# Both configurations will find and use the .env file:
+duckalog build step2_env_vars.yaml                    # Uses ./.env
+duckalog build subdir/configs/step2_env_vars.yaml     # Uses subdir/configs/.env
+```
+
+### 2.8 Security Best Practices
+
+```bash
+# 1. Never commit .env files to version control
+echo ".env*" >> .gitignore
+
+# 2. Use secure file permissions
+chmod 600 .env
+
+# 3. Use different .env files for different environments
+ls -la .env*
+
+# 4. Validate your .env files don't contain secrets
+grep -iE "(password|secret|key)" .env || echo "✅ No obvious secrets found"
+```
+
+### 2.9 Understanding Environment Variable Concepts
+
+Key concepts you learned:
+
+- **Automatic .env Loading**: Duckalog discovers and loads .env files automatically
+- **Variable Interpolation**: `${env:VAR_NAME}` syntax for environment variables
+- **Default Values**: `${env:VAR:default}` provides fallback values
+- **Hierarchical Discovery**: Searches parent directories for .env files
+- **Security**: Keep .env files out of version control
+- **Environment Isolation**: Different .env files for different environments
+
+## Step 3: Adding SQL Transformations
+
+Add business logic and data transformations using SQL views.
+
+### 3.1 Create Transformed Views
+
+Extend your configuration with SQL transformations:
+
+```yaml
+# step3_transformations.yaml
+version: 1
+
+duckdb:
+  database: "${env:CATALOG_NAME:tutorial}.duckdb"
+  pragmas:
+    - "SET memory_limit='${env:MEMORY_LIMIT:1GB}'"
+    - "SET threads='${env:THREAD_COUNT:2}'"
+
+views:
+  - name: users
+    source: parquet
+    uri: "${env:DATA_PATH:./data}/users.parquet"
     description: "Raw user data"
 
   - name: active_users
@@ -176,11 +360,11 @@ views:
     description: "Monthly user registration counts"
 ```
 
-### 2.2 Build and Test Transformations
+### 3.2 Build and Test Transformations
 
 ```bash
 # Build with transformations
-duckalog build step2_transformations.yaml
+duckalog build step3_transformations.yaml
 
 # Test the new views
 duckdb tutorial.duckdb -c "
@@ -198,7 +382,7 @@ FROM users;
 "
 ```
 
-### 2.3 Understanding SQL Views
+### 3.3 Understanding SQL Views
 
 Key concepts you learned:
 

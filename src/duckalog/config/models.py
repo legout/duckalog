@@ -157,14 +157,14 @@ class DuckDBConfig(BaseModel):
     install_extensions: list[str] = Field(default_factory=list)
     load_extensions: list[str] = Field(default_factory=list)
     pragmas: list[str] = Field(default_factory=list)
-    settings: Optional[Literal[str, list[str]]] = None
+    settings: Optional[Union[str, list[str]]] = None
     secrets: list[SecretConfig] = Field(default_factory=list)
 
     @field_validator("settings")
     @classmethod
     def _validate_settings(
-        cls, value: Optional[Literal[str, list[str]]]
-    ) -> Optional[Literal[str, list[str]]]:
+        cls, value: Optional[Union[str, list[str]]]
+    ) -> Optional[Union[str, list[str]]]:
         if value is None:
             return None
 
@@ -825,6 +825,7 @@ class ImportEntry(BaseModel):
                  If False, only fills in missing fields without overwriting existing values.
                  Defaults to True.
     """
+
     path: str
     override: bool = True
 
@@ -837,6 +838,7 @@ class SelectiveImports(BaseModel):
     Each field represents a section of the Config that can have targeted imports.
     Values can be either simple paths (strings) or ImportEntry objects with options.
     """
+
     duckdb: Optional[list[Union[str, ImportEntry]]] = None
     views: Optional[list[Union[str, ImportEntry]]] = None
     attachments: Optional[list[Union[str, ImportEntry]]] = None
@@ -860,6 +862,10 @@ class Config(BaseModel):
                   Can be a simple list of paths (backward compatible) or a SelectiveImports
                   object for advanced options like section-specific imports, override behavior,
                   and glob patterns.
+        env_files: Optional list of custom .env file patterns to load.
+                   Supports patterns like ['.env', '.env.local', '.env.production'].
+                   Files are loaded in order with later files overriding earlier ones.
+                   Defaults to ['.env'] for backward compatibility.
     """
 
     version: int
@@ -869,7 +875,11 @@ class Config(BaseModel):
     iceberg_catalogs: list[IcebergCatalogConfig] = Field(default_factory=list)
     semantic_models: list[SemanticModelConfig] = Field(default_factory=list)
     # Advanced import options: can be a simple list (backward compatible) or a SelectiveImports object
-    imports: Union[list[Union[str, ImportEntry]], SelectiveImports] = Field(default_factory=list)
+    imports: Union[list[Union[str, ImportEntry]], SelectiveImports] = Field(
+        default_factory=list
+    )
+    # Custom .env file patterns - defaults to ['.env'] for backward compatibility
+    env_files: list[str] = Field(default_factory=lambda: [".env"])
 
     model_config = ConfigDict(extra="forbid")
 
@@ -882,7 +892,9 @@ class Config(BaseModel):
 
     @field_validator("imports")
     @classmethod
-    def _normalize_imports(cls, value: Union[list[str], SelectiveImports]) -> Union[list[str], SelectiveImports]:
+    def _normalize_imports(
+        cls, value: Union[list[str], SelectiveImports]
+    ) -> Union[list[str], SelectiveImports]:
         """Normalize imports to ensure consistent handling.
 
         If imports is a SelectiveImports object with all None values, convert to empty list.
@@ -890,7 +902,10 @@ class Config(BaseModel):
         """
         if isinstance(value, SelectiveImports):
             # Check if all fields are None
-            if all(getattr(value, field_name) is None for field_name in value.model_fields.keys()):
+            if all(
+                getattr(value, field_name) is None
+                for field_name in value.model_fields.keys()
+            ):
                 return []
         return value
 

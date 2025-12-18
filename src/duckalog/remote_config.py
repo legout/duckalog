@@ -288,6 +288,7 @@ def load_config_from_uri(
     resolve_paths: bool = False,  # Default to False for remote configs
     timeout: int = 30,
     filesystem: Any | None = None,
+    load_dotenv: bool = True,
 ) -> Config:
     """Load a Duckalog configuration from a remote URI.
 
@@ -309,6 +310,8 @@ def load_config_from_uri(
                    If provided, this filesystem will be used instead of creating
                    a new one based on the URI scheme. Useful for custom
                    authentication or advanced use cases.
+        load_dotenv: If True, automatically load and process .env files. If False,
+                     skip .env file loading entirely.
 
     Returns:
         A validated Config object

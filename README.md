@@ -165,7 +165,51 @@ views:
     uri: "s3://my-bucket/data/users/*.parquet"
 ```
 
-### 2. Initialize a new configuration
+### 2. Use Environment Variables and .env Files
+
+Duckalog provides automatic `.env` file support for secure, portable configuration:
+
+```bash
+# Create a .env file for local development
+cat > .env << EOF
+# Database and application settings
+DATABASE_URL=postgres://user:pass@localhost:5432/mydb
+S3_BUCKET=my-data-bucket
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+ENVIRONMENT=development
+MEMORY_LIMIT=2GB
+EOF
+
+# Use .env variables in your configuration
+cat > catalog.yaml << EOF
+version: 1
+
+duckdb:
+  database: "${env:DATABASE_URL:local_catalog}.duckdb"
+  pragmas:
+    - "SET memory_limit='${env:MEMORY_LIMIT:1GB}'"
+    - "SET s3_access_key_id='${env:AWS_ACCESS_KEY_ID}'"
+    - "SET s3_secret_access_key='${env:AWS_SECRET_ACCESS_KEY}'"
+
+views:
+  - name: users
+    source: parquet
+    uri: "s3://${env:S3_BUCKET}/data/users/*.parquet"
+    description: "User data from ${env:ENVIRONMENT:development} environment"
+EOF
+
+# Build automatically loads .env variables (no manual setup required!)
+duckalog build catalog.yaml --verbose
+```
+
+**Key features:**
+- **Automatic discovery**: Finds `.env` files in config directory and parent directories
+- **Zero configuration**: Works immediately without additional setup  
+- **Security first**: Sensitive data never logged, graceful error handling
+- **Environment isolation**: Different `.env` files for dev/staging/production
+
+### 3. Initialize a new configuration
 
 Duckalog makes it easy to get started with the `init` command, which generates a basic configuration template with educational examples:
 

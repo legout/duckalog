@@ -47,6 +47,60 @@ duckalog build catalog.yaml --color
 duckalog build catalog.yaml --no-color
 ```
 
+### Verbose Output
+
+Verbose logging (`--verbose` flag) provides detailed information about the configuration loading and build process:
+
+#### Configuration Loading
+```bash
+duckalog build catalog.yaml --verbose
+```
+
+**Shows:**
+- Configuration file being processed
+- `.env` file discovery and loading process
+- Environment variable resolution
+- Import file processing (if any)
+- SQL file loading and inlining
+
+**Example verbose output:**
+```bash
+Loading config {'path': 'catalog.yaml'}
+Loading .env files {'config_path': 'catalog.yaml', 'file_count': 1}
+Loaded .env file {'file_path': '/project/.env', 'var_count': 5}
+Merged .env variables {'file_path': '/project/.env', 'var_count': 5}
+Completed .env file loading {'total_files': 1}
+Config loaded with imports {'path': 'catalog.yaml', 'views': 3}
+```
+
+#### .env File Loading Details
+
+Verbose output specifically shows:
+- **Discovery**: `"Loading .env files"` - searching for .env files
+- **Files found**: `"file_count": N` - number of .env files discovered  
+- **Loading**: `"Loaded .env file"` - successful file loading
+- **Variables**: `"var_count": N` - number of variables loaded from file
+- **Completion**: `"Completed .env file loading"` - all .env processing finished
+- **Errors**: `"Failed to load .env file"` - any loading failures
+
+**Debug .env issues:**
+```bash
+# Check .env file discovery
+duckalog build catalog.yaml --verbose 2>&1 | grep -i env
+
+# Look for specific .env loading messages
+duckalog build catalog.yaml --verbose 2>&1 | grep -E "(Loading\.env|Loaded\.env|file_count|var_count)"
+```
+
+#### Error Diagnosis
+
+Verbose output helps troubleshoot:
+- Missing environment variables
+- .env file discovery issues  
+- Configuration syntax errors
+- Import resolution problems
+- SQL file loading failures
+
 ## Commands
 
 ### build
@@ -799,8 +853,10 @@ duckalog build catalog.yaml --db-path catalog_new.duckdb
 ### Security
 - **Use read-only database connections** where possible
 - **Restrict dashboard access** in production with admin tokens
-- **Rotate credentials regularly** and use environment variables
+- **Rotate credentials regularly** and use environment variables or .env files
 - **Audit configuration changes** and access logs
+- **Keep .env files secure**: Never commit to version control, use restrictive permissions (600)
+- **Validate .env content**: Check for accidentally committed secrets before deployment
 
 ### CI/CD Integration
 - **Fail fast** on configuration validation errors

@@ -387,6 +387,11 @@ def build(
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose logging output."
     ),
+    load_dotenv: bool = typer.Option(
+        True,
+        "--load-dotenv/--no-load-dotenv",
+        help="Enable/disable automatic .env file loading.",
+    ),
 ) -> None:
     """CLI entry point for the ``build`` command.
 
@@ -432,6 +437,7 @@ def build(
         db_path: Optional override for the DuckDB database file path. Supports local paths and remote URIs for cloud storage export.
         dry_run: If ``True``, print SQL instead of modifying the database.
         verbose: If ``True``, enable more verbose logging.
+        load_dotenv: If ``True``, automatically load and process .env files. If ``False``, skip .env file loading entirely.
     """
     _configure_logging(verbose)
 
@@ -467,6 +473,7 @@ def build(
             dry_run=dry_run,
             verbose=verbose,
             filesystem=filesystem,
+            load_dotenv=load_dotenv,
         )
     except ConfigError as exc:
         log_error("Build failed due to config error", error=str(exc))
@@ -1136,9 +1143,7 @@ def _fail(message: str, code: int) -> None:
     raise typer.Exit(code)
 
 
-@app.command(
-    name="ui", help="Launch the local dashboard for a catalog."
-)
+@app.command(name="ui", help="Launch the local dashboard for a catalog.")
 def ui(
     config_path: str = typer.Argument(
         ..., help="Path to configuration file (local or remote)."
@@ -1521,6 +1526,273 @@ def init(
         if verbose:
             raise
         typer.echo(f"Error creating configuration: {exc}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command(help="Generate .env file templates for common use cases.")
+def init_env(
+    template: str = typer.Option(
+        "basic",
+        "--template",
+        "-t",
+        help="Template to use: basic, development, production, cloud, or custom",
+    ),
+    output: Optional[str] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output file path. Defaults to .env for basic template, or template-specific name for others.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Overwrite existing files without prompting",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose output",
+    ),
+) -> None:
+    """Generate .env file templates to help you get started with environment variables.
+
+    This command creates .env file templates with commonly used environment variables
+    for different use cases like development, production, and cloud deployments.
+
+    Templates:
+        basic       - Basic .env file with common variables (default)
+        development - Development environment variables
+        production  - Production environment variables
+        cloud       - Cloud service configuration variables
+
+    Examples:
+        # Generate basic .env template
+        duckalog init-env
+
+        # Generate development template
+        duckalog init-env --template development
+
+        # Generate production template with custom output
+        duckalog init-env --template production --output .env.production
+
+        # Force overwrite existing file
+        duckalog init-env --force
+    """
+    _configure_logging(verbose)
+
+    # Define templates
+    templates = {
+        "basic": {
+            "filename": ".env",
+            "content": """# Basic Duckalog Environment Configuration
+# Copy this file to .env and fill in your actual values
+
+# DuckDB Database Configuration
+DATABASE_URL=sqlite:///my_database.db
+# DATABASE_URL=postgres://username:password@localhost:5432/database_name
+# DATABASE_URL=mysql://username:password@localhost:3306/database_name
+
+# API Configuration
+API_KEY=your_api_key_here
+API_SECRET=your_api_secret_here
+API_BASE_URL=https://api.example.com
+
+# Application Settings
+ENVIRONMENT=development
+DEBUG=true
+LOG_LEVEL=info
+
+# File Paths (optional)
+DATA_PATH=./data
+OUTPUT_PATH=./output
+
+# Custom Variables
+# Add your own environment variables below
+# MY_CUSTOM_VAR=my_value
+""",
+        },
+        "development": {
+            "filename": ".env.development",
+            "content": """# Development Environment Configuration
+# This file contains development-specific settings
+
+# Database Configuration
+DATABASE_URL=sqlite:///dev_database.db
+DEBUG=true
+LOG_LEVEL=debug
+
+# API Configuration
+API_KEY=dev_api_key_123
+API_BASE_URL=http://localhost:8080
+
+# Development Services
+REDIS_URL=redis://localhost:6379
+ELASTICSEARCH_URL=http://localhost:9200
+
+# Feature Flags
+ENABLE_DEBUG_TOOLS=true
+ENABLE_MOCK_DATA=true
+ENABLE_HOT_RELOAD=true
+
+# Security (Development)
+CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+SECRET_KEY=dev_secret_key_change_in_production
+
+# Monitoring
+ENABLE_PROFILING=true
+ENABLE_TRACING=true
+""",
+        },
+        "production": {
+            "filename": ".env.production",
+            "content": """# Production Environment Configuration
+# ⚠️  IMPORTANT: Never commit this file to version control!
+# Ensure proper security measures are in place
+
+# Database Configuration
+DATABASE_URL=postgresql://prod_user:secure_password@prod-db.example.com:5432/prod_db
+DATABASE_POOL_SIZE=20
+DATABASE_TIMEOUT=30
+
+# API Configuration
+API_KEY=prod_api_key_secure_123
+API_SECRET=prod_api_secret_very_secure_456
+API_BASE_URL=https://api.production.com
+
+# Security
+SECRET_KEY=change_this_to_a_secure_random_key_in_production
+CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+SSL_REQUIRED=true
+HSTS_ENABLED=true
+
+# Application Settings
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=warning
+
+# External Services
+REDIS_URL=redis://prod-redis:6379
+S3_BUCKET=your-production-bucket
+S3_REGION=us-east-1
+
+# Monitoring
+SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
+ENABLE_METRICS=true
+ENABLE_ALERTING=true
+
+# Performance
+MAX_WORKERS=10
+CACHE_TTL=3600
+""",
+        },
+        "cloud": {
+            "filename": ".env.cloud",
+            "content": """# Cloud Services Configuration
+# Configuration for various cloud services
+
+# AWS Configuration
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_REGION=us-east-1
+S3_BUCKET=your-s3-bucket-name
+S3_PREFIX=data/
+
+# Google Cloud Platform
+GCP_PROJECT_ID=your-gcp-project-id
+GCP_CREDENTIALS_FILE=/path/to/service-account.json
+GCS_BUCKET=your-gcs-bucket-name
+
+# Azure Configuration
+AZURE_STORAGE_ACCOUNT=your_storage_account
+AZURE_STORAGE_KEY=your_storage_key
+AZURE_CONTAINER=your_container_name
+
+# Database Cloud Services
+# PostgreSQL (AWS RDS, Google Cloud SQL, etc.)
+DATABASE_URL=postgresql://user:password@cloud-db-host:5432/database
+
+# MongoDB Atlas
+MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/database
+
+# Redis Cloud
+REDIS_URL=redis://username:password@redis-host:6379
+
+# Message Queues
+# AWS SQS
+SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/account/queue-name
+
+# RabbitMQ Cloud
+RABBITMQ_URL=amqp://username:password@cloud-host:5672
+
+# Monitoring & Logging
+# DataDog
+DATADOG_API_KEY=your_datadog_api_key
+DATADOG_APP_KEY=your_datadog_app_key
+
+# CloudWatch
+CLOUDWATCH_LOG_GROUP=/your/application/logs
+CLOUDWATCH_NAMESPACE=YourApplication
+
+# Application Insights
+APPINSIGHTS_INSTRUMENTATIONKEY=your_app_insights_key
+""",
+        },
+    }
+
+    # Validate template
+    if template not in templates:
+        typer.echo(
+            f"Error: Unknown template '{template}'. Available templates:", err=True
+        )
+        for name in templates.keys():
+            typer.echo(f"  - {name}")
+        raise typer.Exit(1)
+
+    template_data = templates[template]
+
+    # Determine output path
+    if not output:
+        output = template_data["filename"]
+
+    output_path = Path(output)
+
+    # Check if file already exists
+    if output_path.exists():
+        if not force:
+            if not typer.confirm(f"File {output_path} already exists. Overwrite?"):
+                typer.echo("Operation cancelled.")
+                return
+        typer.echo(f"Overwriting existing file: {output_path}")
+
+    try:
+        # Write the template
+        output_path.write_text(template_data["content"])
+        typer.echo(f"✅ Created {template} .env template: {output_path}")
+
+        # Provide helpful guidance
+        if template == "basic":
+            typer.echo("\nNext steps:")
+            typer.echo(f"   1. Edit {output_path} and fill in your actual values")
+            typer.echo(
+                "   2. Run 'duckalog build catalog.yaml' to test your configuration"
+            )
+            typer.echo(
+                "   3. Add .env to your .gitignore file to avoid committing secrets"
+            )
+        else:
+            typer.echo(f"\nNext steps:")
+            typer.echo(f"   1. Edit {output_path} and fill in your actual values")
+            typer.echo(
+                f"   2. Use with: duckalog build catalog.yaml --env-files {output_path}"
+            )
+            typer.echo("   3. Never commit this file to version control")
+
+    except Exception as exc:
+        if verbose:
+            raise
+        typer.echo(f"Error creating .env template: {exc}", err=True)
         raise typer.Exit(1)
 
 

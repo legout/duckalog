@@ -605,6 +605,7 @@ dependencies = [
     { name = "duckdb" },
     { name = "loguru" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "typer" },
 ]
@@ -670,6 +671,7 @@ requires-dist = [
     { name = "loguru", specifier = ">=0.7.0" },
     { name = "msgspec", marker = "extra == 'ui'", specifier = ">=0.18.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "python-multipart", marker = "extra == 'ui'", specifier = ">=0.0.20" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "requests", marker = "extra == 'remote'", specifier = ">=2.28.0" },

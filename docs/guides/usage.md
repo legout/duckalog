@@ -2,6 +2,78 @@
 
 This guide explains how to structure Duckalog configuration files, common configuration patterns, secret management, and how to troubleshoot issues.
 
+## Environment Variables and .env File Support
+
+Duckalog provides comprehensive support for environment variables with automatic `.env` file loading, making configuration management simple and secure.
+
+### Automatic .env File Loading
+
+Duckalog automatically discovers and loads `.env` files in your project hierarchy:
+
+- **Hierarchical Discovery**: Searches for `.env` files starting from your configuration file directory and moving upward
+- **Zero Configuration**: Works automatically without additional setup
+- **Security First**: Sensitive data is never logged, and files are handled securely
+- **Graceful Handling**: Missing or malformed `.env` files don't break configuration loading
+
+#### How .env Files Work
+
+Create a `.env` file in your project directory:
+
+```bash
+# .env file
+DATABASE_URL=postgres://user:pass@localhost:5432/mydb
+API_KEY=secret123
+FEATURE_ENABLED=true
+```
+
+Your configuration automatically has access to these variables:
+
+```yaml
+# catalog.yaml - .env variables are automatically available
+version: 1
+duckdb:
+  database: "${env:DATABASE_URL}.duckdb"
+  pragmas:
+    - "SET api_key='${env:API_KEY}'"
+    - "SET feature_enabled='${env:FEATURE_ENABLED:false}'"
+```
+
+#### .env File Discovery
+
+Duckalog searches for `.env` files in this order:
+
+1. **Configuration file directory** (highest priority)
+2. **Parent directories** (up to 10 levels)
+3. **Current working directory** (for remote configurations)
+
+Example hierarchy:
+```
+project/
+├── .env                 # Loaded (closest to config)
+├── subdir/
+│   ├── config.yaml     # Uses parent .env
+│   └── data/
+└── another.env          # Loaded if no closer .env found
+```
+
+#### Environment Variable Precedence
+
+Variables are available in this priority order:
+1. **System environment variables** (highest priority)
+2. **.env file variables** (loaded automatically)
+3. **Default values** in `${env:VAR:default}` syntax
+
+```bash
+# System environment (highest priority)
+export DATABASE_URL="system_db"
+
+# .env file (medium priority)
+DATABASE_URL="file_db"
+
+# Configuration (gets "system_db" due to precedence)
+# database: "${env:DATABASE_URL}" → "system_db"
+```
+
 ## Secret Management
 
 Duckalog provides comprehensive secret management through the canonical `SecretConfig` model, ensuring secure credential handling without storing sensitive data in configuration files.
@@ -37,7 +109,7 @@ secrets:
     key_id: "${env:AWS_ACCESS_KEY_ID}"
     secret: "${env:AWS_SECRET_ACCESS_KEY}"
     region: "us-east-1"
-    endpoint: "https://s3.amazonaws.com"
+    endpoint: "https://s3.amazonaws.com"  # Protocol automatically stripped for DuckDB compatibility
 
   - name: azure_storage
     type: azure

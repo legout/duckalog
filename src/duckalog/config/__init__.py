@@ -96,6 +96,7 @@ def load_config(
     sql_file_loader: Optional[Any] = None,
     resolve_paths: bool = True,
     filesystem: Optional[Any] = None,
+    load_dotenv: bool = True,
 ) -> Config:
     """Load, interpolate, and validate a Duckalog configuration file.
 
@@ -114,6 +115,8 @@ def load_config(
             Always False for remote URIs. Defaults to True.
         filesystem: Optional fsspec-compatible filesystem object for remote
             configuration loading.
+        load_dotenv: If True, automatically load and process .env files. If False,
+            skip .env file loading entirely.
 
     Returns:
         A validated Config instance with all environment variables interpolated
@@ -155,71 +158,24 @@ def load_config(
                 sql_file_loader=sql_file_loader,
                 resolve_paths=False,  # Remote configs don't resolve relative paths by default
                 filesystem=filesystem,
+                load_dotenv=load_dotenv,
             )
     except ImportError:
         # Remote functionality not available, continue with local loading
         pass
 
-    # Local file loading
-    config_path = Path(path)
-    if not config_path.exists():
-        raise ConfigError(f"Config file not found: {path}")
+    # Local file loading - delegate to the dedicated helper with import support
+    from .loader import load_config as load_config_from_loader
 
-    log_info("Loading config", path=str(config_path))
-    try:
-        if filesystem is not None:
-            if not hasattr(filesystem, "open") or not hasattr(filesystem, "exists"):
-                raise ConfigError(
-                    "filesystem object must provide 'open' and 'exists' methods "
-                    "for fsspec-compatible interface"
-                )
-            if not filesystem.exists(str(config_path)):
-                raise ConfigError(f"Config file not found: {path}")
-            with filesystem.open(str(config_path), "r") as f:
-                raw_text = f.read()
-        else:
-            raw_text = config_path.read_text()
-    except OSError as exc:
-        raise ConfigError(f"Failed to read config file: {exc}") from exc
+    return load_config_from_loader(
+        path=path,
+        load_sql_files=load_sql_files,
+        sql_file_loader=sql_file_loader,
+        resolve_paths=resolve_paths,
+        filesystem=filesystem,
+        load_dotenv=load_dotenv,
+    )
 
-    suffix = config_path.suffix.lower()
-    if suffix in {".yaml", ".yml"}:
-        parsed = yaml.safe_load(raw_text)
-    elif suffix == ".json":
-        parsed = json.loads(raw_text)
-    else:
-        raise ConfigError("Config files must use .yaml, .yml, or .json extensions")
-
-    if parsed is None:
-        raise ConfigError("Config file is empty")
-    if not isinstance(parsed, dict):
-        raise ConfigError("Config file must define a mapping at the top level")
-
-    log_debug("Raw config keys", keys=list(parsed.keys()))
-    interpolated = _interpolate_env(parsed)
-
-    try:
-        config = Config.model_validate(interpolated)
-    except Exception as exc:
-        raise ConfigError(f"Configuration validation failed: {exc}") from exc
-
-    # Resolve relative paths if requested (simplified implementation)
-    if resolve_paths:
-        log_debug("Path resolution requested")
-
-    # Load SQL from external files if requested
-    if load_sql_files:
-        config = _load_sql_files_from_config(config, config_path, sql_file_loader)
-
-    log_info("Config loaded", path=str(config_path), views=len(config.views))
-    return config
-
-
-# Import errors
-from duckalog.errors import ConfigError
-
-# Import loader functions
-from .loader import load_config
 
 # Import path resolution functions
 from .validators import (

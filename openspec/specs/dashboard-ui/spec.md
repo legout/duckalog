@@ -2,11 +2,9 @@
 
 ## Purpose
 Provide a local-first, Litestar- and Datastar-powered dashboard for inspecting and operating a single Duckalog catalog. The UI favors basecoatui components first, uses custom htpy components with Tailwind utilities when basecoatui lacks the needed element, and never uses starui.
-
 ## Requirements
-
 ### Requirement: Litestar + Datastar Application Stack
-The dashboard SHALL run on Litestar with Datastar for reactive updates and htpy for type-safe HTML composition.
+The dashboard SHALL run on Litestar with Datastar for reactive updates and a typed HTML helper (htpy) for type-safe HTML composition.
 
 #### Scenario: Application initialization
 - **GIVEN** the UI extras are installed
@@ -31,15 +29,15 @@ The new dashboard SHALL not reuse or restore code, templates, or assets from the
 - **THEN** no deleted legacy dashboard modules, templates, or static assets are restored from version control or prior releases; all components/routes/state are newly implemented on the Litestar/Datastar stack.
 
 ### Requirement: Component and Styling Priority (Basecoatui First)
-The dashboard SHALL prefer basecoatui components for UI and styling; it SHALL use custom htpy components with Tailwind utility classes when basecoatui lacks the needed element; starui MUST NOT be used.
+The dashboard SHALL prefer basecoatui components for UI and styling; it SHALL use Tailwind utility classes and simple htpy components when basecoatui does not provide the needed element or pattern; starui MUST NOT be a runtime dependency. All chosen components MUST be shipped for offline use.
 
 #### Scenario: Basecoatui by default
 - **WHEN** implementing a UI element that exists in basecoatui
-- **THEN** the basecoatui variant is used (including its CSS/JS) and delivered via CDN as a temporary measure.
+- **THEN** the basecoatui variant is used (including its CSS/JS) and bundled in `static/`.
 
-#### Scenario: Custom htpy components when basecoatui lacks
+#### Scenario: Custom htpy components when needed
 - **WHEN** basecoatui lacks the needed pattern or accessibility baseline
-- **THEN** a small htpy-based component is created and styled with Tailwind utility classes
+- **THEN** a small htpy-based component is created and styled with Basecoat/Tailwind classes
 - **AND** its styles and behavior are bundled in `static/`.
 
 #### Scenario: Tailwind fallback only
@@ -82,8 +80,24 @@ The dashboard SHALL default to a secure, local-only posture with explicit opt-in
 - **WHEN** requests or errors are logged
 - **THEN** connection strings, secrets, and tokens are redacted from logs.
 
+### Requirement: Offline Asset Bundling
+All UI assets SHALL be available offline with no CDN dependency in the production configuration, while development and preview configurations MAY temporarily load Tailwind CSS, Basecoat CSS, and Datastar JS from CDNs until bundling is implemented.
+
+#### Scenario: Offline production load
+- **WHEN** the dashboard is opened without internet access in its production configuration
+- **THEN** all CSS/JS (Datastar runtime and component library styles) are served locally and the UI functions fully.
+
+#### Scenario: Prebuilt CSS
+- **WHEN** the package is installed for production use
+- **THEN** a precompiled `static/tailwind.css` (including component-library styles) is present; no Node build step runs at user install time.
+
+#### Scenario: CDN development mode
+- **WHEN** the dashboard is run in a development or preview configuration without a build pipeline
+- **THEN** Tailwind, Basecoat, and Datastar assets MAY be fetched from documented CDNs
+- **AND** documentation clearly calls out the online requirement and the future plan to bundle assets for offline use.
+
 ### Requirement: Temporary CDN Asset Delivery
-UI assets MAY be delivered via CDN as a temporary measure to expedite shipping. This is an interim solution pending proper bundling.
+UI assets SHALL be delivered via CDN as a temporary measure to expedite shipping. This is an interim solution pending proper bundling.
 
 #### Scenario: CDN asset loading
 - **WHEN** the dashboard is loaded with internet access
@@ -214,3 +228,25 @@ Documentation SHALL match the implemented stack and capabilities and omit unimpl
 #### Scenario: Migration guidance
 - **WHEN** users move from the legacy dashboard
 - **THEN** docs provide migration steps, changed commands, and screenshot examples of the new UI.
+
+### Requirement: Dashboard Runtime Defaults
+The dashboard SHALL use production-safe runtime defaults for the Litestar application.
+
+#### Scenario: Production-safe defaults
+- **WHEN** the dashboard app is created without explicit debug overrides
+- **THEN** debug mode is disabled by default
+- **AND** a simple health check endpoint or hook is available for runtime monitoring.
+
+### Requirement: Dashboard Runtime Resource Management
+The dashboard SHALL manage database connections and blocking work safely for concurrent read workloads.
+
+#### Scenario: Connection lifecycle
+- **WHEN** the dashboard starts and stops
+- **THEN** database connections are initialized on startup
+- **AND** all connections are closed or released during shutdown.
+
+#### Scenario: Concurrent read queries
+- **WHEN** multiple read-only queries are executed concurrently
+- **THEN** blocking DuckDB work is offloaded from the event loop (for example via a threadpool or connection pool)
+- **AND** resource limits prevent connection or worker exhaustion.
+

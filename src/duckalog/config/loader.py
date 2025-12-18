@@ -6,11 +6,14 @@ handling both local file loading and remote URI loading.
 
 import json
 import os
+import stat
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional, Union
+from collections import defaultdict
 
 import yaml
+from dotenv import dotenv_values
 
 from duckalog.errors import (
     CircularImportError,
@@ -24,6 +27,264 @@ from duckalog.errors import (
 from .validators import log_info, log_debug
 
 
+# Cache for loaded .env files to avoid duplicate loading
+_dotenv_cache: dict[str, tuple[dict[str, str], float]] = {}
+_dotenv_max_depth = 10  # Maximum directory depth for .env file search
+
+
+def _find_dotenv_files(
+    config_path: str, env_file_patterns: Optional[list[str]] = None
+) -> list[str]:
+    """Discover .env files in the directory hierarchy.
+
+    Args:
+        config_path: Path to the configuration file
+        env_file_patterns: List of .env file patterns to search for.
+                          Defaults to ['.env'] if not provided.
+
+    Returns:
+        List of .env file paths found, ordered by priority (closest first)
+    """
+    if env_file_patterns is None:
+        env_file_patterns = [".env"]
+    config_file = Path(config_path)
+
+    # For remote URIs, use current working directory
+    if _is_remote_uri(config_path):
+        search_dir = Path.cwd()
+    else:
+        search_dir = config_file.parent.resolve()
+
+    dotenv_files = []
+    current_dir = search_dir
+
+    # Search up the directory hierarchy for each pattern
+    # Collect files first, then reverse so closer files are processed last
+    found_files = []
+    for _ in range(_dotenv_max_depth):
+        for pattern in env_file_patterns:
+            dotenv_path = current_dir / pattern
+            if dotenv_path.exists() and dotenv_path.is_file():
+                # Check if file is readable
+                try:
+                    dotenv_path.stat()
+                    # Only add if not already in the list (avoid duplicates)
+                    if str(dotenv_path) not in found_files:
+                        found_files.append(str(dotenv_path))
+                except (OSError, PermissionError):
+                    log_debug("Skipping unreadable .env file", path=str(dotenv_path))
+
+        # Move to parent directory
+        parent = current_dir.parent
+        if parent == current_dir:  # Reached filesystem root
+            break
+        current_dir = parent
+
+    # Reverse the list so closer files are processed last (and override farther files)
+    dotenv_files = list(reversed(found_files))
+    return dotenv_files
+
+
+def _validate_dotenv_content(file_path: str, content: str) -> list[str]:
+    """Validate .env file content and return warnings.
+
+    Args:
+        file_path: Path to the .env file
+        content: Content of the .env file
+
+    Returns:
+        List of warning messages
+    """
+    warnings = []
+    lines = content.split("\n")
+
+    for line_num, line in enumerate(lines, 1):
+        stripped = line.strip()
+
+        # Skip empty lines and comments
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        # Check for invalid line format (no equals sign)
+        if "=" not in stripped:
+            warnings.append(f"Line {line_num}: Invalid format (missing '=')")
+            continue
+
+        # Split on first equals only
+        parts = stripped.split("=", 1)
+        if len(parts) != 2:
+            warnings.append(f"Line {line_num}: Invalid format")
+            continue
+
+        key, value = parts
+        key = key.strip()
+        value = value.strip()
+
+        # Validate key format
+        if not key:
+            warnings.append(f"Line {line_num}: Empty key name")
+        elif not key.replace("_", "").replace("-", "").isalnum():
+            warnings.append(
+                f"Line {line_num}: Invalid key name '{key}' (should be alphanumeric, underscore, or hyphen)"
+            )
+        elif key[0].isdigit():
+            warnings.append(f"Line {line_num}: Key '{key}' starts with digit")
+
+        # Check for potential secrets in key names
+        secret_indicators = ["password", "secret", "key", "token", "private"]
+        if any(indicator in key.lower() for indicator in secret_indicators):
+            if not value:  # Empty secret value
+                warnings.append(f"Line {line_num}: Secret '{key}' has empty value")
+
+        # Check for common mistakes
+        if key.lower() in ["true", "false", "yes", "no"]:
+            warnings.append(
+                f"Line {line_num}: Key '{key}' looks like a boolean (consider using quotes)"
+            )
+
+        # Check for very long values (potential base64 or JSON)
+        if len(value) > 1000:
+            warnings.append(
+                f"Line {line_num}: Very long value for '{key}' (length: {len(value)})"
+            )
+
+    return warnings
+
+
+def _load_dotenv_file(file_path: str) -> dict[str, str]:
+    """Load and parse a single .env file.
+
+    Args:
+        file_path: Path to the .env file
+
+    Returns:
+        Dictionary of environment variables from the .env file
+
+    Raises:
+        ConfigError: If the .env file cannot be loaded or parsed
+    """
+    try:
+        # Check cache first
+        mtime = os.path.getmtime(file_path)
+        cache_key = os.path.abspath(file_path)
+
+        if cache_key in _dotenv_cache:
+            cached_vars, cached_mtime = _dotenv_cache[cache_key]
+            if cached_mtime == mtime:
+                log_debug(
+                    "Using cached .env variables",
+                    file_path=file_path,
+                    var_count=len(cached_vars),
+                )
+                return cached_vars
+
+        # Load the .env file
+        dotenv_vars = dotenv_values(file_path)
+
+        # Filter out None values (empty variables)
+        dotenv_vars = {k: v for k, v in dotenv_vars.items() if v is not None}
+
+        # Validate content and log warnings
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            warnings = _validate_dotenv_content(file_path, content)
+            for warning in warnings:
+                log_debug(
+                    " .env validation warning", file_path=file_path, warning=warning
+                )
+        except Exception:
+            # Don't fail on validation errors
+            pass
+
+        # Cache the result
+        _dotenv_cache[cache_key] = (dotenv_vars, mtime)
+
+        log_debug("Loaded .env file", file_path=file_path, var_count=len(dotenv_vars))
+        return dotenv_vars
+
+    except OSError as exc:
+        raise ConfigError(f"Failed to read .env file '{file_path}': {exc}") from exc
+    except Exception as exc:
+        raise ConfigError(f"Failed to parse .env file '{file_path}': {exc}") from exc
+
+
+def _merge_dotenv_variables(
+    dotenv_vars: dict[str, str], system_env_vars: set[str], allow_override: bool = False
+) -> None:
+    """Merge .env variables into os.environ with proper precedence.
+
+    Args:
+        dotenv_vars: Dictionary of environment variables from .env files
+        system_env_vars: Set of environment variable names that were set
+                        before .env loading started (system variables)
+        allow_override: If True, allow overriding existing environment variables.
+                       If False (default), only set variables not already in environment.
+                       System environment variables always take precedence.
+    """
+    for key, value in dotenv_vars.items():
+        # System environment variables always take precedence
+        if key in system_env_vars:
+            continue
+        # Allow .env files to override each other if allow_override is True
+        # or if the variable is not already set
+        if allow_override or key not in os.environ:
+            os.environ[key] = value
+
+
+def _load_dotenv_files_for_config(
+    config_path: str, env_file_patterns: Optional[list[str]] = None
+) -> None:
+    """Load .env files for a configuration file and merge into environment.
+
+    Args:
+        config_path: Path to the configuration file
+        env_file_patterns: List of .env file patterns to search for.
+                          Defaults to ['.env'] if not provided.
+    """
+    try:
+        # Find all .env files
+        dotenv_files = _find_dotenv_files(config_path, env_file_patterns)
+
+        if not dotenv_files:
+            log_debug("No .env files found for config", config_path=config_path)
+            return
+
+        log_info(
+            "Loading .env files", config_path=config_path, file_count=len(dotenv_files)
+        )
+
+        # Remember system environment variables (before .env loading)
+        system_env_vars = set(os.environ.keys())
+
+        # Load and merge .env files in priority order (closest first)
+        for dotenv_file in dotenv_files:
+            try:
+                dotenv_vars = _load_dotenv_file(dotenv_file)
+                _merge_dotenv_variables(
+                    dotenv_vars, system_env_vars, allow_override=True
+                )
+                log_debug(
+                    "Merged .env variables",
+                    file_path=dotenv_file,
+                    var_count=len(dotenv_vars),
+                )
+            except ConfigError as exc:
+                log_debug(
+                    "Failed to load .env file", file_path=dotenv_file, error=str(exc)
+                )
+                # Continue with other .env files
+                continue
+
+        log_info("Completed .env file loading", total_files=len(dotenv_files))
+
+    except Exception as exc:
+        log_debug(
+            "Error during .env file loading", config_path=config_path, error=str(exc)
+        )
+        # Don't raise - .env loading errors should not break config loading
+
+
 def _interpolate_env(value: Any) -> Any:
     """Simple stub for environment variable interpolation."""
     if isinstance(value, str):
@@ -31,13 +292,17 @@ def _interpolate_env(value: Any) -> Any:
         import re
         import os
 
-        pattern = re.compile(r"\$\{env:([A-Za-z_][A-Za-z0-9_]*)\}")
+        pattern = re.compile(r"\$\{env:([A-Za-z_][A-Za-z0-9_]*)(?::([^}]*))?\}")
 
         def replace_env_match(match: Any) -> str:
             var_name = match.group(1)
+            default_value = match.group(2) if match.group(2) is not None else None
+
             try:
                 return os.environ[var_name]
             except KeyError as exc:
+                if default_value is not None:
+                    return default_value
                 raise ConfigError(
                     f"Environment variable '{var_name}' is not set"
                 ) from exc
@@ -165,6 +430,7 @@ def load_config(
     sql_file_loader: Optional[Any] = None,
     resolve_paths: bool = True,
     filesystem: Optional[Any] = None,
+    load_dotenv: bool = True,
 ) -> Any:
     """Load, interpolate, and validate a Duckalog configuration file.
 
@@ -186,6 +452,8 @@ def load_config(
                    If provided, this filesystem will be used instead of creating
                    a new one based on URI scheme. Useful for custom
                    authentication or advanced use cases.
+        load_dotenv: If True, automatically load and process .env files. If False,
+                     skip .env file loading entirely.
 
     Returns:
         A validated :class:`Config` object.
@@ -240,6 +508,7 @@ def load_config(
         sql_file_loader=sql_file_loader,
         resolve_paths=resolve_paths,
         filesystem=filesystem,
+        load_dotenv=load_dotenv,
     )
 
 
@@ -249,6 +518,7 @@ def _load_config_from_local_file(
     sql_file_loader: Optional[Any] = None,
     resolve_paths: bool = True,
     filesystem: Optional[Any] = None,
+    load_dotenv: bool = True,
 ) -> Any:
     """Load a configuration from a local file with import support.
 
@@ -284,12 +554,14 @@ def _load_config_from_local_file(
         resolve_paths=resolve_paths,
         load_sql_files=load_sql_files,
         sql_file_loader=sql_file_loader,
+        load_dotenv=load_dotenv,
     )
 
 
 @dataclass
 class ImportContext:
     """Tracks import state during loading."""
+
     visited_files: set[str] = field(default_factory=set)
     import_stack: list[str] = field(default_factory=list)
     config_cache: dict[str, Any] = field(default_factory=dict)
@@ -633,8 +905,8 @@ def _merge_config_with_override(
     from .models import Config
 
     # Get the field values from both configs
-    base_dict = base.model_dump(mode='json')
-    override_dict = override.model_dump(mode='json')
+    base_dict = base.model_dump(mode="json")
+    override_dict = override.model_dump(mode="json")
 
     log_debug("Deep merge base keys", keys=list(base_dict.keys()))
     log_debug("Deep merge override keys", keys=list(override_dict.keys()))
@@ -642,18 +914,20 @@ def _merge_config_with_override(
     # Extract imports from override before merging
     # Import configs shouldn't have their own imports field in the final merged config
     # Only the main config's imports should be kept
-    override_imports = override_dict.get('imports', [])
+    override_imports = override_dict.get("imports", [])
 
     # Also remove imports from base_dict to ensure only main config's imports are used
     base_dict = base_dict.copy()
-    base_dict.pop('imports', None)
+    base_dict.pop("imports", None)
 
     # Remove imports from override_dict after extraction
     override_dict = override_dict.copy()
-    override_dict.pop('imports', None)
+    override_dict.pop("imports", None)
 
     log_debug("After removing imports - base_dict keys", keys=list(base_dict.keys()))
-    log_debug("After removing imports - override_dict keys", keys=list(override_dict.keys()))
+    log_debug(
+        "After removing imports - override_dict keys", keys=list(override_dict.keys())
+    )
 
     # Deep merge the dicts
     if override_mode:
@@ -667,7 +941,7 @@ def _merge_config_with_override(
                 merged_dict[key] = value
 
     # Set the imports field to the main config's imports
-    merged_dict['imports'] = override_imports
+    merged_dict["imports"] = override_imports
 
     log_debug("Deep merge result keys", keys=list(merged_dict.keys()))
 
@@ -682,6 +956,7 @@ def _merge_config_with_override(
         if "Duplicate view name" in str(e):
             # Extract duplicate names from error message
             import re
+
             match = re.search(r"Duplicate view name\(s\) found: (.+)", str(e))
             if match:
                 duplicates = match.group(1)
@@ -692,17 +967,11 @@ def _merge_config_with_override(
                 ) from e
         # Check for other duplicate types
         elif "Duplicate Iceberg catalog name" in str(e):
-            raise DuplicateNameError(
-                str(e), name_type="iceberg_catalog"
-            ) from e
+            raise DuplicateNameError(str(e), name_type="iceberg_catalog") from e
         elif "Duplicate semantic model name" in str(e):
-            raise DuplicateNameError(
-                str(e), name_type="semantic_model"
-            ) from e
+            raise DuplicateNameError(str(e), name_type="semantic_model") from e
         elif "Duplicate attachment alias" in str(e):
-            raise DuplicateNameError(
-                str(e), name_type="attachment"
-            ) from e
+            raise DuplicateNameError(str(e), name_type="attachment") from e
         # Re-raise as is if not a duplicate error
         log_debug("Failed to create Config", error=str(e))
         log_debug("merged_dict details", merged_dict=str(merged_dict))
@@ -734,8 +1003,8 @@ def _merge_section_specific(
     from .models import Config
 
     # Get the field values from both configs
-    imported_dict = imported_config.model_dump(mode='json')
-    base_dict = base_config.model_dump(mode='json')
+    imported_dict = imported_config.model_dump(mode="json")
+    base_dict = base_config.model_dump(mode="json")
 
     log_debug(
         "Merging section-specific imports",
@@ -752,8 +1021,8 @@ def _merge_section_specific(
     imported_section = imported_dict.get(section_name)
 
     # Remove imports from both dicts
-    imported_dict.pop('imports', None)
-    base_dict.pop('imports', None)
+    imported_dict.pop("imports", None)
+    base_dict.pop("imports", None)
 
     # Create a copy of base_dict to modify
     merged_dict = base_dict.copy()
@@ -765,7 +1034,9 @@ def _merge_section_specific(
         if override_mode:
             # Normal merge: imported takes precedence
             if isinstance(base_section, dict) and isinstance(imported_section, dict):
-                merged_dict[section_name] = _deep_merge_dict(base_section, imported_section)
+                merged_dict[section_name] = _deep_merge_dict(
+                    base_section, imported_section
+                )
             elif isinstance(base_section, list) and isinstance(imported_section, list):
                 # For lists, concatenate
                 merged_dict[section_name] = base_section + imported_section
@@ -792,7 +1063,7 @@ def _merge_section_specific(
         merged_dict[section_name] = imported_section
 
     # Set the imports field to the base config's imports
-    merged_dict['imports'] = base_dict.get('imports', [])
+    merged_dict["imports"] = base_dict.get("imports", [])
 
     try:
         # Create a new Config from the merged dict
@@ -804,6 +1075,7 @@ def _merge_section_specific(
         if "Duplicate view name" in str(e):
             # Extract duplicate names from error message
             import re
+
             match = re.search(r"Duplicate view name\(s\) found: (.+)", str(e))
             if match:
                 duplicates = match.group(1)
@@ -814,17 +1086,11 @@ def _merge_section_specific(
                 ) from e
         # Check for other duplicate types
         elif "Duplicate Iceberg catalog name" in str(e):
-            raise DuplicateNameError(
-                str(e), name_type="iceberg_catalog"
-            ) from e
+            raise DuplicateNameError(str(e), name_type="iceberg_catalog") from e
         elif "Duplicate semantic model name" in str(e):
-            raise DuplicateNameError(
-                str(e), name_type="semantic_model"
-            ) from e
+            raise DuplicateNameError(str(e), name_type="semantic_model") from e
         elif "Duplicate attachment alias" in str(e):
-            raise DuplicateNameError(
-                str(e), name_type="attachment"
-            ) from e
+            raise DuplicateNameError(str(e), name_type="attachment") from e
         # Re-raise as is if not a duplicate error
         log_debug("Failed to create Config", error=str(e))
         log_debug("merged_dict details", merged_dict=str(merged_dict))
@@ -833,46 +1099,6 @@ def _merge_section_specific(
         log_debug("Failed to create Config", error=str(e))
         log_debug("merged_dict details", merged_dict=str(merged_dict))
         raise
-
-
-def _resolve_import_path(import_path: str, base_path: str) -> str:
-    """Resolve an import path relative to the importing file.
-
-    Args:
-        import_path: The import path to resolve (can contain ${env:VAR}).
-        base_path: Path to the importing file.
-
-    Returns:
-        The resolved absolute path.
-
-    Raises:
-        PathResolutionError: If path resolution fails.
-    """
-    # Apply environment variable interpolation
-    if "${env:" in import_path:
-        import_path = _interpolate_env(import_path)
-
-    # Check if it's a remote URI
-    if _is_remote_uri(import_path):
-        return import_path
-
-    # Resolve relative to base file
-    if os.path.isabs(import_path):
-        resolved_path = import_path
-    else:
-        base_dir = os.path.dirname(base_path)
-        resolved_path = os.path.normpath(os.path.join(base_dir, import_path))
-
-    # Security check - ensure path doesn't escape allowed directory
-    # This is a basic check - the actual validation will happen during file loading
-    if not os.path.isabs(resolved_path):
-        raise PathResolutionError(
-            f"Failed to resolve import path: {import_path}",
-            original_path=import_path,
-            resolved_path=resolved_path,
-        )
-
-    return resolved_path
 
 
 def _validate_unique_names(config: Any, context: ImportContext) -> None:
@@ -1035,7 +1261,9 @@ def _resolve_and_load_import(
             )
         else:
             # This file was already loaded in a different branch, use cached version
-            log_debug("Using cached config for already-loaded import", path=resolved_path)
+            log_debug(
+                "Using cached config for already-loaded import", path=resolved_path
+            )
             return import_context.config_cache.get(resolved_path)
 
     # Add to import stack and visited files (use both original and normalized for tracking)
@@ -1074,7 +1302,9 @@ def _resolve_and_load_import(
 
             try:
                 if filesystem is not None:
-                    if not hasattr(filesystem, "open") or not hasattr(filesystem, "exists"):
+                    if not hasattr(filesystem, "open") or not hasattr(
+                        filesystem, "exists"
+                    ):
                         raise ImportError(
                             "filesystem object must provide 'open' and 'exists' methods"
                         )
@@ -1144,12 +1374,34 @@ def _resolve_and_load_import(
 
         # Recursively process imports in the imported config
         if imported_config.imports:
+            # Handle both list and object formats for imports
+            try:
+                import_count = len(imported_config.imports)  # type: ignore[arg-type]
+            except TypeError:
+                import_count = 1  # Single import entry
+
             log_debug(
                 "Processing nested imports",
                 path=resolved_path,
-                import_count=len(imported_config.imports),
+                import_count=import_count,
             )
-            for nested_import_path in imported_config.imports:
+
+            # Process imports - handle both list and single entry formats
+            try:
+                # Try to iterate over imports
+                import_items = list(imported_config.imports)  # type: ignore[arg-type]
+            except TypeError:
+                # Single import entry
+                import_items = [imported_config.imports]  # type: ignore[arg-type]
+
+            for import_item in import_items:
+                # Handle different import item formats
+                try:
+                    nested_import_path = import_item.path  # type: ignore[attr-defined]
+                except AttributeError:
+                    # Not an object with .path, treat as string
+                    nested_import_path = str(import_item)
+
                 nested_config = _resolve_and_load_import(
                     import_path=nested_import_path,
                     base_path=resolved_path,
@@ -1161,7 +1413,9 @@ def _resolve_and_load_import(
                 )
                 # Merge the nested import into the imported config
                 # Main config should override imported config, so import goes first
-                imported_config = _deep_merge_config(nested_config, imported_config)
+                imported_config = _merge_config_with_override(
+                    nested_config, imported_config, True
+                )
 
         return imported_config
 
@@ -1179,6 +1433,7 @@ def _load_config_with_imports(
     load_sql_files: bool = True,
     sql_file_loader: Optional[Any] = None,
     import_context: Optional[ImportContext] = None,
+    load_dotenv: bool = True,
 ) -> Any:
     """Load config with import support.
 
@@ -1222,6 +1477,38 @@ def _load_config_with_imports(
     import_context.import_stack.append(resolved_path)
 
     try:
+        # Extract custom .env file patterns from raw config if available
+        # This allows us to load custom .env files before config validation
+        env_file_patterns = [".env"]  # Default fallback
+        try:
+            # Read raw config to check for custom env_files patterns
+            raw_config_path = Path(file_path)
+            if raw_config_path.exists():
+                import yaml
+
+                with open(raw_config_path, "r") as f:
+                    raw_config = yaml.safe_load(f)
+                    if (
+                        raw_config
+                        and isinstance(raw_config, dict)
+                        and "env_files" in raw_config
+                    ):
+                        custom_patterns = raw_config["env_files"]
+                        if isinstance(custom_patterns, list) and custom_patterns:
+                            env_file_patterns = custom_patterns
+                            log_debug(
+                                "Using custom .env file patterns",
+                                patterns=env_file_patterns,
+                            )
+        except Exception:
+            # If we can't read custom patterns, use defaults
+            log_debug("Failed to read custom .env patterns, using defaults")
+            pass
+
+        # Load .env files for this configuration first (if enabled)
+        if load_dotenv:
+            _load_dotenv_files_for_config(file_path, env_file_patterns)
+
         # Load the base config
         if content is not None:
             raw_text = content
@@ -1262,9 +1549,11 @@ def _load_config_with_imports(
         try:
             config = Config.model_validate(interpolated)
         except Exception as exc:
-            log_debug("Validation failed interpolated keys", keys=list(interpolated.keys()))
-            if 'views' in interpolated:
-                log_debug("views value", views=interpolated['views'])
+            log_debug(
+                "Validation failed interpolated keys", keys=list(interpolated.keys())
+            )
+            if "views" in interpolated:
+                log_debug("views value", views=interpolated["views"])
             else:
                 log_debug("views missing from interpolated dict")
             raise ConfigError(f"Configuration validation failed: {exc}") from exc
@@ -1277,14 +1566,17 @@ def _load_config_with_imports(
         if config.imports:
             # Handle both list and SelectiveImports formats
             if isinstance(config.imports, list):
-                import_count = len(config.imports)
+                import_count = len(config.imports)  # type: ignore[arg-type]
             else:
                 # SelectiveImports - count total imports across all sections
-                import_count = sum(
-                    len(field_value) if field_value else 0
-                    for field_value in config.imports
-                    if field_value is not None
-                )
+                try:
+                    import_count = sum(
+                        len(field_value) if field_value else 0  # type: ignore[arg-type]
+                        for field_value in config.imports
+                        if field_value is not None
+                    )
+                except TypeError:
+                    import_count = 1  # Single import entry
             log_debug("Processing imports", import_count=import_count)
 
             # Normalize imports to handle both simple list and SelectiveImports formats
@@ -1330,7 +1622,9 @@ def _load_config_with_imports(
                     # Merge the imported config into the base config
                     # When override=True: imported values override main config (normal behavior)
                     # When override=False: main config values are preserved, only missing fields filled
-                    config = _merge_config_with_override(config, imported_config, override_mode=override)
+                    config = _merge_config_with_override(
+                        config, imported_config, override_mode=override
+                    )
 
             # Process section-specific imports
             for section_name, imports_list in section_imports.items():
@@ -1368,7 +1662,9 @@ def _load_config_with_imports(
         if load_sql_files:
             config = _load_sql_files_from_config(config, config_path, sql_file_loader)
 
-        log_debug("Config loaded with imports", path=resolved_path, views=len(config.views))
+        log_debug(
+            "Config loaded with imports", path=resolved_path, views=len(config.views)
+        )
         return config
 
     finally:
