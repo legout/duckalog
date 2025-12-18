@@ -506,6 +506,11 @@ def build_catalog(
 ) -> str | None:
     """Build or update a DuckDB catalog from a configuration file.
 
+    .. deprecated:: 0.5.0
+        Use ``run`` command or ``connect_and_build_catalog`` function instead
+        for incremental updates and smart connection management. This function
+        performs full rebuilds only and may be deprecated in future releases.
+
     This function is the high-level entry point used by both the CLI and
     Python API. It loads the config, optionally performs a dry-run SQL
     generation, or otherwise connects to DuckDB, sets up attachments and
@@ -549,6 +554,17 @@ def build_catalog(
             sql = build_catalog("catalog.yaml", dry_run=True)
             print(sql)
     """
+
+    # Deprecation warning
+    import warnings
+
+    warnings.warn(
+        "build_catalog() is deprecated and will be removed in a future version. "
+        "Use the 'run' command or connect_and_build_catalog() function instead "
+        "for incremental updates and smart connection management.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
     # Note: Logging verbosity is configured at the CLI or application level,
     # not per-function. The logging configuration should already be set.

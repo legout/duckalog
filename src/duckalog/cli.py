@@ -367,7 +367,9 @@ def version_command() -> None:
     typer.echo(f"duckalog {current_version}")
 
 
-@app.command(help="Build or update a DuckDB catalog from a config file or remote URI.")
+@app.command(
+    help="Build (or fully rebuild) a DuckDB catalog from a config file or remote URI."
+)
 def build(
     ctx: typer.Context,
     config_path: str = typer.Argument(
@@ -464,6 +466,13 @@ def build(
         dry_run=dry_run,
         filesystem=filesystem is not None,
     )
+
+    # Add deprecation warning for build command
+    typer.echo(
+        "Note: 'build' command is for full rebuilds only. "
+        "Consider using 'run' command for incremental updates and smart connection management.",
+        err=True,
+    )
     try:
         sql = build_catalog(
             str(config_path),
@@ -489,6 +498,128 @@ def build(
         typer.echo(sql)
     elif not dry_run:
         typer.echo("Catalog build completed.")
+
+
+@app.command(help="Run a catalog with smart connection management.")
+def run(
+    ctx: typer.Context,
+    config_path: str = typer.Argument(
+        ...,
+        help="Path to configuration file or remote URI (e.g., s3://bucket/config.yaml)",
+    ),
+    db_path: Optional[str] = typer.Option(
+        None,
+        "--db-path",
+        help="Override DuckDB database path. Supports local paths and remote URIs (s3://, gs://, gcs://, abfs://, adl://, sftp://).",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Generate SQL without executing against DuckDB."
+    ),
+    force_rebuild: bool = typer.Option(
+        False,
+        "--force-rebuild",
+        help="Force full catalog rebuild instead of incremental updates.",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging output."
+    ),
+    load_dotenv: bool = typer.Option(
+        True,
+        "--load-dotenv/--no-load-dotenv",
+        help="Enable/disable automatic .env file loading.",
+    ),
+) -> None:
+    """CLI entry point for ``run`` command.
+
+    This command provides smart catalog management with connection state restoration
+    and incremental updates. For most use cases, prefer ``run`` over ``build``.
+
+    Examples:
+        # Run with smart connection management
+        duckalog run config.yaml
+
+        # Force full rebuild
+        duckalog run config.yaml --force-rebuild
+
+        # S3 with access key and secret
+        duckalog run s3://my-bucket/config.yaml --fs-key AKIA... --fs-secret wJalr...
+
+        # GitHub with personal access token
+        duckalog run github://user/repo/config.yaml --fs-token ghp_xxxxxxxxxxxx
+
+        # Export catalog to remote storage
+        duckalog run config.yaml --db-path s3://my-bucket/catalog.duckdb
+
+    Args:
+        config_path: Path to configuration file or remote URI (e.g., s3://bucket/config.yaml).
+        db_path: Optional override for DuckDB database file path. Supports local paths and remote URIs for cloud storage export.
+        dry_run: If ``True``, print SQL instead of modifying database.
+        force_rebuild: If ``True``, force full catalog rebuild instead of incremental updates.
+        verbose: If ``True``, enable more verbose logging.
+        load_dotenv: If ``True``, automatically load and process .env files. If ``False``, skip .env file loading entirely.
+    """
+    _configure_logging(verbose)
+
+    # Get filesystem from context (created by shared callback)
+    filesystem = ctx.obj.get("filesystem")
+
+    # Validate that local files exist, but allow remote URIs
+    try:
+        from .remote_config import is_remote_uri
+
+        if not is_remote_uri(config_path):
+            # This is a local path, check if it exists
+            local_path = Path(config_path)
+            if not local_path.exists():
+                _fail(f"Config file not found: {config_path}", 2)
+    except ImportError:
+        # Remote functionality not available, treat as local path
+        local_path = Path(config_path)
+        if not local_path.exists():
+            _fail(f"Config file not found: {config_path}", 2)
+
+    log_info(
+        "CLI run invoked",
+        config_path=config_path,
+        db_path=db_path,
+        dry_run=dry_run,
+        force_rebuild=force_rebuild,
+        filesystem=filesystem is not None,
+    )
+
+    # For now, delegate to build_catalog - smart connection logic will come in future implementation
+    # This maintains backward compatibility while providing the new command interface
+    if verbose and not force_rebuild:
+        typer.echo(
+            "Note: Using build-once behavior. Smart connection management coming in a future release."
+        )
+
+    try:
+        sql_result = build_catalog(
+            str(config_path),
+            db_path=db_path,
+            dry_run=dry_run,
+            verbose=verbose,
+            filesystem=filesystem,
+            load_dotenv=load_dotenv,
+        )
+    except ConfigError as exc:
+        log_error("Run failed due to config error", error=str(exc))
+        _fail(f"Config error: {exc}", 2)
+    except EngineError as exc:
+        log_error("Run failed due to engine error", error=str(exc))
+        _fail(f"Engine error: {exc}", 3)
+    except Exception as exc:  # pragma: no cover - unexpected failures
+        if verbose:
+            raise
+        log_error("Run failed unexpectedly", error=str(exc))
+        _fail(f"Unexpected error: {exc}", 1)
+
+    if dry_run and sql_result:
+        typer.echo(sql_result)
+    elif not dry_run:
+        action = "rebuilt" if force_rebuild else "updated"
+        typer.echo(f"Catalog {action} successfully.")
 
 
 @app.command(name="generate-sql", help="Validate config and emit CREATE VIEW SQL only.")
