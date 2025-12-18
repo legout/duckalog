@@ -48,6 +48,30 @@ duckalog query "SELECT COUNT(*) FROM users"
 duckalog query "SELECT * FROM users LIMIT 5"
 ```
 
+### 3. Python API Usage
+
+The enhanced Python API provides organized SQL functionality:
+
+```python
+# Direct imports (backward compatible)
+from duckalog import generate_view_sql, quote_ident, ViewConfig
+
+# Enhanced organization with convenience groups
+from duckalog import sql, utils
+
+# Generate SQL with organized imports
+view_config = ViewConfig(name="users", source="parquet", uri="s3://bucket/data/users/*.parquet")
+view_sql = sql.generate_view_sql(view_config)
+
+# Safe SQL construction
+safe_table_name = utils.quote_ident("users table")
+safe_path = utils.quote_literal("s3://bucket/data/users.parquet")
+
+# Unified namespace access
+from duckalog import SQL
+catalog_sql = SQL.generate.generate_all_views_sql(config)
+```
+
 For comprehensive documentation, tutorials, and examples, visit the **[Duckalog Documentation](https://legout.github.io/duckalog/)**.
 
 ## Features

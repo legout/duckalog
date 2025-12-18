@@ -83,7 +83,38 @@ config = load_config(
 )
 ```
 
-### 2. Custom SQL File Loader
+### 2. Enhanced SQL API Usage
+
+The enhanced SQL API provides better organization and discoverability for SQL-related functionality:
+
+```python
+# Option 1: Direct imports (backward compatible)
+from duckalog import generate_view_sql, quote_ident, quote_literal, SQLFileLoader, ViewConfig, DuckDBConfig, Config
+
+# Option 2: Convenience groups for better organization
+from duckalog import sql, utils, sql_files
+
+# Generate SQL using convenience groups
+view_config = ViewConfig(name="users", source="parquet", uri="data/users.parquet")
+view_sql = sql.generate_view_sql(view_config)
+quoted_identifier = utils.quote_ident("users table")
+safe_literal = utils.quote_literal("path/to/file.parquet")
+
+# Option 3: Unified SQL namespace
+from duckalog import SQL
+
+# Access all SQL functionality through a single namespace
+view_sql = SQL.generate.generate_view_sql(view_config)
+quoted_identifier = SQL.utils.quote_ident("users table")
+safe_literal = SQL.utils.quote_literal("path/to/file.parquet")
+loader = SQL.files.SQLFileLoader()
+
+# Generate complete catalog SQL
+config = Config(version="1.0", duckdb=DuckDBConfig(), views=[view_config])
+catalog_sql = SQL.generate.generate_all_views_sql(config)
+```
+
+### 3. Custom SQL File Loader
 
 Implement custom SQL file loading for specialized template processing:
 

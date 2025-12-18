@@ -148,6 +148,11 @@ Test SQL injection protection:
 # Test malicious inputs are safely quoted
 from duckalog import quote_ident, quote_literal, generate_view_sql, ViewConfig
 
+# Alternative enhanced API usage:
+from duckalog import SQL  # Unified SQL namespace
+# or use convenience groups:
+from duckalog import sql, utils  # Grouped SQL functionality
+
 # Test identifier injection
 malicious_db = '"; DROP TABLE users; --'
 sql = generate_view_sql(ViewConfig(
@@ -159,6 +164,12 @@ assert "DROP TABLE" not in sql  # Injection blocked
 malicious_secret = "user' OR 1=1 --"
 quoted = quote_literal(malicious_secret)
 assert "OR 1=1" not in quoted  # Injection blocked
+
+# Enhanced API examples:
+# Using grouped utilities
+quoted_safe = utils.quote_literal(malicious_secret)
+# Using unified namespace
+quoted_unified = SQL.utils.quote_literal(malicious_secret)
 ```
 
 ## 🔒 Root-Based Path Resolution Security
