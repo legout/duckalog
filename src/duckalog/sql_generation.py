@@ -5,6 +5,7 @@ from __future__ import annotations
 from .config import log_debug
 from .config import Config, SecretConfig, ViewConfig
 from .sql_utils import quote_ident, quote_literal, render_options
+from .errors import EngineError
 
 
 def generate_view_sql(view: ViewConfig) -> str:
@@ -173,13 +174,20 @@ def generate_secret_sql(secret: SecretConfig) -> str:
         if secret.bearer_token:
             params.append(f"BEARER_TOKEN {quote_literal(secret.bearer_token)}")
         elif secret.header:
-            params.append(f"HEADER {quote_literal(secret.header)}")
+            # Note: DuckDB HTTP secrets don't support custom headers in current versions
+            # Only BEARER_TOKEN is supported
+            raise EngineError(
+                f"HTTP secrets with custom headers are not supported in current DuckDB versions. "
+                f"Only BEARER_TOKEN authentication is supported for HTTP secrets."
+            )
         else:
-            # Fallback for basic auth
-            if secret.key_id:
-                params.append(f"USERNAME {quote_literal(secret.key_id)}")
-            if secret.secret:
-                params.append(f"PASSWORD {quote_literal(secret.secret)}")
+            # DuckDB HTTP secrets don't support basic auth (USERNAME/PASSWORD)
+            # Only BEARER_TOKEN is supported
+            if secret.key_id or secret.secret:
+                raise EngineError(
+                    f"HTTP secrets with basic authentication (USERNAME/PASSWORD) are not supported in current DuckDB versions. "
+                    f"Only BEARER_TOKEN authentication is supported for HTTP secrets."
+                )
 
     elif secret.type == "postgres":
         if secret.connection_string:
@@ -242,9 +250,10 @@ def generate_secret_sql(secret: SecretConfig) -> str:
     # Build the full SQL statement
     secret_sql = f"CREATE {'PERSISTENT ' if secret.persistent else ''}SECRET {secret_name} ({', '.join(params)})"
 
-    # Add scope if provided
-    if secret.scope:
-        secret_sql += f"; SCOPE {quote_literal(secret.scope)}"
+    # Note: SCOPE parameter is not supported in current DuckDB versions
+    # Remove scope support until DuckDB adds this functionality
+    # if secret.scope:
+    #     secret_sql += f" SCOPE {quote_literal(secret.scope)}"
 
     return secret_sql
 

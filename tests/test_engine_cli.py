@@ -480,8 +480,7 @@ def test_build_catalog_processes_persistent_secret(tmp_path):
               name: api_auth
               persistent: true
               scope: 'api/'
-              key_id: myusername
-              secret: mypassword
+              bearer_token: my_bearer_token_123
         views:
           - name: test_view
             sql: "SELECT 1"
@@ -539,8 +538,7 @@ def test_build_catalog_processes_multiple_secrets(tmp_path):
               region: us-west-2
             - type: http
               name: api_auth
-              key_id: apiuser
-              secret: apipass
+              bearer_token: api_token_12345
         views:
           - name: test_view
             sql: "SELECT 1"
@@ -659,7 +657,9 @@ def test_cli_show_imports_json_format():
                 """
             )
         )
-        result = runner.invoke(app, ["show-imports", "catalog.yaml", "--format", "json"])
+        result = runner.invoke(
+            app, ["show-imports", "catalog.yaml", "--format", "json"]
+        )
         assert result.exit_code == 0
         # Check that output is valid JSON
         import json

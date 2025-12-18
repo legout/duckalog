@@ -345,13 +345,13 @@ def test_generate_secret_sql_postgres_individual_params():
 
 def test_generate_secret_sql_http_basic_auth():
     """Test HTTP secret for basic auth generates correct SQL."""
-    secret = SecretConfig(
-        type="http", name="api_auth", key_id="myusername", secret="mypassword"
-    )
+    # Note: HTTP secrets with basic auth are no longer supported in current DuckDB versions
+    # Only BEARER_TOKEN is supported, so this test is updated to reflect that
+    secret = SecretConfig(type="http", name="api_auth", bearer_token="my_bearer_token")
 
     sql = generate_secret_sql(secret)
 
-    expected = "CREATE SECRET api_auth (TYPE HTTP, USERNAME 'myusername', PASSWORD 'mypassword')"
+    expected = "CREATE SECRET api_auth (TYPE HTTP, BEARER_TOKEN 'my_bearer_token')"
     assert sql == expected
 
 

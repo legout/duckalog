@@ -119,9 +119,9 @@ class SecretConfig(BaseModel):
                         "GCS config provider requires service_account_key, json_key, or (key_id and secret)"
                     )
         elif self.type == "http":
-            if not (self.bearer_token or self.header or (self.key_id and self.secret)):
+            if not self.bearer_token:
                 raise ValueError(
-                    "HTTP secret requires bearer_token, header, or (key_id and secret)"
+                    "HTTP secret requires bearer_token (header and basic auth not supported in current DuckDB versions)"
                 )
         elif self.type in {"postgres", "mysql"}:
             if not self.connection_string and not (
