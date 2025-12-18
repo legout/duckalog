@@ -424,15 +424,14 @@ The configuration layer MUST be implemented as a structured internal package und
 The `duckalog.config` package contains the following modules:
 
 - **`models.py`**: Pydantic model definitions and schema validation (Config, SecretConfig, ViewConfig, etc.)
-- **`loader.py`**: Configuration loading orchestration (`load_config`, `_load_config_from_local_file`, remote loading dispatch)
+- **`loader.py`**: Configuration loading orchestration (`load_config`, `_load_config_from_local_file`, remote loading dispatch, SQL file loading)
 - **`interpolation.py`**: Environment variable interpolation logic (`${env:VAR}` placeholder resolution)
 - **`validators.py`**: Complex validation helper functions and cross-field validation logic
-- **`sql_integration.py`**: SQL file loading and path resolution integration
 - **`__init__.py`**: Public API re-exports to maintain backward compatibility
 
 #### Responsibilities and Dependencies
 - **`models.py`** serves as the foundation and MUST NOT import from other config modules to prevent circular dependencies
-- **`loader.py`** orchestrates the loading process and imports utilities from `interpolation.py`, `validators.py`, and `sql_integration.py`
+- **`loader.py`** orchestrates the loading process and imports utilities from `interpolation.py` and `validators.py`
 - **`interpolation.py`**, **`validators.py`**, and **`sql_integration.py`** contain supporting logic and import models from `models.py` only
 - **`__init__.py`** provides the public API surface by re-exporting all symbols that were previously available from the monolithic `config.py`
 

@@ -40,7 +40,9 @@ def _redact_value(value: Any, key_hint: str = "") -> Any:
     return value
 
 
-def _emit_loguru_logger(level_name: str, message: str, safe_details: dict[str, Any]) -> None:
+def _emit_loguru_logger(
+    level_name: str, message: str, safe_details: dict[str, Any]
+) -> None:
     """Emit a log message using loguru."""
     if safe_details:
         logger.log(level_name, "{} {}", message, safe_details)
@@ -56,7 +58,7 @@ def _log(level: int, message: str, **details: Any) -> None:
 
     # Map stdlib logging levels to loguru
     level_map = {
-        20: "INFO",   # logging.INFO
+        20: "INFO",  # logging.INFO
         10: "DEBUG",  # logging.DEBUG
         40: "ERROR",  # logging.ERROR
     }
@@ -199,8 +201,8 @@ def normalize_path_for_sql(path: str) -> str:
         # If pathlib can't handle it, use as-is
         normalized = path
 
-    # Import quote_literal from sql_generation to avoid circular imports
-    from duckalog.sql_generation import quote_literal
+    # Import quote_literal from sql_utils to avoid circular imports
+    from duckalog.sql_utils import quote_literal
 
     return quote_literal(normalized)
 

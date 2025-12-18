@@ -29,6 +29,8 @@ from .sql_generation import (
     generate_all_views_sql,
     generate_view_sql,
     generate_secret_sql,
+)
+from .sql_utils import (
     quote_ident,
     quote_literal,
     render_options,

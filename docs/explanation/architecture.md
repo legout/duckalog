@@ -221,10 +221,9 @@ sequenceDiagram
 
 **Key Components:**
 - **`models.py`**: Pydantic models for configuration schema validation
-- **`loader.py`**: Core configuration loading functionality
+- **`loader.py`**: Core configuration loading functionality including SQL file loading
 - **`interpolation.py`**: Environment variable substitution engine
 - **`validators.py`**: Path security validation and normalization
-- **`sql_integration.py`**: SQL file loading and template processing
 
 **Key Features:**
 - Supports both YAML and JSON formats
