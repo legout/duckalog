@@ -52,16 +52,6 @@ from .sql_utils import (
     render_options,
 )
 
-
-# Convenience group for SQL functionality
-class SQL:
-    """Unified access to all SQL-related functionality."""
-
-    generate = sql
-    utils = utils
-    files = sql_files
-
-
 # Errors
 from .errors import (
     ConfigError,
@@ -73,6 +63,16 @@ from .errors import (
     SQLFileSizeError,
     SQLTemplateError,
 )
+
+
+# Convenience group for SQL functionality
+class SQLGroup:
+    """Unified access to all SQL-related functionality."""
+
+    generate = sql
+    utils = utils
+    files = sql_files
+
 
 __all__ = [
     # Connection & Engine
@@ -100,7 +100,7 @@ __all__ = [
     "SemanticDefaultsConfig",
     "SQLFileReference",
     # SQL Convenience Groups
-    "SQL",
+    "SQLGroup",
     "sql",
     "utils",
     "sql_files",
