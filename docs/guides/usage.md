@@ -100,47 +100,51 @@ attachments:
 
 ### Canonical Secret Configuration
 
-Define secrets once and reference them across multiple views:
+Define secrets within the `duckdb` section and reference them implicitly across views:
 
 ```yaml
-secrets:
-  - name: s3_prod
-    type: s3
-    key_id: "${env:AWS_ACCESS_KEY_ID}"
-    secret: "${env:AWS_SECRET_ACCESS_KEY}"
-    region: "us-east-1"
-    endpoint: "https://s3.amazonaws.com"  # Protocol automatically stripped for DuckDB compatibility
+duckdb:
+  database: catalog.duckdb
+  install_extensions:
+    - httpfs
+  secrets:
+    - name: s3_prod
+      type: s3
+      key_id: "${env:AWS_ACCESS_KEY_ID}"
+      secret: "${env:AWS_SECRET_ACCESS_KEY}"
+      region: "us-east-1"
+      endpoint: "https://s3.amazonaws.com"  # Protocol automatically stripped for DuckDB compatibility
 
-  - name: azure_storage
-    type: azure
-    connection_string: "${env:AZURE_STORAGE_CONNECTION_STRING}"
-    account_name: "${env:AZURE_STORAGE_ACCOUNT}"
+    - name: azure_storage
+      type: azure
+      connection_string: "${env:AZURE_STORAGE_CONNECTION_STRING}"
+      account_name: "${env:AZURE_STORAGE_ACCOUNT}"
 
-  - name: gcs_service
-    type: gcs
-    service_account_key: "${env:GCS_SERVICE_ACCOUNT_JSON}"
+    - name: gcs_service
+      type: gcs
+      service_account_key: "${env:GCS_SERVICE_ACCOUNT_JSON}"
 
-  - name: http_api
-    type: http
-    bearer_token: "${env:API_BEARER_TOKEN}"
-    header: "Authorization"
+    - name: http_api
+      type: http
+      bearer_token: "${env:API_BEARER_TOKEN}"
+      header: "Authorization"
 
 views:
   - name: production_data
     source: parquet
     uri: "s3://prod-bucket/data/*.parquet"
-    secrets_ref: s3_prod
+    description: "Production data using S3 secret"
 
   - name: azure_logs
     source: parquet
     uri: "abfs://logcontainer@storageaccount.dfs.core.windows.net/logs/*.parquet"
-    secrets_ref: azure_storage
+    description: "Azure logs using storage secret"
 
   - name: reference_tables
     source: iceberg
     catalog: main_catalog
     table: analytics.reference_data
-    secrets_ref: gcs_service
+    description: "Reference data using GCS secret"
 ```
 
 ### Secret Types and DuckDB Integration
@@ -239,17 +243,21 @@ duckdb:
   pragmas:
     - "SET memory_limit='1GB'"
 
-# Secure credential management
-secrets:
-  - name: s3_access
-    type: s3
-    key_id: "${env:AWS_ACCESS_KEY_ID}"
-    secret: "${env:AWS_SECRET_ACCESS_KEY}"
-    region: "us-east-1"
-  
-  - name: postgres_creds
-    type: postgres
-    connection_string: "${env:POSTGRES_CONNECTION_STRING}"
+# DuckDB database with secrets
+duckdb:
+  database: unified_catalog.duckdb
+  install_extensions:
+    - httpfs
+  secrets:
+    - name: s3_access
+      type: s3
+      key_id: "${env:AWS_ACCESS_KEY_ID}"
+      secret: "${env:AWS_SECRET_ACCESS_KEY}"
+      region: "us-east-1"
+    
+    - name: postgres_creds
+      type: postgres
+      connection_string: "${env:POSTGRES_CONNECTION_STRING}"
 
 attachments:
   duckdb:
@@ -281,7 +289,7 @@ views:
   - name: users
     source: parquet
     uri: "s3://my-bucket/data/users/*.parquet"
-    secrets_ref: s3_access
+    description: "User data from S3 using configured secret"
 
   - name: events_delta
     source: delta

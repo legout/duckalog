@@ -720,7 +720,7 @@ graph TD
     SEMANTIC --> SEM_MEAS[Semantic Measures<br/>aggregations, calculations]
     SEMANTIC --> SEM_JOIN[Semantic Joins<br/>relationships, cardinalities]
     
-    VIEWS --> PARQUET_VIEW[Parquet View<br/>source: parquet, uri, options, secrets_ref]
+    VIEWS --> PARQUET_VIEW[Parquet View<br/>source: parquet, uri, options]
     VIEWS --> DELTA_VIEW[Delta View<br/>source: delta, uri, options]
     VIEWS --> ICEBERG_VIEW[Iceberg View<br/>source: iceberg, catalog, table]
     VIEWS --> DB_VIEW[Database View<br/>source: duckdb/sqlite/postgres, database, table]

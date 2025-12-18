@@ -48,11 +48,12 @@ Configuration for DuckDB database connection and behavior.
 
 | Field | Type | Required | Default | Description |
 |--------|------|-----------|---------|-------------|
-| `database` | string | ✅ | - | Path to DuckDB database file |
+| `database` | string | ❌ | `:memory:` | Path to DuckDB database file |
 | `install_extensions` | array[string] | ❌ | `[]` | Extensions to install before creating views |
 | `load_extensions` | array[string] | ❌ | `[]` | Extensions to load after connecting |
 | `pragmas` | array[string] | ❌ | `[]` | DuckDB pragmas to set |
-| `settings` | SettingsConfig | ❌ | - | Session-level settings (legacy) |
+| `settings` | string or array[string] | ❌ | - | DuckDB SET statements executed after pragmas |
+| `secrets` | array[SecretConfig] | ❌ | `[]` | List of secret definitions for external services |
 
 #### Examples
 
@@ -77,13 +78,135 @@ duckdb:
     - "SET threads=4"
     - "SET enable_progress_bar=false"
 
-# With settings (legacy format)
+# With settings (single SET statement)
+duckdb:
+  database: catalog.duckdb
+  settings: "SET memory_limit='4GB'"
+
+# With settings (multiple SET statements)
 duckdb:
   database: catalog.duckdb
   settings:
-    memory_limit: "4GB"
-    threads: 4
-    enable_progress_bar: false
+    - "SET memory_limit='4GB'"
+    - "SET threads=4"
+    - "SET enable_progress_bar=false"
+
+# With secrets
+duckdb:
+  database: catalog.duckdb
+  secrets:
+    - type: s3
+      name: production_s3
+      key_id: "${env:AWS_ACCESS_KEY_ID}"
+      secret: "${env:AWS_SECRET_ACCESS_KEY}"
+      region: us-west-2
+```
+
+## Secrets Configuration
+
+### SecretConfig
+
+Configuration for DuckDB secrets used to authenticate with external services and databases. Secrets are defined within the `duckdb` configuration section.
+
+#### Fields
+
+| Field | Type | Required | Default | Description |
+|--------|------|-----------|---------|-------------|
+| `type` | string | ✅ | - | Secret type (s3, azure, gcs, http, postgres, mysql) |
+| `name` | string | ❌ | type value | Optional name for the secret (defaults to type if not provided) |
+| `provider` | string | ❌ | `config` | Secret provider (config or credential_chain) |
+| `persistent` | boolean | ❌ | `false` | Whether to create a persistent secret |
+| `scope` | string | ❌ | - | Optional scope prefix for the secret |
+| `key_id` | string | ❌ | - | Access key ID or username for authentication |
+| `secret` | string | ❌ | - | Secret key or password for authentication |
+| `region` | string | ❌ | - | Geographic region for cloud services |
+| `endpoint` | string | ❌ | - | Custom endpoint URL for cloud services |
+| `connection_string` | string | ❌ | - | Full connection string for databases |
+| `tenant_id` | string | ❌ | - | Azure tenant ID for authentication |
+| `account_name` | string | ❌ | - | Azure storage account name |
+| `client_id` | string | ❌ | - | Azure client ID for authentication |
+| `client_secret` | string | ❌ | - | Azure client secret for authentication |
+| `service_account_key` | string | ❌ | - | GCS service account key |
+| `json_key` | string | ❌ | - | GCS JSON key |
+| `bearer_token` | string | ❌ | - | HTTP bearer token for authentication |
+| `header` | string | ❌ | - | HTTP header for authentication |
+| `database` | string | ❌ | - | Database name for database secrets |
+| `host` | string | ❌ | - | Database host for database secrets |
+| `port` | integer | ❌ | - | Database port for database secrets |
+| `user` | string | ❌ | - | Database username (alternative to key_id for database types) |
+| `password` | string | ❌ | - | Database password (alternative to secret for database types) |
+| `options` | object | ❌ | `{}` | Additional key-value options for the secret |
+
+#### Secret Types
+
+| Type | Description | Common Fields |
+|------|-------------|----------------|
+| `s3` | Amazon S3 or S3-compatible storage | `key_id`, `secret`, `region`, `endpoint` |
+| `azure` | Azure Blob Storage | `connection_string`, `tenant_id`, `account_name` |
+| `gcs` | Google Cloud Storage | `service_account_key`, `json_key`, `key_id`, `secret` |
+| `http` | HTTP basic authentication | `key_id`, `secret`, `bearer_token`, `header` |
+| `postgres` | PostgreSQL database connections | `connection_string`, `host`, `port`, `database`, `user`, `password` |
+| `mysql` | MySQL database connections (uses postgres type) | `connection_string`, `host`, `port`, `database`, `user`, `password` |
+
+#### Examples
+
+```yaml
+# S3 secret with static credentials
+duckdb:
+  database: catalog.duckdb
+  secrets:
+    - type: s3
+      name: production_s3
+      key_id: "${env:AWS_ACCESS_KEY_ID}"
+      secret: "${env:AWS_SECRET_ACCESS_KEY}"
+      region: us-west-2
+
+# Azure storage secret
+duckdb:
+  database: catalog.duckdb
+  secrets:
+    - type: azure
+      name: azure_prod
+      connection_string: "${env:AZURE_STORAGE_CONNECTION_STRING}"
+      account_name: "${env:AZURE_STORAGE_ACCOUNT}"
+
+# GCS secret with service account
+duckdb:
+  database: catalog.duckdb
+  secrets:
+    - type: gcs
+      name: gcs_service_account
+      service_account_key: "${env:GCS_SERVICE_ACCOUNT_JSON}"
+
+# PostgreSQL database secret
+duckdb:
+  database: catalog.duckdb
+  secrets:
+    - type: postgres
+      name: analytics_db
+      connection_string: "${env:DATABASE_URL}"
+
+# HTTP secret for API access
+duckdb:
+  database: catalog.duckdb
+  secrets:
+    - type: http
+      name: api_auth
+      key_id: "${env:API_USERNAME}"
+      secret: "${env:API_PASSWORD}"
+
+# Secret with additional options
+duckdb:
+  database: catalog.duckdb
+  secrets:
+    - type: s3
+      name: minio_storage
+      key_id: "${env:MINIO_ACCESS_KEY}"
+      secret: "${env:MINIO_SECRET_KEY}"
+      endpoint: http://minio-server:9000
+      options:
+        use_ssl: false
+        url_style: path
 ```
 
 ## Views Configuration
@@ -97,13 +220,17 @@ Definition of a database view in Duckalog.
 | Field | Type | Required | Default | Description |
 |--------|------|-----------|---------|-------------|
 | `name` | string | ✅ | - | View name (must be unique within schema) |
-| `db_schema` | string | ❌ | `main` | Database schema for view |
+| `db_schema` | string | ❌ | - | Database schema for view |
 | `description` | string | ❌ | - | Human-readable description of view |
-| `source` | string | ✅ | - | Data source type (see Source Types) |
-| `uri` | string | ✅ | - | Source URI or file path |
+| `source` | string | ❌ | - | Data source type (see Source Types) |
+| `uri` | string | ❌ | - | Source URI or file path |
 | `sql` | string | ❌ | - | SQL statement for view |
-| `sql_file` | SQLFileConfig | ❌ | - | External SQL file configuration |
-| `materialized` | boolean | ❌ | `false` | Whether to materialize view as table |
+| `sql_file` | SQLFileReference | ❌ | - | External SQL file configuration |
+| `sql_template` | SQLFileReference | ❌ | - | External SQL template with variable substitution |
+| `database` | string | ❌ | - | Attachment alias for attached-database sources |
+| `table` | string | ❌ | - | Table name (optionally schema-qualified) for attached sources |
+| `catalog` | string | ❌ | - | Iceberg catalog name for catalog-based Iceberg views |
+| `options` | object | ❌ | `{}` | Source-specific options passed to scan functions |
 | `tags` | array[string] | ❌ | `[]` | Tags for categorization |
 
 #### Source Types
@@ -152,16 +279,15 @@ views:
         min_amount: 100
     description: "Complex analytics from external SQL"
 
-# Materialized view
+# View using attached database
 views:
   - name: user_metrics
     source: duckdb
     database: analytics
     table: user_metrics
-    materialized: true
     sql: |
       SELECT * FROM user_metrics
-    description: "Materialized user metrics table"
+    description: "User metrics from attached database"
 ```
 
 ## SQL File Configuration
@@ -401,7 +527,7 @@ Measure definition for semantic models.
 | `label` | string | ❌ | - | Display label |
 | `description` | string | ❌ | - | Measure description |
 | `type` | string | ❌ | - | Data type (number, currency, etc.) |
-| `aggregation` | string | ❌ | - | Aggregation type (sum, avg, count, etc.) |
+
 
 #### Example
 
@@ -598,11 +724,11 @@ All configurations must include:
 ### Multi-Environment Configuration
 
 ```yaml
-# Base configuration
 version: 1
-duckdb:
-  database: "${env:ENVIRONMENT}_analytics.duckdb"
 
+duckdb:
+  database: "${env:DB_PATH}"
+  
 # Environment-specific imports
 imports:
   - "./base-${env:ENVIRONMENT}.yaml"

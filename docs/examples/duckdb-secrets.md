@@ -39,21 +39,20 @@ duckdb:
   # Extensions required for S3 access
   install_extensions:
     - httpfs
-
-# Canonical secret configuration
-secrets:
-  - name: production_s3
-    type: s3
-    key_id: ${env:AWS_ACCESS_KEY_ID}
-    secret: ${env:AWS_SECRET_ACCESS_KEY}
-    region: us-west-2
-    endpoint: s3.amazonaws.com  # Optional: custom endpoint
+  
+  # Secrets are defined within duckdb configuration
+  secrets:
+    - name: production_s3
+      type: s3
+      key_id: ${env:AWS_ACCESS_KEY_ID}
+      secret: ${env:AWS_SECRET_ACCESS_KEY}
+      region: us-west-2
+      endpoint: s3.amazonaws.com  # Optional: custom endpoint
 
 views:
   - name: sales_data
     source: parquet
     uri: "s3://my-production-bucket/sales/*.parquet"
-    secrets_ref: production_s3
 ```
 
 ### Azure Storage Secret
@@ -76,7 +75,7 @@ views:
   - name: azure_logs
     source: parquet
     uri: "abfs://mycontainer/logs/*.parquet"
-    secrets_ref: azure_prod
+    description: "Azure blob storage logs using defined S3 secret"
 ```
 
 ### GCS Secret
@@ -98,7 +97,7 @@ views:
   - name: gcs_data
     source: parquet
     uri: "gs://my-bucket/data/*.parquet"
-    secrets_ref: gcs_service_account
+    description: "GCS data using defined service account secret"
 ```
 
 ## Advanced Secret Configurations

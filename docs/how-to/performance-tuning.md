@@ -273,9 +273,9 @@ views:
 
 Implement effective caching for repeated queries:
 
-#### Materialized Views
+#### Pre-computed Views
 ```yaml
-# Create materialized views for expensive computations
+# Create views for expensive computations using tables
 views:
   - name: customer_metrics_raw
     source: parquet
@@ -290,13 +290,15 @@ views:
       FROM orders
       GROUP BY customer_id
 
-  - name: customer_metrics
+  - name: customer_metrics_table
     sql: |
-      -- Refresh materialized view
+      -- Create table for pre-computed results
       CREATE OR REPLACE TABLE customer_metrics AS
       SELECT * FROM customer_metrics_raw;
       
-      -- Query materialized view
+  - name: customer_metrics
+    sql: |
+      -- Query pre-computed table
       SELECT * FROM customer_metrics
       WHERE customer_id = '{{customer_id}}'
 ```

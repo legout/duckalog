@@ -112,10 +112,10 @@
 ## Phase 7: Documentation and Cleanup
 
 ### Task 7.1: Update documentation
-- [ ] **File**: `docs/guides/usage.md` or relevant configuration guide
-- [ ] **Change**: Document the new build process order
-- [ ] **Change**: Note automatic endpoint protocol handling
-- [ ] **Acceptance**: Documentation reflects the new behavior
+- [x] **File**: `docs/guides/usage.md` or relevant configuration guide
+- [x] **Change**: Document the new build process order
+- [x] **Change**: Note automatic endpoint protocol handling
+- [x] **Acceptance**: Documentation reflects the new behavior
 
 ### Task 7.2: Update CHANGELOG.md
 - [ ] **File**: `CHANGELOG.md`
