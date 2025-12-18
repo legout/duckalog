@@ -1,4 +1,29 @@
 # Changelog
+## [2025-12-18] - 0.5.0
+
+### Added
+- Feat: enhance sql public api organization and discoverability (1b51fca)
+- Feat: enhance sql public api for better discoverability and organization (d7fecd4)
+- Feat: implement config-driven connection management system (0af7a2d)
+- Merge pull request #1 from legout/feature/performance-benchmarks (73a4c0d)
+- Feat: remove orphaned config.py file (51044e5)
+- Feat: implement refactor-api-organization openspec proposal (5a0c0ed)
+- Complete refactor-config-architecture implementation (9e424eb)
+- Add comprehensive configuration refactoring proposals (748f43b)
+- Add docs update proposals for cli and configuration (89a812d)
+- Add .env file support and fix secret creation timing (ce83a2c)
+- Stream query results progressively via sse (916e83b)
+- Temporarily use cdn for ui assets (5150325)
+
+### Fixed
+- Fix: resolve critical sql generation bugs for duckdb secrets (9d344b9)
+- Cleanup: remove obsolete code and fix imports (9e965bb)
+
+### Changed
+- Docs: mark migration guide as obsolete (84f414f)
+- Docs: complete user documentation for config-driven connection management (a6a389a)
+- Complete create-sql-utilities-module change proposal (f185b7e)
+- Docs: auto-update changelog.md for version 0.4.1 (b26a667)
 
 ## [Unreleased]
 
