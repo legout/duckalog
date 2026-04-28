@@ -1,4 +1,20 @@
 # Changelog
+## [2026-04-29] - 0.6.0
+
+### Changed
+- **CLI Simplification**: Removed deprecated `build` command (use `duckalog run`)
+- **CLI Simplification**: Removed `validate-paths` command (use `duckalog show-paths --check`)
+- **CLI Simplification**: Removed `init-env` command (create `.env` files manually)
+- **CLI Simplification**: Extracted CLI helpers into `cli_display.py`, `cli_filesystem.py`, `cli_imports.py`
+- **Code Cleanup**: Deleted deprecated `config/loader.py` (1,569 lines)
+- **Code Cleanup**: Deleted dead stubs: `logging_utils.py`, `config/interpolation.py`, `secret_types.py`, empty `config/loading/` stubs
+- **Code Cleanup**: Consolidated 4 duplicate `_is_remote_uri` definitions into single canonical import
+- **Breaking**: `build_catalog` and `connect_and_build_catalog` removed from public API (`duckalog.__init__`)
+- **Breaking**: `config.interpolation` and `config.loader` modules deleted
+
+### Fixed
+- Fixed latent bug in `show_paths` where `resolved` was undefined for absolute URI paths
+
 ## [2025-12-18] - 0.5.0
 
 ### Added
