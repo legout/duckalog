@@ -190,11 +190,11 @@ class TestStaticFiles:
 class TestSSEDashboard:
     """Tests for Server-Sent Events (SSE) endpoints."""
 
-    def test_build_status_route_exists(self, dashboard_app):
-        """Test that build status SSE endpoint is configured."""
+    def test_run_status_route_exists(self, dashboard_app):
+        """Test that run status SSE endpoint is configured."""
         # Check that the route exists in the app
         routes = [route.path for route in dashboard_app.routes]
-        assert "/build/status" in routes
+        assert "/run/status" in routes
 
     def test_query_execute_route_exists(self, dashboard_app):
         """Test that query execute SSE endpoint is configured."""
@@ -214,39 +214,39 @@ class TestSSEDashboard:
         assert query_route is not None, "Query route should exist"
         # The route should be configured for Datastar responses
 
-    def test_build_status_has_datastar_response(self, dashboard_app):
-        """Test that build status uses datastar_response decorator."""
-        # Find the build status route
-        build_route = None
+    def test_run_status_has_datastar_response(self, dashboard_app):
+        """Test that run status uses datastar_response decorator."""
+        # Find the run status route
+        run_route = None
         for route in dashboard_app.routes:
-            if hasattr(route, "path") and route.path == "/build/status":
-                build_route = route
+            if hasattr(route, "path") and route.path == "/run/status":
+                run_route = route
                 break
 
-        assert build_route is not None, "Build status route should exist"
+        assert run_route is not None, "Run status route should exist"
         # The route should be configured for Datastar responses
 
     def test_sse_endpoints_configured(self, dashboard_app):
         """Test that SSE endpoints are properly configured."""
         # Verify both SSE endpoints exist
         routes = {route.path for route in dashboard_app.routes}
-        assert "/build/status" in routes
+        assert "/run/status" in routes
         assert "/query" in routes
 
-    def test_build_status_sse_returns_event_stream(self, dashboard_app):
-        """Test that build status endpoint returns text/event-stream content type."""
+    def test_run_status_sse_returns_event_stream(self, dashboard_app):
+        """Test that run status endpoint returns text/event-stream content type."""
         with TestClient(app=dashboard_app) as client:
             # Create a connection to the SSE endpoint
-            with client.stream("GET", "/build/status") as response:
+            with client.stream("GET", "/run/status") as response:
                 assert response.status_code == 200
                 # SSE responses should have text/event-stream content type
                 assert "text/event-stream" in response.headers["content-type"]
 
-    def test_build_status_sse_sends_initial_data(self, dashboard_app):
-        """Test that build status SSE sends initial status data."""
+    def test_run_status_sse_sends_initial_data(self, dashboard_app):
+        """Test that run status SSE sends initial status data."""
         with TestClient(app=dashboard_app) as client:
             # Connect to SSE and receive initial data
-            with client.stream("GET", "/build/status") as response:
+            with client.stream("GET", "/run/status") as response:
                 assert response.status_code == 200
                 # Read the response stream
                 data = b"".join(response.iter_bytes())
@@ -278,20 +278,20 @@ class TestSSEDashboard:
             # Response should contain error message
             assert "error" in response.json() or "read-only" in response.text.lower()
 
-    def test_build_trigger_endpoint_exists(self, dashboard_app):
-        """Test that build trigger endpoint exists."""
+    def test_run_trigger_endpoint_exists(self, dashboard_app):
+        """Test that run trigger endpoint exists."""
         with TestClient(app=dashboard_app) as client:
-            response = client.post("/build")
-            # Should return a valid status (200 or 409 if already building)
+            response = client.post("/run")
+            # Should return a valid status (200 or 409 if already running)
             assert response.status_code in (200, 409)
 
-    def test_build_status_has_idle_initial_state(self, dashboard_app):
-        """Test that build status starts in idle state."""
+    def test_run_status_has_idle_initial_state(self, dashboard_app):
+        """Test that run status starts in idle state."""
         with TestClient(app=dashboard_app) as client:
-            # Trigger a build to reset status
-            client.post("/build")
+            # Trigger a run to reset status
+            client.post("/run")
             # Connect to status stream
-            with client.stream("GET", "/build/status") as response:
+            with client.stream("GET", "/run/status") as response:
                 assert response.status_code == 200
                 # Read initial data
                 data = b"".join(response.iter_bytes())

@@ -35,7 +35,7 @@ views:
 ```
 
 **Result:**
-- Can run `duckalog build` from any directory
+- Can run `duckalog run` from any directory
 - Paths consistently resolve to files relative to `catalog.yaml`
 - Works on Windows, macOS, and Linux
 
@@ -189,7 +189,7 @@ views:
 
 ```bash
 # Development (default values work)
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 # resolves: uri="data/*.parquet", path="./reference.duckdb"
 
 # Production (override paths)
@@ -197,7 +197,7 @@ export DATA_DIR=/var/data/production
 export REFERENCE_PATH=/var/reference/production
 export PROJECT_NAME=prod_analytics
 
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 # resolves: uri="/var/data/production/*.parquet", path="/var/reference/production/production.duckdb"
 ```
 
@@ -362,8 +362,8 @@ jobs:
     - name: Build catalogs
       run: |
         # Build to test actual path resolution
-        duckalog build analytics/marketing/catalog.yaml --dry-run > marketing.sql
-        duckalog build analytics/finance/catalog.yaml --dry-run > finance.sql
+        duckalog run analytics/marketing/catalog.yaml --dry-run > marketing.sql
+        duckalog run analytics/finance/catalog.yaml --dry-run > finance.sql
 ```
 
 ## Migration Examples
@@ -417,29 +417,29 @@ views:
 
 ### Example 10: Migration Benefits
 
-**Old Workflow (Absolute Paths):**
+**Absolute Paths (Before):**
 ```bash
 # Only works from specific directory
 cd /home/user/projects/analytics
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # Fails from other directories
 cd /tmp
-duckalog build /home/user/projects/analytics/catalog.yaml
+duckalog run /home/user/projects/analytics/catalog.yaml
 # ❌ Error: /home/user/projects/analytics/data/users.parquet not accessible from /tmp
 ```
 
-**New Workflow (Relative Paths):**
+**Relative Paths:**
 ```bash
 # Works from any directory
-duckalog build /home/user/projects/analytics/catalog.yaml
+duckalog run /home/user/projects/analytics/catalog.yaml
 
 cd /tmp
-duckalog build /home/user/projects/analytics/catalog.yaml
+duckalog run /home/user/projects/analytics/catalog.yaml
 # ✅ Success: Paths resolve correctly regardless of working directory
 
 # CI/CD friendly
-docker run --rm -v /home/user/projects:/data analytics-runner duckalog build /data/analytics/catalog.yaml
+docker run --rm -v /home/user/projects:/data analytics-runner duckalog run /data/analytics/catalog.yaml
 ```
 
 ## Troubleshooting Examples
@@ -483,7 +483,7 @@ wrong_case:
   Resolved: /Users/volker/coding/libs/duckalog/debug-example/data/Users.parquet
 
 # Check file accessibility
-$ duckalog validate-paths catalog.yaml --check
+$ duckalog show-paths catalog.yaml --check
 ✅ Configuration is valid.
 
 Checking file accessibility...

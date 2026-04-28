@@ -263,6 +263,11 @@ def resolve_relative_path(
 
 def is_within_allowed_roots(candidate_path: str, allowed_roots: list[Path]) -> bool:
     """Check if a resolved path is within allowed roots."""
+    if not candidate_path or not candidate_path.strip():
+        raise ValueError(
+            f"Cannot resolve path '{candidate_path}': path is empty"
+        )
+
     cache = get_current_path_cache()
 
     try:

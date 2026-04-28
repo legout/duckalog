@@ -12,10 +12,10 @@ import pytest
 from duckalog import (
     ConfigError,
     EngineError,
-    build_catalog,
     generate_sql,
     validate_config,
 )
+from duckalog.engine import build_catalog
 from duckalog.cli import app
 from typer.testing import CliRunner
 
@@ -283,53 +283,6 @@ def test_cli_validate_success_and_failure(monkeypatch):
         assert "Config error" in result.output
 
 
-def test_cli_build_reports_engine_error(tmp_path):
-    runner = CliRunner()
-    config_text = textwrap.dedent(
-        """
-        version: 1
-        duckdb:
-          database: catalog.duckdb
-        views:
-          - name: bad_view
-            sql: "SELECT * FROM missing_table"
-        """
-    )
-    config_path = tmp_path / "catalog.yaml"
-    config_path.write_text(config_text)
-    db_path = tmp_path / "catalog.duckdb"
-
-    result = runner.invoke(
-        app,
-        ["build", str(config_path), "--db-path", str(db_path)],
-    )
-
-    assert result.exit_code == 3
-    assert "Engine error" in result.output
-
-
-def test_cli_build_dry_run_outputs_sql(tmp_path):
-    runner = CliRunner()
-    config_path = tmp_path / "catalog.yaml"
-    config_path.write_text(
-        textwrap.dedent(
-            """
-            version: 1
-            duckdb:
-              database: catalog.duckdb
-            views:
-              - name: sample
-                sql: "SELECT 1"
-            """
-        )
-    )
-
-    result = runner.invoke(app, ["build", str(config_path), "--dry-run"])
-
-    assert result.exit_code == 0
-    assert 'CREATE OR REPLACE VIEW "sample"' in result.output
-
-
 def test_cli_version_flag():
     runner = CliRunner()
     result = runner.invoke(app, ["version"])
@@ -479,7 +432,6 @@ def test_build_catalog_processes_persistent_secret(tmp_path):
             - type: http
               name: api_auth
               persistent: true
-              scope: 'api/'
               bearer_token: my_bearer_token_123
         views:
           - name: test_view

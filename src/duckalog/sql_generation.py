@@ -98,6 +98,126 @@ def generate_all_views_sql(config: Config, include_secrets: bool = False) -> str
     return "\n".join(lines)
 
 
+def _build_s3_params(secret: SecretConfig) -> list[str]:
+    params = []
+    if secret.provider == "credential_chain":
+        if secret.region:
+            params.append(f"REGION {quote_literal(secret.region)}")
+    else:
+        if secret.key_id:
+            params.append(f"KEY_ID {quote_literal(secret.key_id)}")
+        if secret.secret:
+            params.append(f"SECRET {quote_literal(secret.secret)}")
+        if secret.region:
+            params.append(f"REGION {quote_literal(secret.region)}")
+        if secret.endpoint:
+            clean_endpoint = secret.endpoint
+            if clean_endpoint.startswith(("http://", "https://")):
+                clean_endpoint = clean_endpoint.split("://", 1)[1]
+                log_debug(
+                    "Stripped protocol from endpoint",
+                    original=secret.endpoint,
+                    cleaned=clean_endpoint,
+                )
+            params.append(f"ENDPOINT {quote_literal(clean_endpoint)}")
+    return params
+
+
+def _build_azure_params(secret: SecretConfig) -> list[str]:
+    params = []
+    if secret.connection_string:
+        params.append(
+            f"CONNECTION_STRING {quote_literal(secret.connection_string)}"
+        )
+    else:
+        if secret.tenant_id:
+            params.append(f"TENANT_ID {quote_literal(secret.tenant_id)}")
+        if secret.client_id:
+            params.append(f"CLIENT_ID {quote_literal(secret.client_id)}")
+        client_secret = secret.client_secret or secret.secret
+        if client_secret:
+            params.append(f"SECRET {quote_literal(client_secret)}")
+        if secret.account_name:
+            params.append(f"ACCOUNT_NAME {quote_literal(secret.account_name)}")
+    return params
+
+
+def _build_gcs_params(secret: SecretConfig) -> list[str]:
+    params = []
+    if secret.service_account_key:
+        params.append(
+            f"SERVICE_ACCOUNT_KEY {quote_literal(secret.service_account_key)}"
+        )
+    elif secret.json_key:
+        params.append(f"JSON_KEY {quote_literal(secret.json_key)}")
+    elif secret.key_id and secret.secret:
+        params.append(f"KEY_ID {quote_literal(secret.key_id)}")
+        params.append(f"SECRET {quote_literal(secret.secret)}")
+    return params
+
+
+def _build_http_params(secret: SecretConfig) -> list[str]:
+    params = []
+    if secret.bearer_token:
+        params.append(f"BEARER_TOKEN {quote_literal(secret.bearer_token)}")
+    elif secret.header:
+        raise EngineError(
+            f"HTTP secrets with custom headers are not supported in current DuckDB versions. "
+            f"Only BEARER_TOKEN authentication is supported for HTTP secrets."
+        )
+    else:
+        if secret.key_id or secret.secret:
+            raise EngineError(
+                f"HTTP secrets with basic authentication (USERNAME/PASSWORD) are not supported in current DuckDB versions. "
+                f"Only BEARER_TOKEN authentication is supported for HTTP secrets."
+            )
+    return params
+
+
+def _build_postgres_params(secret: SecretConfig) -> list[str]:
+    params = []
+    if secret.connection_string:
+        params.append(
+            f"CONNECTION_STRING {quote_literal(secret.connection_string)}"
+        )
+    else:
+        if secret.host:
+            params.append(f"HOST {quote_literal(secret.host)}")
+        if secret.port:
+            params.append(f"PORT {secret.port}")
+        if secret.database:
+            params.append(f"DATABASE {quote_literal(secret.database)}")
+        user_field = secret.user or secret.key_id
+        if user_field:
+            params.append(f"USER {quote_literal(user_field)}")
+        password_field = secret.password or secret.secret
+        if password_field:
+            params.append(f"PASSWORD {quote_literal(password_field)}")
+    return params
+
+
+def _build_mysql_params(secret: SecretConfig) -> list[str]:
+    params = []
+    if secret.connection_string:
+        params.append(
+            f"CONNECTION_STRING {quote_literal(secret.connection_string)}"
+        )
+    else:
+        if secret.host:
+            params.append(f"HOST {quote_literal(secret.host)}")
+        if secret.port:
+            params.append(f"PORT {secret.port}")
+        if secret.database:
+            params.append(f"DATABASE {quote_literal(secret.database)}")
+        user_field = secret.user or secret.key_id
+        if user_field:
+            params.append(f"USER {quote_literal(user_field)}")
+        password_field = secret.password or secret.secret
+        if password_field:
+            params.append(f"PASSWORD {quote_literal(password_field)}")
+    return params
+
+
 def generate_secret_sql(secret: SecretConfig) -> str:
     """Generate CREATE SECRET statement for a DuckDB secret.
 
@@ -107,131 +227,26 @@ def generate_secret_sql(secret: SecretConfig) -> str:
     Returns:
         SQL CREATE SECRET statement.
     """
-    # Get the secret name
     secret_name = secret.name or secret.type
 
-    # Build the secret type and parameters
     params = [f"TYPE {secret.type.upper()}"]
 
-    # Add provider if not 'config'
     if secret.provider == "credential_chain":
         params.append("PROVIDER credential_chain")
 
-    # Add parameters based on secret type
-    if secret.type == "s3":
-        if secret.provider == "credential_chain":
-            if secret.region:
-                params.append(f"REGION {quote_literal(secret.region)}")
-        else:  # config provider
-            if secret.key_id:
-                params.append(f"KEY_ID {quote_literal(secret.key_id)}")
-            if secret.secret:
-                params.append(f"SECRET {quote_literal(secret.secret)}")
-            if secret.region:
-                params.append(f"REGION {quote_literal(secret.region)}")
-            if secret.endpoint:
-                # Strip protocol if present (DuckDB expects endpoints without http:// or https://)
-                clean_endpoint = secret.endpoint
-                original_endpoint = secret.endpoint
-                if clean_endpoint.startswith(("http://", "https://")):
-                    clean_endpoint = clean_endpoint.split("://", 1)[1]
-                    log_debug(
-                        "Stripped protocol from endpoint",
-                        original=original_endpoint,
-                        cleaned=clean_endpoint,
-                    )
-                params.append(f"ENDPOINT {quote_literal(clean_endpoint)}")
+    type_builders = {
+        "s3": _build_s3_params,
+        "azure": _build_azure_params,
+        "gcs": _build_gcs_params,
+        "http": _build_http_params,
+        "postgres": _build_postgres_params,
+        "mysql": _build_mysql_params,
+    }
 
-    elif secret.type == "azure":
-        if secret.connection_string:
-            params.append(
-                f"CONNECTION_STRING {quote_literal(secret.connection_string)}"
-            )
-        else:
-            if secret.tenant_id:
-                params.append(f"TENANT_ID {quote_literal(secret.tenant_id)}")
-            if secret.client_id:
-                params.append(f"CLIENT_ID {quote_literal(secret.client_id)}")
-            client_secret = secret.client_secret or secret.secret
-            if client_secret:
-                params.append(f"SECRET {quote_literal(client_secret)}")
-            if secret.account_name:
-                params.append(f"ACCOUNT_NAME {quote_literal(secret.account_name)}")
+    builder = type_builders.get(secret.type)
+    if builder is not None:
+        params.extend(builder(secret))
 
-    elif secret.type == "gcs":
-        if secret.service_account_key:
-            params.append(
-                f"SERVICE_ACCOUNT_KEY {quote_literal(secret.service_account_key)}"
-            )
-        elif secret.json_key:
-            params.append(f"JSON_KEY {quote_literal(secret.json_key)}")
-        elif secret.key_id and secret.secret:
-            # Fallback to key_id/secret for basic auth
-            params.append(f"KEY_ID {quote_literal(secret.key_id)}")
-            params.append(f"SECRET {quote_literal(secret.secret)}")
-
-    elif secret.type == "http":
-        if secret.bearer_token:
-            params.append(f"BEARER_TOKEN {quote_literal(secret.bearer_token)}")
-        elif secret.header:
-            # Note: DuckDB HTTP secrets don't support custom headers in current versions
-            # Only BEARER_TOKEN is supported
-            raise EngineError(
-                f"HTTP secrets with custom headers are not supported in current DuckDB versions. "
-                f"Only BEARER_TOKEN authentication is supported for HTTP secrets."
-            )
-        else:
-            # DuckDB HTTP secrets don't support basic auth (USERNAME/PASSWORD)
-            # Only BEARER_TOKEN is supported
-            if secret.key_id or secret.secret:
-                raise EngineError(
-                    f"HTTP secrets with basic authentication (USERNAME/PASSWORD) are not supported in current DuckDB versions. "
-                    f"Only BEARER_TOKEN authentication is supported for HTTP secrets."
-                )
-
-    elif secret.type == "postgres":
-        if secret.connection_string:
-            params.append(
-                f"CONNECTION_STRING {quote_literal(secret.connection_string)}"
-            )
-        else:
-            if secret.host:
-                params.append(f"HOST {quote_literal(secret.host)}")
-            if secret.port:
-                params.append(f"PORT {secret.port}")
-            if secret.database:
-                params.append(f"DATABASE {quote_literal(secret.database)}")
-            # Check both user and key_id (for compatibility)
-            user_field = secret.user or secret.key_id
-            if user_field:
-                params.append(f"USER {quote_literal(user_field)}")
-            # Check both password and secret (for compatibility)
-            password_field = secret.password or secret.secret
-            if password_field:
-                params.append(f"PASSWORD {quote_literal(password_field)}")
-
-    elif secret.type == "mysql":
-        if secret.connection_string:
-            params.append(
-                f"CONNECTION_STRING {quote_literal(secret.connection_string)}"
-            )
-        else:
-            if secret.host:
-                params.append(f"HOST {quote_literal(secret.host)}")
-            if secret.port:
-                params.append(f"PORT {secret.port}")
-            if secret.database:
-                params.append(f"DATABASE {quote_literal(secret.database)}")
-            # Check both user and key_id (for compatibility)
-            user_field = secret.user or secret.key_id
-            if user_field:
-                params.append(f"USER {quote_literal(user_field)}")
-            # Check both password and secret (for compatibility)
-            password_field = secret.password or secret.secret
-            if password_field:
-                params.append(f"PASSWORD {quote_literal(password_field)}")
-
-    # Add options if provided
     if secret.options:
         for key, value in sorted(secret.options.items()):
             if isinstance(value, bool):
@@ -247,13 +262,10 @@ def generate_secret_sql(secret: SecretConfig) -> str:
                 )
             params.append(f"{key.upper()} {rendered}")
 
-    # Build the full SQL statement
     secret_sql = f"CREATE {'PERSISTENT ' if secret.persistent else ''}SECRET {secret_name} ({', '.join(params)})"
 
-    # Note: SCOPE parameter is not supported in current DuckDB versions
-    # Remove scope support until DuckDB adds this functionality
-    # if secret.scope:
-    #     secret_sql += f" SCOPE {quote_literal(secret.scope)}"
+    if secret.scope:
+        secret_sql += f"; SCOPE {quote_literal(secret.scope)}"
 
     return secret_sql
 

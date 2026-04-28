@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import Any, Optional
 
@@ -18,14 +17,10 @@ from .config import (
     ConfigError,
 )
 from .engine import (
-    _apply_duckdb_settings,
-    _create_secrets,
-    _setup_attachments,
-    _setup_iceberg_catalogs,
+    _apply_catalog_state,
     _resolve_db_path,
     _create_views,
 )
-from .sql_utils import quote_ident
 from .sql_generation import generate_view_sql
 from .errors import EngineError
 
@@ -145,9 +140,9 @@ class CatalogConnection:
 
             # Restore all session-specific state
             log_info("Restoring catalog session state")
-            self._restore_session_state()
-            self._restore_secrets()
-            self._restore_attachments()
+            _apply_catalog_state(
+                self.conn, self.config, create_views=False, verbose=False
+            )
             self._update_views()
 
             log_info(
@@ -169,72 +164,6 @@ class CatalogConnection:
             raise EngineError(
                 f"Failed to initialize catalog connection: {exc}"
             ) from exc
-
-    def _restore_session_state(self) -> None:
-        """Apply pragmas, settings, and extensions to the current session."""
-        if not self.conn or not self.config:
-            return
-
-        log_debug("Restoring session state (pragmas, settings, extensions)")
-        try:
-            db_conf = self.config.duckdb
-            if db_conf.install_extensions:
-                log_info("Restoring extensions", count=len(db_conf.install_extensions))
-            if db_conf.pragmas:
-                log_info("Restoring pragmas", count=len(db_conf.pragmas))
-            if db_conf.settings:
-                settings_count = (
-                    len(db_conf.settings) if isinstance(db_conf.settings, list) else 1
-                )
-                log_info("Restoring settings", count=settings_count)
-
-            _apply_duckdb_settings(self.conn, self.config, verbose=False)
-        except Exception as e:
-            log_error("Failed to restore session state", error=str(e))
-            raise EngineError(f"Failed to restore session state: {e}") from e
-
-    def _restore_secrets(self) -> None:
-        """Restore DuckDB secrets based on configuration.
-
-        Recreating secrets ensures the session has access to required credentials.
-        """
-        if not self.conn or not self.config:
-            return
-
-        if self.config.duckdb.secrets:
-            log_info("Restoring DuckDB secrets", count=len(self.config.duckdb.secrets))
-
-        try:
-            _create_secrets(self.conn, self.config, verbose=False)
-        except Exception as e:
-            log_error("Failed to restore secrets", error=str(e))
-            raise EngineError(f"Failed to restore secrets: {e}") from e
-
-    def _restore_attachments(self) -> None:
-        """Restore all database attachments (DuckDB, SQLite, Postgres)."""
-        if not self.conn or not self.config:
-            return
-
-        attachments = self.config.attachments
-        attachment_count = (
-            len(attachments.duckdb)
-            + len(attachments.sqlite)
-            + len(attachments.postgres)
-        )
-        if attachment_count > 0:
-            log_info("Restoring database attachments", count=attachment_count)
-
-        try:
-            _setup_attachments(self.conn, self.config, verbose=False)
-            if self.config.iceberg_catalogs:
-                log_info(
-                    "Restoring Iceberg catalogs",
-                    count=len(self.config.iceberg_catalogs),
-                )
-                _setup_iceberg_catalogs(self.conn, self.config, verbose=False)
-        except Exception as e:
-            log_error("Failed to restore attachments", error=str(e))
-            raise EngineError(f"Failed to restore attachments: {e}") from e
 
     def _update_views(self) -> None:
         """Incremental view creation: only create missing views unless force_rebuild is True."""

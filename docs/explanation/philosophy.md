@@ -65,7 +65,7 @@ Every Duckalog operation produces the same result given the same inputs:
 
 ```bash
 # Run this 100 times - get identical results
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 ```
 
 **This enables:**
@@ -125,7 +125,7 @@ Building reusable data products with version control:
 # Git-based workflow for data products
 git clone data-products.git
 cd products/revenue-analytics
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 ```
 
 #### Compliance and Auditing

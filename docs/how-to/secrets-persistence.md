@@ -264,7 +264,7 @@ cp catalog.yaml catalog.yaml.backup
 # Edit catalog.yaml to add persistent: true to specific secrets
 
 # 3. Rebuild catalog with persistent secrets
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # 4. Verify persistence by restarting and testing
 duckalog serve catalog.yaml
@@ -281,7 +281,7 @@ duckalog execute catalog.yaml "DROP SECRET IF EXISTS secret_name;"
 # Edit catalog.yaml to remove persistent: true or set to false
 
 # 3. Rebuild with temporary secrets
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 ```
 
 ## DuckDB Compatibility
@@ -467,7 +467,7 @@ SELECT * FROM duckdb_secrets() WHERE created_at >= CURRENT_DATE;
 #### Application Logging
 ```bash
 # Enable verbose logging for secret operations
-duckalog build catalog.yaml --log-level DEBUG
+duckalog run catalog.yaml --log-level DEBUG
 
 # Look for secret-related messages
 grep -i "secret" /var/log/duckalog.log

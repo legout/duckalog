@@ -7,7 +7,7 @@ import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import duckdb
 
@@ -91,10 +91,13 @@ class CatalogBuilder:
                 return self._build_with_connection()
 
             self._setup_connection()
-            self._apply_pragmas()
-            self._create_secrets()
-            self._setup_attachments()
-            self._create_views()
+            _apply_catalog_state(
+                self.conn,
+                self.config,
+                create_views=True,
+                duckalog_results=self.duckalog_results or None,
+                verbose=self.verbose,
+            )
             return self._export_if_needed()
         finally:
             self._cleanup()
@@ -172,68 +175,6 @@ class CatalogBuilder:
             raise EngineError(
                 f"Failed to connect to DuckDB at {target_db}: {exc}"
             ) from exc
-
-    def _apply_pragmas(self) -> None:
-        """Apply DuckDB settings, pragmas, and extensions."""
-        if self.conn:
-            _apply_duckdb_settings(self.conn, self.config, self.verbose)
-
-    def _setup_attachments(self) -> None:
-        """Setup all database attachments (DuckDB, SQLite, Postgres)."""
-        if self.conn:
-            _setup_attachments(self.conn, self.config, self.verbose)
-
-            # Setup Duckalog child catalogs that were built during dependency resolution
-            if self.duckalog_results:
-                self._setup_duckalog_attachments()
-
-    def _setup_duckalog_attachments(self) -> None:
-        """Setup built Duckalog attachments on the main connection."""
-        if not self.duckalog_results or not self.conn:
-            return
-
-        log_info("Attaching built Duckalog catalogs", count=len(self.duckalog_results))
-        for duckalog_attachment in self.config.attachments.duckalog:
-            if duckalog_attachment.alias in self.duckalog_results:
-                result = self.duckalog_results[duckalog_attachment.alias]
-                clause = " (READ_ONLY)" if duckalog_attachment.read_only else ""
-                log_info(
-                    "Attaching Duckalog child catalog",
-                    alias=duckalog_attachment.alias,
-                    database_path=result.database_path,
-                    read_only=duckalog_attachment.read_only,
-                )
-                attach_command = (
-                    f"ATTACH DATABASE {quote_literal(result.database_path)} "
-                    f"AS {quote_ident(duckalog_attachment.alias)}{clause}"
-                )
-                log_debug("Executing attach command", command=attach_command)
-                self.conn.execute(attach_command)
-                log_debug("Attach command completed successfully")
-
-                # Verify the attachment actually worked
-                databases = self.conn.execute("PRAGMA database_list").fetchall()
-                attached_aliases = [row[1] for row in databases]
-                if duckalog_attachment.alias not in attached_aliases:
-                    raise EngineError(
-                        f"Failed to attach Duckalog catalog '{duckalog_attachment.alias}'. "
-                        f"Expected alias not found in attached databases: {attached_aliases}"
-                    )
-                log_debug(
-                    "Attachment verified",
-                    alias=duckalog_attachment.alias,
-                    attached_databases=attached_aliases,
-                )
-
-    def _create_secrets(self) -> None:
-        """Create DuckDB secrets from configuration."""
-        if self.conn:
-            _create_secrets(self.conn, self.config, self.verbose)
-
-    def _create_views(self) -> None:
-        """Create all configured views."""
-        if self.conn:
-            _create_views(self.conn, self.config, self.verbose)
 
     def _export_if_needed(self) -> str | None:
         """Handle remote export if needed and return result."""
@@ -493,15 +434,13 @@ class ConfigDependencyGraph:
         # Create child connection and setup
         child_conn = duckdb.connect(target_db)
         try:
-            _apply_duckdb_settings(child_conn, child_config, False)
-            _create_secrets(child_conn, child_config, False)
-            _setup_attachments(child_conn, child_config, False)
-
-            # Setup nested Duckalog attachments that were built during dependency resolution
-            self._setup_nested_attachments(child_conn, child_config, nested_results)
-
-            _setup_iceberg_catalogs(child_conn, child_config, False)
-            _create_views(child_conn, child_config, False)
+            _apply_catalog_state(
+                child_conn,
+                child_config,
+                create_views=True,
+                duckalog_results=nested_results or None,
+                verbose=False,
+            )
         finally:
             child_conn.close()
 
@@ -510,30 +449,6 @@ class ConfigDependencyGraph:
             config_path=config_path,
             was_built=True,
         )
-
-    def _setup_nested_attachments(
-        self,
-        child_conn: duckdb.DuckDBPyConnection,
-        child_config: Config,
-        nested_results: dict[str, BuildResult],
-    ) -> None:
-        """Setup built Duckalog attachments on child connection."""
-        for duckalog_attachment in child_config.attachments.duckalog:
-            if duckalog_attachment.alias in nested_results:
-                nested_result = nested_results[duckalog_attachment.alias]
-
-                clause = " (READ_ONLY)" if duckalog_attachment.read_only else ""
-                log_info(
-                    "Attaching built DuckDB child catalog",
-                    alias=duckalog_attachment.alias,
-                    database_path=nested_result.database_path,
-                    read_only=duckalog_attachment.read_only,
-                )
-                child_conn.execute(
-                    f"ATTACH DATABASE {quote_literal(nested_result.database_path)} "
-                    f"AS {quote_ident(duckalog_attachment.alias)}{clause}"
-                )
-
 
 from .errors import EngineError
 
@@ -582,7 +497,7 @@ def build_catalog(
     Example:
         Build a catalog in-place::
 
-            from duckalog import build_catalog
+            from duckalog.engine import build_catalog
 
             build_catalog("catalog.yaml")
 
@@ -595,17 +510,6 @@ def build_catalog(
             sql = build_catalog("catalog.yaml", dry_run=True)
             print(sql)
     """
-
-    # Deprecation warning
-    import warnings
-
-    warnings.warn(
-        "build_catalog() is deprecated and will be removed in a future version. "
-        "Use the 'run' command or connect_and_build_catalog() function instead "
-        "for incremental updates and smart connection management.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
 
     # Note: Logging verbosity is configured at the CLI or application level,
     # not per-function. The logging configuration should already be set.
@@ -1037,4 +941,41 @@ def _create_views(
         conn.execute(sql)
 
 
-__all__ = ["build_catalog", "CatalogBuilder", "EngineError", "is_remote_export_uri"]
+def _apply_catalog_state(
+    conn: duckdb.DuckDBPyConnection,
+    config: Config,
+    *,
+    create_views: bool,
+    duckalog_results: dict[str, BuildResult] | None = None,
+    verbose: bool = False,
+) -> None:
+    """Apply full catalog state to a DuckDB connection."""
+    _apply_duckdb_settings(conn, config, verbose)
+    _create_secrets(conn, config, verbose)
+    _setup_attachments(conn, config, verbose)
+
+    if duckalog_results:
+        for duckalog_attachment in config.attachments.duckalog:
+            if duckalog_attachment.alias in duckalog_results:
+                result = duckalog_results[duckalog_attachment.alias]
+                clause = " (READ_ONLY)" if duckalog_attachment.read_only else ""
+                log_info(
+                    "Attaching Duckalog child catalog",
+                    alias=duckalog_attachment.alias,
+                    database_path=result.database_path,
+                    read_only=duckalog_attachment.read_only,
+                )
+                attach_command = (
+                    f"ATTACH DATABASE {quote_literal(result.database_path)} "
+                    f"AS {quote_ident(duckalog_attachment.alias)}{clause}"
+                )
+                log_debug("Executing attach command", command=attach_command)
+                conn.execute(attach_command)
+                log_debug("Attach command completed successfully")
+
+    _setup_iceberg_catalogs(conn, config, verbose)
+    if create_views:
+        _create_views(conn, config, verbose)
+
+
+__all__ = ["CatalogBuilder", "EngineError", "is_remote_export_uri"]

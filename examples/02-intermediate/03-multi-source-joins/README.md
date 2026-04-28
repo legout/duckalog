@@ -25,7 +25,7 @@ cd examples/02-intermediate/03-multi-source-joins
 python setup.py
 
 # 3. Build the catalog
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # 4. Query the joined data
 duckalog query "SELECT * FROM enriched_events LIMIT 5"
@@ -40,7 +40,7 @@ Generated 100 users in data/users.parquet
 Generated 100 users in data/reference.duckdb (profiles table)
 Generated 1000 events in data/events.parquet
 
-# After running duckalog build:
+# After running duckalog run:
 [INFO] Catalog built successfully: catalog.duckdb
 
 # After duckalog query:

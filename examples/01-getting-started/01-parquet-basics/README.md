@@ -25,7 +25,7 @@ cd examples/01-getting-started/01-parquet-basics
 python setup.py
 
 # 3. Build the catalog
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # 4. Query the data
 duckalog query "SELECT COUNT(*) FROM users"
@@ -38,7 +38,7 @@ duckalog query "SELECT * FROM users LIMIT 5"
 # After running setup.py:
 Generated 100 users in data/users.parquet
 
-# After running duckalog build:
+# After running duckalog run:
 [INFO] Catalog built successfully: catalog.duckdb
 
 # After duckalog query:

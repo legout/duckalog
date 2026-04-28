@@ -25,7 +25,7 @@ cd examples/02-intermediate/04-semantic-layer
 python setup.py
 
 # 3. Build the catalog
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # 4. Query using semantic models
 duckalog query "SELECT * FROM customer_analytics LIMIT 5"
@@ -39,7 +39,7 @@ duckalog query "SELECT total_revenue, active_customers FROM revenue_summary"
 Generated 100 customers in data/customers.parquet
 Generated 500 sales in data/sales.parquet
 
-# After running duckalog build:
+# After running duckalog run:
 [INFO] Catalog built successfully: catalog.duckdb
 ```
 

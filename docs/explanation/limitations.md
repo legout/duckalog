@@ -259,7 +259,7 @@ duckdb broken.duckdb "PRAGMA database_list"
 duckdb broken.duckdb "PRAGMA integrity_check"
 
 # 3. Rebuild from configuration (most reliable)
-duckalog build catalog.yaml --db-path new_catalog.duckdb
+duckalog run catalog.yaml --db-path new_catalog.duckdb
 
 # 4. Migrate existing data if possible
 duckdb new_catalog.duckdb "ATTACH 'broken.duckdb' AS old; INSERT INTO main.views SELECT * FROM old.views"

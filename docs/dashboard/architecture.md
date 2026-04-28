@@ -334,11 +334,11 @@ ui("config.yaml", host="127.0.0.1", port=8787)
 
 ## Migration from Legacy Dashboard
 
-The previous Starlette-based dashboard has been completely replaced. Key changes:
+The previous ASGI-based dashboard has been completely replaced. Key changes:
 
 | Old | New |
 |-----|-----|
-| Starlette | Litestar |
+| Legacy ASGI framework | Litestar |
 | Custom HTML | htpy |
 | No reactivity | Datastar SSE |
 | No styling | Tailwind CSS |

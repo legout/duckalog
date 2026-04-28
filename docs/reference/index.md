@@ -141,12 +141,12 @@ class CustomResolver(ImportResolver):
 ### High-Level Convenience Functions
 - **`connect_to_catalog`**: Connect to existing DuckDB catalog
 - **`connect_to_catalog_cm`**: Context manager for catalog connections
-- **`connect_and_build_catalog`**: Build and connect in one operation
+- **`connect_to_catalog`**: Build and connect in one operation
 
 ## Command Line Interface
 
 ### Available Commands
-- **`duckalog build`**: Build a DuckDB catalog from a configuration file
+- **`duckalog run`**: Build a DuckDB catalog from a configuration file
 - **`duckalog validate`**: Validate a configuration file
 - **`duckalog generate-sql`**: Generate SQL statements from a configuration file
 - **`duckalog init`**: Initialize new configuration from templates

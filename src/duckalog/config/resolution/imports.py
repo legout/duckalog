@@ -25,6 +25,7 @@ from duckalog.errors import (
     ImportValidationError,
     PathResolutionError,
 )
+from duckalog.remote_config import is_remote_uri as _is_remote_uri
 from .env import _interpolate_env
 from ..validators import (
     log_debug,
@@ -99,24 +100,6 @@ def _normalize_uri(uri: str) -> str:
     query = f"?{parsed.query}" if parsed.query else ""
     fragment = f"#{parsed.fragment}" if parsed.fragment else ""
     return f"{scheme}://{netloc}{path}{query}{fragment}"
-
-
-def _is_remote_uri(path: str) -> bool:
-    try:
-        from duckalog.remote_config import is_remote_uri as check_remote_uri
-
-        return check_remote_uri(path)
-    except ImportError:
-        remote_schemes = [
-            "http://",
-            "https://",
-            "s3://",
-            "gcs://",
-            "az://",
-            "abfs://",
-            "sftp://",
-        ]
-        return any(path.startswith(scheme) for scheme in remote_schemes)
 
 
 def _normalize_path(path: str) -> str:
@@ -378,142 +361,6 @@ def _merge_section_specific_dicts(
         result[section_name] = source_section
 
     return result
-
-
-def _validate_unique_names(config: Any, context: ImportContext) -> None:
-    view_names: dict[tuple[Optional[str], str], int] = {}
-    duplicates = []
-
-    views = config.views if hasattr(config, "views") else config.get("views", [])
-    for view in views:
-        name = view.name if hasattr(view, "name") else view.get("name")
-        db_schema = (
-            view.db_schema if hasattr(view, "db_schema") else view.get("db_schema")
-        )
-        key = (db_schema, name)
-        if key in view_names:
-            schema_part = f"{db_schema}." if db_schema else ""
-            duplicates.append(f"{schema_part}{name}")
-        else:
-            view_names[key] = 1
-
-    if duplicates:
-        raise DuplicateNameError(
-            f"Duplicate view name(s) found: {', '.join(sorted(set(duplicates)))}",
-            name_type="view",
-            duplicate_names=sorted(set(duplicates)),
-        )
-
-    catalog_names: dict[str, int] = {}
-    duplicates = []
-    iceberg_catalogs = (
-        config.iceberg_catalogs
-        if hasattr(config, "iceberg_catalogs")
-        else config.get("iceberg_catalogs", [])
-    )
-    for catalog in iceberg_catalogs:
-        name = catalog.name if hasattr(catalog, "name") else catalog.get("name")
-        if name in catalog_names:
-            duplicates.append(name)
-        else:
-            catalog_names[name] = 1
-
-    if duplicates:
-        raise DuplicateNameError(
-            f"Duplicate Iceberg catalog name(s) found: {', '.join(sorted(set(duplicates)))}",
-            name_type="iceberg_catalog",
-            duplicate_names=sorted(set(duplicates)),
-        )
-
-    semantic_model_names: dict[str, int] = {}
-    duplicates = []
-    semantic_models = (
-        config.semantic_models
-        if hasattr(config, "semantic_models")
-        else config.get("semantic_models", [])
-    )
-    for sm in semantic_models:
-        name = sm.name if hasattr(sm, "name") else sm.get("name")
-        if name in semantic_model_names:
-            duplicates.append(name)
-        else:
-            semantic_model_names[name] = 1
-
-    if duplicates:
-        raise DuplicateNameError(
-            f"Duplicate semantic model name(s) found: {', '.join(sorted(set(duplicates)))}",
-            name_type="semantic_model",
-            duplicate_names=sorted(set(duplicates)),
-        )
-
-    attachment_aliases: dict[str, int] = {}
-    duplicates = []
-    attachments = (
-        config.attachments
-        if hasattr(config, "attachments")
-        else config.get("attachments", {})
-    )
-    if hasattr(attachments, "duckdb"):
-        duckdb_attachments = attachments.duckdb
-        sqlite_attachments = attachments.sqlite
-        postgres_attachments = attachments.postgres
-        duckalog_attachments = attachments.duckalog
-    else:
-        duckdb_attachments = attachments.get("duckdb", [])
-        sqlite_attachments = attachments.get("sqlite", [])
-        postgres_attachments = attachments.get("postgres", [])
-        duckalog_attachments = attachments.get("duckalog", [])
-
-    for attachment in duckdb_attachments:
-        alias = (
-            attachment.alias
-            if hasattr(attachment, "alias")
-            else attachment.get("alias")
-        )
-        if alias in attachment_aliases:
-            duplicates.append(f"duckdb.{alias}")
-        else:
-            attachment_aliases[alias] = 1
-
-    for attachment in sqlite_attachments:
-        alias = (
-            attachment.alias
-            if hasattr(attachment, "alias")
-            else attachment.get("alias")
-        )
-        if alias in attachment_aliases:
-            duplicates.append(f"sqlite.{alias}")
-        else:
-            attachment_aliases[alias] = 1
-
-    for attachment in postgres_attachments:
-        alias = (
-            attachment.alias
-            if hasattr(attachment, "alias")
-            else attachment.get("alias")
-        )
-        if alias in attachment_aliases:
-            duplicates.append(f"postgres.{alias}")
-        else:
-            attachment_aliases[alias] = 1
-
-    for attachment in duckalog_attachments:
-        alias = (
-            attachment.alias
-            if hasattr(attachment, "alias")
-            else attachment.get("alias")
-        )
-        if alias in attachment_aliases:
-            duplicates.append(f"duckalog.{alias}")
-        else:
-            attachment_aliases[alias] = 1
-
-    if duplicates:
-        raise DuplicateNameError(
-            f"Duplicate attachment alias(es) found: {', '.join(sorted(set(duplicates)))}",
-            name_type="attachment",
-            duplicate_names=sorted(set(duplicates)),
-        )
 
 
 def _resolve_and_load_import(
@@ -993,12 +840,6 @@ def _load_config_with_imports(
             import_context.config_cache[resolved_path] = config
             import_context.config_cache[normalized_path] = config
 
-        with (
-            metrics.timer("unique_name_validation", path=resolved_path)
-            if metrics
-            else nullcontext()
-        ):
-            _validate_unique_names(config, import_context)
         if resolve_paths:
             with (
                 metrics.timer("path_resolution", path=resolved_path)

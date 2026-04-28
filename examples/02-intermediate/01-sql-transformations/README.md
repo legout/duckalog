@@ -25,7 +25,7 @@ cd examples/02-intermediate/01-sql-transformations
 python setup.py
 
 # 3. Build the catalog
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # 4. Query the transformed data
 duckalog query "SELECT * FROM daily_metrics LIMIT 5"
@@ -39,7 +39,7 @@ duckalog query "SELECT * FROM user_summary WHERE total_events > 5"
 Generated 100 users in data/users.parquet
 Generated 1000 events in data/events.parquet
 
-# After running duckalog build:
+# After running duckalog run:
 [INFO] Catalog built successfully: catalog.duckdb
 
 # After duckalog query:

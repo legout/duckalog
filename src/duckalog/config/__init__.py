@@ -58,8 +58,8 @@ from .models import (
 # Import errors
 from duckalog.errors import ConfigError
 
-# Import path resolution and validation functions (these can import from models)
-from .validators import (
+# Import path resolution and validation functions from their canonical home
+from .security.path import (
     is_relative_path,
     resolve_relative_path,
     validate_path_security,
@@ -68,6 +68,10 @@ from .validators import (
     is_windows_path_absolute,
     detect_path_type,
     validate_file_accessibility,
+)
+
+# Import logging utilities from validators
+from .validators import (
     log_info,
     log_debug,
     log_warning,
@@ -76,19 +80,9 @@ from .validators import (
 )
 
 # Import internal helper for testing compatibility
-from .api import _load_config_from_local_file, load_config as api_load_config
+from .api import load_config as api_load_config
 
 from typing import Any, Optional
-
-
-def _call_with_monkeypatched_callable(target, *args, **kwargs):
-    """Helper to handle monkeypatched callables with func/return_value attributes."""
-    if hasattr(target, "func") and target.func is not None:
-        return target.func(*args, **kwargs)
-    elif hasattr(target, "return_value") and target.return_value is not None:
-        return target.return_value
-    else:
-        return target(*args, **kwargs)
 
 
 def load_config(
@@ -132,7 +126,6 @@ __all__ = [
     "SQLFileReference",
     # Configuration loading
     "load_config",
-    "_load_config_from_local_file",
     # Path resolution functions
     "is_relative_path",
     "resolve_relative_path",

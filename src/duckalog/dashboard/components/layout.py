@@ -68,23 +68,23 @@ def base_layout(
             script(type="module")[
                 Markup(
                     """
-                    // Initialize build status SSE when page loads
+                    // Initialize run status SSE when page loads
                     if (typeof window !== 'undefined') {
-                        // Connect to build status SSE
-                        const buildStatusElement = document.getElementById('build-status');
-                        if (buildStatusElement) {
-                            // Create EventSource for build status
-                            const eventSource = new EventSource('/build/status');
+                        // Connect to run status SSE
+                        const runStatusElement = document.getElementById('run-status');
+                        if (runStatusElement) {
+                            // Create EventSource for run status
+                            const eventSource = new EventSource('/run/status');
 
                             eventSource.onmessage = (event) => {
                                 try {
                                     const data = JSON.parse(event.data);
-                                    // Update build status indicator color
-                                    const indicator = document.getElementById('build-status-indicator');
-                                    const progressBar = document.getElementById('build-progress-bar');
+                                    // Update run status indicator color
+                                    const indicator = document.getElementById('run-status-indicator');
+                                    const progressBar = document.getElementById('run-progress-bar');
 
                                     if (indicator) {
-                                        if (data.status === 'building') {
+                                        if (data.status === 'running') {
                                             indicator.className = 'w-3 h-3 rounded-full bg-blue-500 animate-pulse';
                                         } else if (data.status === 'complete') {
                                             indicator.className = 'w-3 h-3 rounded-full bg-green-500';
@@ -99,7 +99,7 @@ def base_layout(
                                         progressBar.style.width = data.progress + '%';
                                     }
                                 } catch (e) {
-                                    console.error('Error parsing build status:', e);
+                                    console.error('Error parsing run status:', e);
                                 }
                             };
 

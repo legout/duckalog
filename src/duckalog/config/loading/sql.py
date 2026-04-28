@@ -42,22 +42,7 @@ def process_sql_file_references(
         ConfigError: If SQL file loading fails
     """
     from duckalog.sql_file_loader import SQLFileError
-
-    def _is_remote_uri(uri: str) -> bool:
-        """Check if a URI is a remote URI."""
-        if not uri:
-            return False
-        parsed = urlparse(uri)
-        remote_schemes = [
-            "http://",
-            "https://",
-            "s3://",
-            "gcs://",
-            "az://",
-            "abfs://",
-            "sftp://",
-        ]
-        return any(uri.startswith(scheme) for scheme in remote_schemes)
+    from duckalog.remote_config import is_remote_uri as _is_remote_uri
 
     def _fetch_remote_content(uri: str) -> str:
         """Fetch content from a remote URI."""

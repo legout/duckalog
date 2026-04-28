@@ -301,9 +301,9 @@ For hands-on learning, try these examples:
 ```bash
 cd examples/simple_parquet
 python gen_data.py
-duckalog build catalog.yml
+duckalog run catalog.yml
 
 cd examples/data-integration/multi-source-analytics
 python generate_data.py
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 ```

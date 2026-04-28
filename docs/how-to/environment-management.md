@@ -201,7 +201,7 @@ esac
 CONFIG_FILE="config/${ENVIRONMENT}.yaml"
 echo "Building catalog from: $CONFIG_FILE"
 
-duckalog build "$CONFIG_FILE"
+duckalog run "$CONFIG_FILE"
 
 echo "Deployment to $ENVIRONMENT completed successfully"
 ```
@@ -376,13 +376,13 @@ done
 echo "Checking environment isolation..."
 
 # Check that dev doesn't access prod data
-if duckalog build config/dev.yaml --dry-run | grep -q "prod-data-bucket"; then
+if duckalog run config/dev.yaml --dry-run | grep -q "prod-data-bucket"; then
   echo "❌ Dev configuration accessing production data"
   exit 1
 fi
 
 # Check that prod doesn't use dev settings
-if duckalog build config/prod.yaml --dry-run | grep -q "memory_limit='1GB'"; then
+if duckalog run config/prod.yaml --dry-run | grep -q "memory_limit='1GB'"; then
   echo "❌ Production configuration using development memory"
   exit 1
 fi
@@ -443,7 +443,7 @@ duckdb:
 ```bash
 # Use environment detection
 export ENVIRONMENT=prod
-duckalog build config/auto.yaml
+duckalog run config/auto.yaml
 ```
 
 ### 3. Configuration Templates
@@ -503,7 +503,7 @@ ls -la config/prod.yaml
 pwd
 
 # Use absolute path
-duckalog build /full/path/to/config/prod.yaml
+duckalog run /full/path/to/config/prod.yaml
 ```
 
 ### Permission Issues

@@ -979,6 +979,43 @@ class Config(BaseModel):
             dup_list = ", ".join(sorted(set(duplicates)))
             raise ValueError(f"Duplicate semantic model name(s) found: {dup_list}")
 
+        # Validate attachment alias uniqueness across all four attachment types
+        attachment_aliases: dict[str, str] = {}
+        duplicate_aliases: list[str] = []
+        for attachment in self.attachments.duckdb:
+            if attachment.alias in attachment_aliases:
+                duplicate_aliases.append(
+                    f"{attachment_aliases[attachment.alias]}.{attachment.alias}"
+                )
+            else:
+                attachment_aliases[attachment.alias] = "duckdb"
+        for attachment in self.attachments.sqlite:
+            if attachment.alias in attachment_aliases:
+                duplicate_aliases.append(
+                    f"{attachment_aliases[attachment.alias]}.{attachment.alias}"
+                )
+            else:
+                attachment_aliases[attachment.alias] = "sqlite"
+        for attachment in self.attachments.postgres:
+            if attachment.alias in attachment_aliases:
+                duplicate_aliases.append(
+                    f"{attachment_aliases[attachment.alias]}.{attachment.alias}"
+                )
+            else:
+                attachment_aliases[attachment.alias] = "postgres"
+        for attachment in self.attachments.duckalog:
+            if attachment.alias in attachment_aliases:
+                duplicate_aliases.append(
+                    f"{attachment_aliases[attachment.alias]}.{attachment.alias}"
+                )
+            else:
+                attachment_aliases[attachment.alias] = "duckalog"
+        if duplicate_aliases:
+            dup_list = ", ".join(sorted(set(duplicate_aliases)))
+            raise ValueError(
+                f"Duplicate attachment alias(es) found: {dup_list}"
+            )
+
         # Helper function to resolve view references
         def resolve_view_reference(reference: str) -> tuple[Optional[str], str]:
             """Resolve a view reference to (schema, name) tuple."""

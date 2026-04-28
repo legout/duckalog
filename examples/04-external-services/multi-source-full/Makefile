@@ -6,7 +6,7 @@ up:
 	@echo "Connection: postgresql://duckalog:duckalog@localhost:5432/demo"
 
 build:
-	duckalog build catalog.yaml
+	duckalog run catalog.yaml
 
 setup:
 	python setup.py

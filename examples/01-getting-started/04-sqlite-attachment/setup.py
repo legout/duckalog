@@ -33,7 +33,7 @@ def main():
     print_separator()
     print("Setup complete!")
     print("\nNext steps:")
-    print("  1. Run: duckalog build catalog.yaml")
+    print("  1. Run: duckalog run catalog.yaml")
     print('  2. Run: duckalog query "SELECT COUNT(*) FROM legacy.users"')
     print('  3. Run: duckalog query "SELECT * FROM legacy.sales LIMIT 5"')
 

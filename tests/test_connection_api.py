@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+
 
 import duckdb
 import pytest
 import yaml
 
-from duckalog import ConfigError, EngineError, Config, ViewConfig
+from duckalog import ConfigError, Config, ViewConfig
 from duckalog.python_api import (
     connect_to_catalog,
     connect_to_catalog_cm,
-    connect_and_build_catalog,
 )
 
 
@@ -51,7 +50,7 @@ class TestConnectToCatalog:
     def test_connect_to_existing_catalog(self, sample_config_path: str):
         """Test connecting to an existing catalog database."""
         # First build a catalog to connect to
-        from duckalog import build_catalog
+        from duckalog.engine import build_catalog
 
         build_catalog(sample_config_path)
 
@@ -108,7 +107,7 @@ class TestConnectToCatalog:
             cfg_path = f.name
 
         try:
-            from duckalog import build_catalog
+            from duckalog.engine import build_catalog
 
             build_catalog(cfg_path)
 
@@ -166,7 +165,7 @@ class TestConnectToCatalogCm:
 
     def test_context_manager_automatic_cleanup(self, sample_config_path: str):
         """Test that context manager automatically closes connection."""
-        from duckalog import build_catalog
+        from duckalog.engine import build_catalog
 
         build_catalog(sample_config_path)
 
@@ -187,7 +186,7 @@ class TestConnectToCatalogCm:
 
     def test_context_manager_with_exception(self, sample_config_path: str):
         """Test that context manager closes connection even when exception occurs."""
-        from duckalog import build_catalog
+        from duckalog.engine import build_catalog
 
         build_catalog(sample_config_path)
 
@@ -227,150 +226,13 @@ class TestConnectToCatalogCm:
             Path(tmp_path).unlink(missing_ok=True)
 
 
-class TestConnectAndBuildCatalog:
-    """Test cases for connect_and_build_catalog function."""
-
-    def test_build_and_connect_success(self, sample_config_path: str):
-        """Test successful build and connect operation."""
-        conn = connect_and_build_catalog(sample_config_path)
-
-        assert conn is not None
-        assert isinstance(conn, duckdb.DuckDBPyConnection)
-
-        # Should be able to execute queries
-        result = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
-        assert isinstance(result, list)
-
-        conn.close()
-
-    def test_build_and_connect_with_custom_path(self, sample_config_path: str):
-        """Test build and connect with custom database path."""
-        # Use a path that doesn't exist yet
-        tmp_dir = tempfile.gettempdir()
-        tmp_path = str(Path(tmp_dir) / "test_build_connect.duckdb")
-        if Path(tmp_path).exists():
-            Path(tmp_path).unlink()
-
-        try:
-            conn = connect_and_build_catalog(sample_config_path, database_path=tmp_path)
-
-            assert conn is not None
-            assert isinstance(conn, duckdb.DuckDBPyConnection)
-
-            # Database should exist at custom path
-            assert Path(tmp_path).exists()
-
-            conn.close()
-        finally:
-            Path(tmp_path).unlink(missing_ok=True)
-
-    def test_build_and_connect_dry_run(self, sample_config_path: str):
-        """Test dry run mode returns SQL string instead of connection."""
-        result = connect_and_build_catalog(sample_config_path, dry_run=True)
-
-        assert isinstance(result, str)
-        assert "VIEW" in result  # "CREATE OR REPLACE VIEW" contains "VIEW"
-        # Should not be a connection object
-        assert not hasattr(result, "execute")
-        assert not hasattr(result, "close")
-
-    def test_build_and_connect_read_only(self, sample_config):
-        """Test build and connect in read-only mode with persistent DB."""
-        # Need persistent DB for read-only
-        with tempfile.NamedTemporaryFile(suffix=".duckdb", delete=False) as tmp:
-            db_path = tmp.name
-        Path(db_path).unlink()
-
-        sample_config.duckdb.database = db_path
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            yaml.dump(sample_config.model_dump(), f, default_flow_style=False)
-            cfg_path = f.name
-
-        try:
-            conn = connect_and_build_catalog(cfg_path, read_only=True)
-
-            # Should be a connection object, not a string
-            assert hasattr(conn, "execute")
-            assert hasattr(conn, "close")
-            assert isinstance(conn, duckdb.DuckDBPyConnection)
-
-            # Should be able to read
-            result = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
-            assert isinstance(result, list)
-
-            # Should not be able to write
-            with pytest.raises(duckdb.Error):
-                conn.execute("CREATE TABLE test_table (id INTEGER)")
-
-            conn.close()
-        finally:
-            Path(db_path).unlink(missing_ok=True)
-            Path(cfg_path).unlink(missing_ok=True)
-
-    def test_build_and_connect_with_verbose(self, sample_config_path: str):
-        """Test build and connect with verbose mode."""
-        conn = connect_and_build_catalog(sample_config_path, verbose=True)
-
-        assert conn is not None
-        assert isinstance(conn, duckdb.DuckDBPyConnection)
-        assert hasattr(conn, "execute")
-        assert hasattr(conn, "close")
-
-        conn.close()
-
-    def test_build_and_connect_invalid_config(self):
-        """Test build and connect with invalid config raises ConfigError."""
-        with pytest.raises(ConfigError):
-            connect_and_build_catalog("/nonexistent/config.yaml")
-
-    def test_build_and_connect_build_failure(self):
-        """Test that build failures prevent connection creation."""
-        # Create a config that will fail during build
-        invalid_config = """
-version: 1
-duckdb:
-  database: ":memory:"
-
-views:
-  - name: test_view
-    sql: "INVALID SQL SYNTAX"
-"""
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp:
-            tmp.write(invalid_config)
-            tmp_path = tmp.name
-
-        try:
-            with pytest.raises((EngineError, duckdb.Error)):
-                connect_and_build_catalog(tmp_path)
-        finally:
-            Path(tmp_path).unlink(missing_ok=True)
-
-    def test_build_and_connect_with_kwargs(self, sample_config_path: str):
-        """Test build and connect with additional keyword arguments."""
-        # Test with filesystem kwarg (should be passed to build_catalog)
-        conn = connect_and_build_catalog(
-            sample_config_path,
-            filesystem=None,  # This should be passed through to build_catalog
-        )
-
-        assert conn is not None
-        assert isinstance(conn, duckdb.DuckDBPyConnection)
-
-        conn.close()
-
-
 class TestIntegrationWorkflow:
     """Integration tests for complete user workflows."""
 
     def test_config_to_queries_workflow(self, sample_config_path: str):
         """Test complete workflow from config to executing queries."""
         # Method 1: Build then connect
-        from duckalog import build_catalog
+        from duckalog.engine import build_catalog
 
         build_catalog(sample_config_path)
 
@@ -385,18 +247,6 @@ class TestIntegrationWorkflow:
 
         catalog.close()
 
-    def test_single_function_workflow(self, sample_config_path: str):
-        """Test workflow using single function for build and connect."""
-        conn = connect_and_build_catalog(sample_config_path)
-
-        # Execute queries immediately
-        tables = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
-        assert isinstance(tables, list)
-
-        conn.close()
-
     def test_context_manager_workflow(self, sample_config_path: str):
         """Test workflow using context manager for automatic cleanup."""
         with connect_to_catalog_cm(sample_config_path) as conn:
@@ -410,7 +260,8 @@ class TestIntegrationWorkflow:
     def test_build_and_connect_context_manager_workflow(self, sample_config_path: str):
         """Test workflow combining build and connect with context manager."""
         # Build first, then use context manager
-        connect_and_build_catalog(sample_config_path)
+        from duckalog.engine import build_catalog
+        build_catalog(sample_config_path)
 
         with connect_to_catalog_cm(sample_config_path) as conn:
             tables = conn.execute(

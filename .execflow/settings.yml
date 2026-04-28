@@ -1,0 +1,120 @@
+version: 1
+
+tracker:
+  primary: br
+
+models:
+  plan: &plan_model openai-codex/gpt-5.5, zai/glm-5.1, kimi-coding/kimi-for-coding
+  orchestration: &orchestration_model zai/glm-5-turbo
+  implementation: &implementation_model kimi-coding/kimi-for-coding, zai/glm-5.1, openai-codex/gpt-5.4-mini
+  validation_fix: &validation_fix_model zai/glm-5.1
+  fast: &fast_model zai/glm-5-turbo
+  review1: &review1_model openai-codex/gpt-5.5
+  review2: &review2_model zai/glm-5.1
+  review3: &review3_model openai-codex/gpt-5.4-mini
+  review4: &review4_model minimax/MiniMax-M2.7
+
+thinking:
+  plan: &plan_thinking high
+  orchestration: &orchestration_thinking medium
+  implementation: &implementation_thinking medium
+  validation_fix: &validation_fix_thinking medium
+  fast: &fast_thinking low
+  review1: &review1_thinking medium
+  review2: &review2_thinking high
+  review3: &review3_thinking high
+  review4: &review4_thinking medium
+
+prompts:
+  # Plan prompts
+  architect:
+    model: *plan_model
+    thinking: *plan_thinking
+  brainstorm:
+    model: *plan_model
+    thinking: *plan_thinking
+  create-issues:
+    model: *plan_model
+    thinking: *plan_thinking
+  create-tickets:
+    model: *plan_model
+    thinking: *plan_thinking
+  create-work-items:
+    model: *plan_model
+    thinking: *plan_thinking
+  impl-plan:
+    model: *implementation_model
+    thinking: *review1_thinking
+  plan-create:
+    model: *plan_model
+    thinking: *plan_thinking
+  plan-improve:
+    model: *plan_model
+    thinking: *plan_thinking
+  spec:
+    model: *implementation_model
+    thinking: *review1_thinking
+
+  # Orchestration prompts
+  finalize:
+    model: *orchestration_model
+    thinking: *orchestration_thinking
+  init-execflow:
+    model: *orchestration_model
+    thinking: *orchestration_thinking
+  update-architecture:
+    model: *orchestration_model
+    thinking: *orchestration_thinking
+
+  # Implementation prompts
+  exec-worker-implement:
+    model: *implementation_model
+    thinking: *implementation_thinking
+  exec-worker-validation-fix:
+    model: *validation_fix_model
+    thinking: *validation_fix_thinking
+  implement:
+    model: *implementation_model
+    thinking: *implementation_thinking
+
+  # Validation prompts
+  derive-tests:
+    model: *validation_fix_model
+    thinking: *validation_fix_thinking
+  fix:
+    model: *validation_fix_model
+    thinking: *validation_fix_thinking
+  validation-fix:
+    model: *validation_fix_model
+    thinking: *validation_fix_thinking
+  validate:
+    model: *validation_fix_model
+    thinking: *validation_fix_thinking
+
+  # Fast prompts
+  merge-summary:
+    model: *fast_model
+    thinking: *fast_thinking
+  resolve:
+    model: *fast_model
+    thinking: *fast_thinking
+
+  # Review prompts
+  review-consolidate:
+    model: *review1_model
+    thinking: *review1_thinking
+  review-followups:
+    model: *orchestration_model
+    thinking: *orchestration_thinking
+  review-spec:
+    model: *review1_model
+    thinking: *review1_thinking
+  review-regression:
+    model: *review2_model
+    thinking: *review2_thinking
+  review-tests:
+    model: *review3_model
+    thinking: *review3_thinking
+  review-maintainability:
+    model: *review4_model
+    thinking: *review4_thinking

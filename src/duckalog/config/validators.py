@@ -1,7 +1,8 @@
 """Validation and path resolution utilities for configuration processing.
 
-This module contains complex validation helper functions and path resolution logic
-used throughout the configuration system.
+This module owns config-level path rewriting (resolving relative paths in views
+and attachments) and redacted logging.  Path-security primitives live in
+``duckalog.config.security.path`` and should be imported directly from there.
 """
 
 import os
@@ -14,14 +15,13 @@ from duckalog.errors import ConfigError, PathResolutionError
 from duckalog.config.security.path import (
     DefaultPathResolver,
     DefaultPathValidator,
-    detect_path_type as _detect_path_type_core,
-    is_relative_path as _is_relative_path_core,
-    is_windows_path_absolute as _is_windows_path_absolute_core,
-    is_within_allowed_roots as _is_within_allowed_roots_core,
-    normalize_path_for_sql as _normalize_path_for_sql_core,
-    resolve_relative_path as _resolve_relative_path_core,
-    validate_file_accessibility as _validate_file_accessibility_core,
-    validate_path_security as _validate_path_security_core,
+    detect_path_type,
+    is_relative_path,
+    is_within_allowed_roots,
+    normalize_path_for_sql,
+    resolve_relative_path,
+    validate_file_accessibility,
+    validate_path_security,
 )
 
 
@@ -99,13 +99,8 @@ def log_error(message: str, **details: Any) -> None:
     _log(40, message, **details)
 
 
-# Dependency-injected path helpers
+# Internal path resolver for config-level path rewriting
 _path_resolver = DefaultPathResolver(log_debug=log_debug)
-_path_validator = DefaultPathValidator(
-    path_resolver=_path_resolver, log_debug=log_debug
-)
-
-# Path resolution and validation functions
 
 
 def _resolve_path_core(path: str, base_dir: Path, check_exists: bool = False) -> Path:
@@ -123,53 +118,6 @@ def _resolve_path_core(path: str, base_dir: Path, check_exists: bool = False) ->
         ValueError: If path resolution fails
     """
     return _path_resolver._resolve_path_core(path, base_dir, check_exists=check_exists)
-
-
-def is_relative_path(path: str) -> bool:
-    """Detect if a path is relative based on platform-specific rules."""
-    return _is_relative_path_core(path)
-
-
-def resolve_relative_path(path: str, config_dir: Path) -> str:
-    """Resolve a relative path to an absolute path relative to config directory."""
-    return _resolve_relative_path_core(path, config_dir, log_debug=log_debug)
-
-
-def validate_path_security(
-    path: str, config_dir: Path, allowed_roots: Optional[list[Path]] = None
-) -> bool:
-    """Validate that resolved paths don't violate security boundaries."""
-    return _validate_path_security_core(
-        path,
-        config_dir,
-        allowed_roots=allowed_roots,
-        log_debug=log_debug,
-    )
-
-
-def normalize_path_for_sql(path: str) -> str:
-    """Normalize a path for use in SQL statements."""
-    return _normalize_path_for_sql_core(path)
-
-
-def is_within_allowed_roots(candidate_path: str, allowed_roots: list[Path]) -> bool:
-    """Check if a resolved path is within any of the allowed root directories."""
-    return _is_within_allowed_roots_core(candidate_path, allowed_roots)
-
-
-def is_windows_path_absolute(path: str) -> bool:
-    """Check Windows-specific absolute path patterns."""
-    return _is_windows_path_absolute_core(path)
-
-
-def detect_path_type(path: str) -> str:
-    """Detect the type of path for categorization."""
-    return _detect_path_type_core(path)
-
-
-def validate_file_accessibility(path: str) -> tuple[bool, Optional[str]]:
-    """Validate that a file path is accessible."""
-    return _validate_file_accessibility_core(path)
 
 
 def _resolve_paths_in_config(config, config_path: Path):

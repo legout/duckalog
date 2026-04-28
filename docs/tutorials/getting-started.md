@@ -14,19 +14,13 @@ After completing this tutorial, you will be able to:
 - **Use config imports** - Organize configuration for maintainability
 - **Build and query catalogs** - End-to-end workflow with new primary workflow
 
-## New: Understanding the `duckalog run` Workflow
+## Understanding the `duckalog run` Workflow
 
-This tutorial uses the new `duckalog run` command, which replaces the old `build` + `query` workflow with intelligent connection management.
-
-### Why the New Workflow?
+The `duckalog run` command is the primary way to build and interact with catalogs. It handles config loading, view creation, and querying in a single step with intelligent connection management.
 
 ```bash
-# OLD WORKFLOW (deprecated but still works):
-duckalog build config.yaml     # Build catalog
-duckalog query "SELECT..."      # Query separately
-
-# NEW WORKFLOW (recommended):
-duckalog run config.yaml --query "SELECT..."    # Single command
+# Build and query in one command
+duckalog run config.yaml --query "SELECT..."    # Single query
 duckalog run config.yaml --interactive          # Interactive shell
 ```
 
@@ -38,7 +32,7 @@ duckalog run config.yaml --interactive          # Interactive shell
 - **Connection Reuse**: Intelligent connection pooling and management
 - **Lazy Loading**: Database connections established only when needed
 
-All examples in this tutorial use the new workflow, with notes about the old workflow for reference.
+All examples in this tutorial use the `duckalog run` workflow.
 
 ## Prerequisites
 
@@ -121,9 +115,9 @@ views:
     description: "User data from sample dataset"
 ```
 
-### 1.3 Build and Test with New Workflow
+### 1.3 Build and Test
 
-Build your first catalog and verify it works using the new `run` command:
+Build your first catalog and verify it works using the `run` command:
 
 ```bash
 # NEW: Build and connect in one command
@@ -138,8 +132,7 @@ exit
 # OR: Direct query mode
 duckalog run step1_basic.yaml --query "SELECT * FROM users LIMIT 5"
 
-# OLD: Two-step workflow (still works but deprecated)
-duckalog build step1_basic.yaml
+duckalog run step1_basic.yaml
 duckdb tutorial.duckdb -c "
 SHOW TABLES;
 SELECT * FROM users LIMIT 5;
@@ -163,8 +156,8 @@ Let's break down what the new `run` command did:
 5. **Session Management**: Stored session state (pragmas, settings) for future connections
 6. **Validated**: Ensured view was created successfully and connection is ready
 
-**Key Benefits of New Workflow:**
-- **Single Command**: No need to run separate build and query commands
+**Key Benefits:**
+- **Single Command**: Build and query in one step
 - **Session State**: Pragmas and settings are automatically restored on reconnection
 - **Incremental Updates**: Only missing views are created for faster subsequent runs
 - **Connection Reuse**: Database connections are managed efficiently
@@ -249,8 +242,7 @@ duckalog run step2_env_vars.yaml --verbose --query "SELECT * FROM users LIMIT 3"
 duckalog run step2_env_vars.yaml --interactive
 # In shell: SHOW TABLES; SELECT * FROM users LIMIT 3; exit
 
-# OLD: Two-step workflow (still works)
-duckalog build step2_env_vars.yaml --verbose
+duckalog run step2_env_vars.yaml --verbose
 duckdb tutorial.duckdb -c "
 SHOW TABLES;
 SELECT * FROM users LIMIT 3;
@@ -420,8 +412,7 @@ duckalog run step3_transformations.yaml --interactive
 # SELECT * FROM user_registrations_by_month;
 # SELECT COUNT(*) as total_users, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_users FROM users;
 
-# OLD: Two-step workflow (still works)
-duckalog build step3_transformations.yaml
+duckalog run step3_transformations.yaml
 duckdb tutorial.duckdb -c "
 SELECT * FROM active_users;
 SELECT * FROM user_registrations_by_month;
@@ -498,7 +489,7 @@ views:
 
 ```bash
 # Build with joins
-duckalog build step3_joins.yaml
+duckalog run step3_joins.yaml
 
 # Test the joined views
 duckdb tutorial.duckdb -c "
@@ -646,8 +637,7 @@ duckalog run step4_modular.yaml --interactive
 duckalog run step4_modular.yaml --query "SELECT COUNT(*) FROM users"
 duckalog run step4_modular.yaml --query "SELECT COUNT(*) FROM orders"
 
-# OLD: Two-step workflow (still works)
-duckalog build step4_modular.yaml
+duckalog run step4_modular.yaml
 duckdb tutorial.duckdb -c "SHOW TABLES; SELECT * FROM users LIMIT 3;"
 ```
 
@@ -825,15 +815,14 @@ views:
 
 **Solution**: Test SQL in interactive mode first:
 ```bash
-# Test SQL interactively with new workflow
+# Test SQL interactively
 duckalog run step3_transformations.yaml --interactive
 # Then test your SQL in the shell
 
-# OLD: Test SQL manually (still works)
 duckdb tutorial.duckdb -c "YOUR SQL HERE"
 ```
 
-#### Connection Issues with New Workflow
+#### Connection Issues
 **Issue**: Connection failures or session not restored
 
 **Solution**: Use verbose logging to diagnose:

@@ -115,26 +115,25 @@ export AWS_SECRET_ACCESS_KEY="your_aws_secret"
 export ICEBERG_TOKEN="your_iceberg_token"
 ```
 
-### Step 3: Validate and run your catalog (New Workflow)
+### Step 3: Validate and run your catalog
 
-With the new workflow, you can validate and use your catalog in a single command:
+Validate and use your catalog in a single command:
 
 ```bash
 # Validate first (optional but recommended)
 duckalog validate analytics_catalog.yaml
 
-# NEW: Single command to build and query
+# Build and query in a single command
 duckalog run analytics_catalog.yaml --query "SELECT * FROM daily_metrics ORDER BY event_date DESC LIMIT 10"
 
-# OR: Start interactive session
+# Or start an interactive session
 duckalog run analytics_catalog.yaml --interactive
 # In the interactive shell, you can run:
 # SELECT * FROM daily_metrics ORDER BY event_date DESC LIMIT 10;
 # SHOW TABLES;
 # DESCRIBE enhanced_events;
 
-# OLD: Two-step workflow (still works)
-duckalog build analytics_catalog.yaml
+# Connect to the database and query directly
 duckdb analytics.duckdb -c "SELECT * FROM daily_metrics ORDER BY event_date DESC LIMIT 10"
 ```
 
@@ -230,14 +229,14 @@ pip install duckalog[remote]   # With remote configuration support
 
 # Core CLI commands
 duckalog init                  # Create starter configuration
-duckalog build catalog.yaml    # Build DuckDB catalog
+duckalog run catalog.yaml    # Build DuckDB catalog
 duckalog validate catalog.yaml # Check configuration syntax
 duckalog ui catalog.yaml       # Launch web dashboard
 
 # Remote configuration examples
-duckalog build s3://bucket/config.yaml          # S3 configuration
-duckalog build github://user/repo/config.yaml   # GitHub repository
-duckalog build gs://bucket/config.yaml          # Google Cloud Storage
+duckalog run s3://bucket/config.yaml          # S3 configuration
+duckalog run github://user/repo/config.yaml   # GitHub repository
+duckalog run gs://bucket/config.yaml          # Google Cloud Storage
 ```
 
 ```python

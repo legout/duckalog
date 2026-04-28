@@ -185,7 +185,7 @@ duckalog validate settings-example.yaml
 ### 4. Build Catalog
 
 ```bash
-duckalog build settings-example.yaml
+duckalog run settings-example.yaml
 ```
 
 ### 5. Verify Settings Applied

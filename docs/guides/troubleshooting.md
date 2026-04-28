@@ -19,7 +19,7 @@ This guide helps you diagnose and resolve common issues when working with Duckal
 ls -la catalog.yaml
 
 # Use absolute path
-duckalog build /full/path/to/catalog.yaml
+duckalog run /full/path/to/catalog.yaml
 
 # Check current working directory
 pwd
@@ -355,7 +355,7 @@ duckdb catalog.duckdb
 # Then paste SQL to test
 
 # Validate with dry run
-duckalog build catalog.yaml --dry-run
+duckalog run catalog.yaml --dry-run
 ```
 
 **Common SQL Issues:**
@@ -436,11 +436,11 @@ export AWS_DEFAULT_REGION=us-east-1
 curl -I https://example.com/config.yaml
 
 # Increase timeout
-duckalog build https://example.com/config.yaml --timeout 120
+duckalog run https://example.com/config.yaml --timeout 120
 
 # Use local copy for development
 curl -o local-config.yaml https://example.com/config.yaml
-duckalog build local-config.yaml
+duckalog run local-config.yaml
 ```
 
 ## Performance Issues
@@ -487,11 +487,11 @@ views:
 
 ```bash
 # Enable verbose output
-duckalog build catalog.yaml --verbose
+duckalog run catalog.yaml --verbose
 
 # Enable debug logging
 export DUCKALOG_LOG_LEVEL=DEBUG
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 ```
 
 ### Use Diagnostic Commands
@@ -507,7 +507,7 @@ duckalog show-imports catalog.yaml --diagnostics
 duckalog generate-sql catalog.yaml --output debug.sql
 
 # Test with dry run
-duckalog build catalog.yaml --dry-run
+duckalog run catalog.yaml --dry-run
 ```
 
 ### Isolate Problems
@@ -524,7 +524,7 @@ views:
 EOF
 
 # Test minimal case
-duckalog build minimal.yaml
+duckalog run minimal.yaml
 
 # Gradually add complexity
 # Then add your views one by one

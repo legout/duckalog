@@ -192,7 +192,7 @@ sequenceDiagram
     participant Remote
     participant Filesystem
     
-    User->>CLI: duckalog build s3://bucket/config.yaml
+    User->>CLI: duckalog run s3://bucket/config.yaml
     CLI->>Config: load_config(uri, filesystem)
     Config->>Remote: is_remote_uri(path)
     Remote-->>Config: True
@@ -449,7 +449,7 @@ sequenceDiagram
     participant DuckDB
     participant External
     
-    User->>CLI: duckalog build config.yaml
+    User->>CLI: duckalog run config.yaml
     CLI->>ConfigPkg: load_config() with filesystem
     ConfigPkg->>External: Read file (local/remote)
     ConfigPkg->>External: Environment variables
@@ -586,7 +586,7 @@ sequenceDiagram
     participant Remote
     participant Filesystem
     
-    User->>CLI: duckalog build s3://bucket/config.yaml
+    User->>CLI: duckalog run s3://bucket/config.yaml
     CLI->>Config: load_config(uri, filesystem)
     Config->>Remote: is_remote_uri(path)
     Remote-->>Config: True

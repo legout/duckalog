@@ -28,10 +28,10 @@ views:
     uri: "s3://my-bucket/data/users/*.parquet"
 ```
 
-### 2. Build and query with new workflow
+### 2. Build and query
 
 ```bash
-# NEW: Single command to build and query
+# Build and query in a single command
 duckalog run catalog.yaml --query "SELECT COUNT(*) FROM users"
 
 # Interactive exploration
@@ -41,11 +41,6 @@ duckalog run catalog.yaml --interactive
 # Quick data samples
 duckalog run catalog.yaml --query "SELECT * FROM users LIMIT 5"
 duckalog run catalog.yaml --query "SELECT name, email FROM users WHERE active = true"
-
-# OLD: Two-step workflow (still works)
-duckalog build catalog.yaml
-duckalog query "SELECT COUNT(*) FROM users"
-duckalog query "SELECT * FROM users LIMIT 5"
 ```
 
 ### 3. Python API Usage

@@ -1,6 +1,6 @@
 # Duckalog Dashboard
 
-The dashboard is a lightweight, reactive web UI for exploring and managing Duckalog catalogs. It is built entirely in Python using **Datastar** and **Starlette**—no frontend build tools or external CDNs are required.
+The dashboard is a lightweight, reactive web UI for exploring and managing Duckalog catalogs. It is built entirely in Python using **Datastar** and **Litestar**—no frontend build tools or external CDNs are required.
 
 ## Installation Requirements
 
@@ -12,7 +12,7 @@ pip install duckalog[ui]
 
 This includes:
 - **Datastar Python SDK** (`datastar-python>=0.1.0`): Reactive web framework
-- **Starlette** (`starlette>=0.27.0`): ASGI web framework  
+- **Litestar** (`litestar>=2.0.0`): ASGI web framework  
 - **Uvicorn** (`uvicorn[standard]>=0.20.0`): ASGI server
 - **CORS middleware**: Security-focused web access control
 
@@ -134,3 +134,4 @@ The dashboard includes several runtime hardening features:
 - Admin token required for production deployments
 - CLI credentials visible in process list (use environment variables for production)
 - Designed for trusted environments; not a multi-tenant SaaS platform
+m

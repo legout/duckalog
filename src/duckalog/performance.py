@@ -94,25 +94,6 @@ class BenchmarkResult:
             self.avg_time = self.total_time / self.iterations
 
 
-class PerformanceTracker:
-    """Global tracker for performance metrics (optional singleton)."""
-
-    _instance: Optional[PerformanceTracker] = None
-    history: List[BenchmarkResult] = []
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(PerformanceTracker, cls).__new__(cls)
-            cls._instance.history = []
-        return cls._instance
-
-    def add_result(self, result: BenchmarkResult):
-        self.history.append(result)
-
-    def get_history(self) -> List[BenchmarkResult]:
-        return self.history
-
-
 class RegressionDetector:
     """Detects performance regressions compared to historical data."""
 
@@ -156,68 +137,3 @@ class RegressionDetector:
                     )
 
         return regressions
-
-
-class PerformanceReporter:
-    """Generates reports from performance metrics."""
-
-    @staticmethod
-    def generate_text_report(result: BenchmarkResult) -> str:
-        """Generate a text report for a benchmark result."""
-        lines = [
-            f"Benchmark: {result.name}",
-            f"Iterations: {result.iterations}",
-            f"Total Time: {result.total_time:.4f}s",
-            f"Average Time: {result.avg_time:.4f}s",
-            "",
-            "Detailed Breakdown:",
-            f"{'Operation':<25} | {'Avg Time':<10} | {'Total Time':<10} | {'Count':<6}",
-            "-" * 60,
-        ]
-
-        # Sort metrics by total duration
-        sorted_metrics = sorted(
-            result.metrics_summary.items(),
-            key=lambda x: x[1]["total_duration"],
-            reverse=True,
-        )
-
-        for name, stats in sorted_metrics:
-            lines.append(
-                f"{name:<25} | {stats['avg']:<10.4f} | {stats['total_duration']:<10.4f} | {int(stats['count']):<6}"
-            )
-
-        return "\n".join(lines)
-
-    @staticmethod
-    def generate_markdown_report(results: List[BenchmarkResult]) -> str:
-        """Generate a markdown report for multiple benchmark results."""
-        lines = ["# Performance Benchmark Report", ""]
-
-        for result in results:
-            lines.extend(
-                [
-                    f"## {result.name}",
-                    "",
-                    f"- **Average Time**: {result.avg_time:.4f}s",
-                    f"- **Iterations**: {result.iterations}",
-                    "",
-                    "| Operation | Avg Duration | Total Duration | Count |",
-                    "| :--- | :--- | :--- | :--- |",
-                ]
-            )
-
-            # Sort metrics by total duration
-            sorted_metrics = sorted(
-                result.metrics_summary.items(),
-                key=lambda x: x[1]["total_duration"],
-                reverse=True,
-            )
-
-            for name, stats in sorted_metrics:
-                lines.append(
-                    f"| {name} | {stats['avg']:.4f}s | {stats['total_duration']:.4f}s | {int(stats['count'])} |"
-                )
-            lines.append("")
-
-        return "\n".join(lines)

@@ -90,7 +90,7 @@ The CLI automatically enables path resolution:
 
 ```bash
 # Path resolution enabled by default
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # Generate SQL with path resolution
 duckalog generate-sql catalog.yaml

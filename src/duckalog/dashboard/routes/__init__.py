@@ -2,6 +2,6 @@
 
 from .home import HomeController
 from .views import ViewsController
-from .query import QueryController, BuildController
+from .query import QueryController, RunController
 
-__all__ = ["HomeController", "ViewsController", "QueryController", "BuildController"]
+__all__ = ["HomeController", "ViewsController", "QueryController", "RunController"]

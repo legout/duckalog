@@ -9,8 +9,9 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from duckalog import EngineError, build_catalog
-from tests.test_engine_cli import _write_config
+from duckalog import EngineError
+from duckalog.engine import build_catalog
+from test_engine_cli import _write_config
 
 
 def test_simple_hierarchical_build(tmp_path):

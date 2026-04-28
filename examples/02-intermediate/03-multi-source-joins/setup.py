@@ -61,7 +61,7 @@ def main():
     print_separator()
     print("Setup complete!")
     print("\nNext steps:")
-    print("  1. Run: duckalog build catalog.yaml")
+    print("  1. Run: duckalog run catalog.yaml")
     print('  2. Run: duckalog query "SELECT * FROM enriched_events LIMIT 5"')
     print("  2. Run: duckalog query \"SELECT * FROM enriched_events LIMIT 5\"")
 

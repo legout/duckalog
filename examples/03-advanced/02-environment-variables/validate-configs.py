@@ -417,7 +417,7 @@ def main():
     if success:
         print("\n🎉 All validations completed successfully!")
         print("\n💡 Next steps:")
-        print("  - Build development catalog: duckalog build catalog-dev.yaml")
+        print("  - Build development catalog: duckalog run catalog-dev.yaml")
         print("  - Test with production values when ready")
         print("  - Review security recommendations above")
     else:

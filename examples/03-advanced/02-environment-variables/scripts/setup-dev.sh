@@ -61,7 +61,7 @@ python validate-configs.py dev
 
 # Build development catalog
 echo "🏗️  Building development catalog..."
-duckalog build catalog-dev.yaml
+duckalog run catalog-dev.yaml
 
 echo ""
 echo "🎉 Development environment setup complete!"

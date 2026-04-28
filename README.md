@@ -43,10 +43,10 @@ pip install duckalog[ui]
 
 The `duckalog[ui]` extra includes these core dependencies:
 
-- **Starlette** (`starlette>=0.27.0`): ASGI web framework
+- **Litestar** (`litestar>=2.0.0`): ASGI web framework
 - **Datastar Python SDK** (`datastar-python>=0.1.0`): Reactive web framework
 - **Uvicorn** (`uvicorn[standard]>=0.20.0`): ASGI server
-- **Background task support**: Built-in Starlette background tasks
+- **Background task support**: Built-in background task support
 - **CORS middleware**: Security-focused web access control
 
 #### **Datastar Runtime Requirements**
@@ -199,8 +199,8 @@ views:
     description: "User data from ${env:ENVIRONMENT:development} environment"
 EOF
 
-# Build automatically loads .env variables (no manual setup required!)
-duckalog build catalog.yaml --verbose
+# Run automatically loads .env variables (no manual setup required!)
+duckalog run catalog.yaml --verbose
 ```
 
 **Key features:**
@@ -236,7 +236,7 @@ The generated config includes:
 ### 3. Build the catalog via CLI
 
 ```bash
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 ```
 
 This will:
@@ -261,21 +261,21 @@ Export built DuckDB catalogs directly to cloud storage:
 
 ```bash
 # Export to Amazon S3
-duckalog build catalog.yaml --db-path s3://my-bucket/catalogs/analytics.duckdb
+duckalog run catalog.yaml --db-path s3://my-bucket/catalogs/analytics.duckdb
 
 # Export to Google Cloud Storage
-duckalog build catalog.yaml --db-path gs://my-project-bucket/catalogs/analytics.duckdb
+duckalog run catalog.yaml --db-path gs://my-project-bucket/catalogs/analytics.duckdb
 
 # Export to Azure Blob Storage
-duckalog build catalog.yaml --db-path abfs://account@container/catalogs/analytics.duckdb \
+duckalog run catalog.yaml --db-path abfs://account@container/catalogs/analytics.duckdb \
   --azure-connection-string "DefaultEndpointsProtocol=https;AccountName=..."
 
 # Export to SFTP server
-duckalog build catalog.yaml --db-path sftp://server/path/catalogs/analytics.duckdb \
+duckalog run catalog.yaml --db-path sftp://server/path/catalogs/analytics.duckdb \
   --sftp-host server.com --sftp-key-file ~/.ssh/id_rsa
 
 # Export with custom authentication
-duckalog build catalog.yaml --db-path s3://secure-bucket/catalogs/analytics.duckdb \
+duckalog run catalog.yaml --db-path s3://secure-bucket/catalogs/analytics.duckdb \
   --fs-key AKIAIOSFODNN7EXAMPLE \
   --fs-secret wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 ```
@@ -286,18 +286,18 @@ Remote export uses the same authentication patterns as remote configuration load
 
 ```bash
 # AWS profiles (recommended)
-duckalog build catalog.yaml --db-path s3://bucket/catalog.duckdb --aws-profile production
+duckalog run catalog.yaml --db-path s3://bucket/catalog.duckdb --aws-profile production
 
 # Google Cloud service accounts
-duckalog build catalog.yaml --db-path gs://bucket/catalog.duckdb \
+duckalog run catalog.yaml --db-path gs://bucket/catalog.duckdb \
   --gcs-credentials-file /path/to/service-account.json
 
 # Azure managed identities or connection strings
-duckalog build catalog.yaml --db-path abfs://account@container/catalog.duckdb \
+duckalog run catalog.yaml --db-path abfs://account@container/catalog.duckdb \
   --azure-connection-string "DefaultEndpointsProtocol=https;..."
 
 # SFTP with SSH keys
-duckalog build catalog.yaml --db-path sftp://server/path/catalog.duckdb \
+duckalog run catalog.yaml --db-path sftp://server/path/catalog.duckdb \
   --sftp-host server.com --sftp-key-file ~/.ssh/id_rsa
 ```
 
@@ -316,7 +316,7 @@ connecting to DuckDB.
 # Try multi-source analytics
 cd examples/data-integration/multi-source-analytics
 python data/generate.py
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # Try environment variables security
 cd examples/production-operations/environment-variables-security
@@ -326,7 +326,7 @@ python validate-configs.py dev
 # Try DuckDB performance tuning
 cd examples/production-operations/duckdb-performance-settings
 python generate-datasets.py --size small
-duckalog build catalog-limited.yaml
+duckalog run catalog-limited.yaml
 ```
 
 ### 7. Use Remote Configuration
@@ -335,7 +335,7 @@ Duckalog supports loading configuration files directly from remote storage syste
 
 ```bash
 # Load config from S3
-duckalog build s3://my-bucket/configs/catalog.yaml
+duckalog run s3://my-bucket/configs/catalog.yaml
 
 # Load config from Google Cloud Storage
 duckalog validate gs://my-project/configs/catalog.yaml
@@ -344,7 +344,7 @@ duckalog validate gs://my-project/configs/catalog.yaml
 duckalog generate-sql abfs://my-account@my-container/configs/catalog.yaml
 
 # Load config from HTTPS URL
-duckalog build https://raw.githubusercontent.com/user/repo/main/catalog.yaml
+duckalog run https://raw.githubusercontent.com/user/repo/main/catalog.yaml
 
 # Load config from SFTP server
 duckalog validate sftp://user@server/path/configs/catalog.yaml
@@ -420,13 +420,13 @@ config = load_config("gs://my-bucket/config.yaml", filesystem=fs)
 
 ```bash
 # S3 with direct credentials
-duckalog build s3://bucket/config.yaml \
+duckalog run s3://bucket/config.yaml \
   --fs-key AKIAIOSFODNN7EXAMPLE \
   --fs-secret wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
   --fs-timeout 60
 
 # S3 with AWS profile (recommended for production)
-duckalog build s3://bucket/config.yaml \
+duckalog run s3://bucket/config.yaml \
   --aws-profile myprofile
 
 # GitHub with personal access token
@@ -438,18 +438,18 @@ duckalog generate-sql abfs://account@container/config.yaml \
   --azure-connection-string "DefaultEndpointsProtocol=https;AccountName=account;AccountKey=key"
 
 # Azure with account key authentication
-duckalog build abfs://account@container/config.yaml \
+duckalog run abfs://account@container/config.yaml \
   --fs-key myaccountname \
   --fs-secret myaccountkey
 
 # SFTP with SSH key file
-duckalog build sftp://user@server/path/config.yaml \
+duckalog run sftp://user@server/path/config.yaml \
   --sftp-host sftp.example.com \
   --sftp-key-file ~/.ssh/id_rsa \
   --sftp-port 22
 
 # SFTP with password authentication
-duckalog build sftp://user@server/path/config.yaml \
+duckalog run sftp://user@server/path/config.yaml \
   --sftp-host sftp.example.com \
   --fs-key username \
   --fs-secret password
@@ -459,11 +459,11 @@ duckalog validate gs://my-project/config.yaml \
   --gcs-credentials-file /path/to/service-account.json
 
 # Anonymous access (public S3 buckets)
-duckalog build s3://public-bucket/config.yaml \
+duckalog run s3://public-bucket/config.yaml \
   --fs-anon true
 
 # HTTP/HTTPS (no authentication needed)
-duckalog build https://raw.githubusercontent.com/user/repo/main/config.yaml
+duckalog run https://raw.githubusercontent.com/user/repo/main/config.yaml
 ```
 
 #### **Protocol Inference**
@@ -472,10 +472,10 @@ The CLI can automatically infer the filesystem protocol from the provided option
 
 ```bash
 # These commands will automatically use the correct protocol:
-duckalog build s3://bucket/config.yaml --aws-profile myprofile    # → S3
-duckalog build gs://bucket/config.yaml --gcs-credentials-file file.json   # → GCS
-duckalog build github://user/repo/config.yaml --fs-token token    # → GitHub
-duckalog build sftp://server/config.yaml --sftp-host server.com   # → SFTP
+duckalog run s3://bucket/config.yaml --aws-profile myprofile    # → S3
+duckalog run gs://bucket/config.yaml --gcs-credentials-file file.json   # → GCS
+duckalog run github://user/repo/config.yaml --fs-token token    # → GitHub
+duckalog run sftp://server/config.yaml --sftp-host server.com   # → SFTP
 ```
 
 #### **Error Handling and Validation**
@@ -484,16 +484,16 @@ Duckalog provides comprehensive validation for filesystem options:
 
 ```bash
 # Examples of helpful error messages
-duckalog build s3://bucket/config.yaml --aws-profile myprofile --fs-key key
+duckalog run s3://bucket/config.yaml --aws-profile myprofile --fs-key key
 # Error: Cannot specify both --aws-profile and --fs-key
 
-duckalog build sftp://server/config.yaml --sftp-key-file missing.txt
+duckalog run sftp://server/config.yaml --sftp-key-file missing.txt
 # Error: SFTP key file not found: missing.txt
 
-duckalog build s3://bucket/config.yaml --fs-anon true --fs-key key
+duckalog run s3://bucket/config.yaml --fs-anon true --fs-key key
 # Error: S3 with anonymous access doesn't require credentials
 
-duckalog build gs://bucket/config.yaml --gcs-credentials-file invalid.json
+duckalog run gs://bucket/config.yaml --gcs-credentials-file invalid.json
 # Error: GCS credentials file not found: invalid.json
 ```
 
@@ -544,13 +544,13 @@ duckalog build gs://bucket/config.yaml --gcs-credentials-file invalid.json
 3. **Timeout issues**
    ```bash
    # Increase timeout for slow connections
-   duckalog build s3://bucket/config.yaml --fs-timeout 120
+   duckalog run s3://bucket/config.yaml --fs-timeout 120
    ```
 
 4. **Protocol inference not working**
    ```bash
    # Explicitly specify protocol
-   duckalog build s3://bucket/config.yaml --fs-protocol s3 --fs-key key --fs-secret secret
+   duckalog run s3://bucket/config.yaml --fs-protocol s3 --fs-key key --fs-secret secret
    ```
 
 ### 8. Start the web UI
@@ -600,7 +600,7 @@ export DUCKALOG_ADMIN_TOKEN="your-secure-random-token"
 duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
 ```
 
-**Dependencies**: Requires `duckalog[ui]` installation for Datastar and Starlette dependencies.
+**Dependencies**: Requires `duckalog[ui]` installation for Datastar and Litestar dependencies.
 
 **Security**: See [docs/SECURITY.md](docs/SECURITY.md) for comprehensive security documentation.
 

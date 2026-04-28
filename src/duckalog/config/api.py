@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 from typing import Any, Optional, Union
-
-from duckalog.errors import ConfigError
 
 from .models import Config
 from .resolution.imports import (
@@ -16,7 +13,6 @@ from .resolution.imports import (
     _load_config_with_imports,
 )
 from .security.path import path_resolution_context
-from .resolution.imports import _is_remote_uri  # re-use existing detection
 from .validators import log_info
 
 
@@ -46,7 +42,7 @@ def load_config(
     except ImportError:
         pass
 
-    return _load_config_from_local_file_impl(
+    return _load_config_from_local_file(
         path=str(path),
         load_sql_files=load_sql_files,
         sql_file_loader=sql_file_loader,
@@ -64,37 +60,20 @@ def _load_config_from_local_file(
     resolve_paths: bool = True,
     filesystem: Optional[Any] = None,
     load_dotenv: bool = True,
-) -> Config:
-    """Internal helper for loading local config files.
-
-    .. deprecated:: 0.4.0
-        Use :func:`load_config` instead.
-    """
-    warnings.warn(
-        "_load_config_from_local_file is internal and deprecated (introduced in 0.4.0). "
-        "Please use load_config instead. This function will be made private in a future version.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return _load_config_from_local_file_impl(
-        path=path,
-        load_sql_files=load_sql_files,
-        sql_file_loader=sql_file_loader,
-        resolve_paths=resolve_paths,
-        filesystem=filesystem,
-        load_dotenv=load_dotenv,
-    )
-
-
-def _load_config_from_local_file_impl(
-    path: str,
-    load_sql_files: bool = True,
-    sql_file_loader: Optional[Any] = None,
-    resolve_paths: bool = True,
-    filesystem: Optional[Any] = None,
-    load_dotenv: bool = True,
     context: Optional[RequestContext] = None,
 ) -> Config:
+    # Validate filesystem interface when provided
+    if filesystem is not None:
+        required_methods = ("open", "exists")
+        missing = [m for m in required_methods if not callable(getattr(filesystem, m, None))]
+        if missing:
+            from duckalog.errors import ConfigError
+
+            raise ConfigError(
+                f"filesystem object must provide 'open' and 'exists' methods, "
+                f"missing: {', '.join(missing)}"
+            )
+
     log_info("Loading config", path=path)
 
     with (
@@ -114,4 +93,4 @@ def _load_config_from_local_file_impl(
         )
 
 
-__all__ = ["load_config", "_load_config_from_local_file"]
+__all__ = ["load_config"]

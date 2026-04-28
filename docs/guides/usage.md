@@ -4,9 +4,9 @@ This guide explains how to structure Duckalog configuration files, common config
 
 ## New Primary Workflow: `duckalog run`
 
-Duckalog now features a unified `run` command that replaces the old two-step `build` + `query` workflow with intelligent connection management and session state restoration.
+Duckalog provides a unified `run` command for building catalogs and running queries with intelligent connection management and session state restoration.
 
-### Key Benefits of the New Workflow
+### Key Benefits
 
 - **Single Command**: One command to connect, build, and query
 - **Smart Connection Management**: Automatic connection pooling and reuse
@@ -28,19 +28,6 @@ duckalog run config.yaml --query "SELECT COUNT(*) FROM users"
 
 # Force rebuild of all views
 duckalog run config.yaml --force-rebuild
-```
-
-### Transition from Old Workflow
-
-While the new `run` command is recommended, the old workflow still works:
-
-```bash
-# Old workflow (still supported but deprecated)
-duckalog build config.yaml
-duckalog query "SELECT * FROM users"
-
-# New workflow (recommended)
-duckalog run config.yaml --query "SELECT * FROM users"
 ```
 
 ## Environment Variables and .env File Support
@@ -264,7 +251,7 @@ Duckalog supports loading configurations from remote sources using a unified fil
 ### Loading Remote Configurations
 
 ```bash
-# New workflow with remote configurations
+# Load a remote configuration
 duckalog run s3://my-bucket/catalog.yaml \
     --fs-key "${AWS_ACCESS_KEY_ID}" \
     --fs-secret "${AWS_SECRET_ACCESS_KEY}" \
@@ -296,9 +283,6 @@ duckalog run s3://my-bucket/catalog.yaml --interactive
 
 # Query remote configurations directly
 duckalog run s3://my-bucket/catalog.yaml --query "SELECT * FROM analytics_table"
-
-# Old workflow (still supported but deprecated)
-duckalog build s3://my-bucket/catalog.yaml --fs-key "${AWS_ACCESS_KEY_ID}"
 ```
 
 ### Shared Filesystem Architecture
@@ -947,7 +931,7 @@ Solutions:
 
 ```bash
 # Enable debug logging
-duckalog build config.yaml --log-level DEBUG
+duckalog run config.yaml --log-level DEBUG
 ```
 
 ## Best Practices

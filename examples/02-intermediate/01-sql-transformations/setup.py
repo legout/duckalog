@@ -39,7 +39,7 @@ def main():
     print_separator()
     print("Setup complete!")
     print("\nNext steps:")
-    print("  1. Run: duckalog build catalog.yaml")
+    print("  1. Run: duckalog run catalog.yaml")
     print('  2. Run: duckalog query "SELECT * FROM daily_metrics LIMIT 5"')
     print(
         '  3. Run: duckalog query "SELECT * FROM user_summary WHERE total_events > 5"'

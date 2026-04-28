@@ -13,7 +13,7 @@ from litestar.di import Provide
 from litestar.status_codes import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
 
 from .state import DashboardContext
-from .routes import HomeController, ViewsController, QueryController, BuildController
+from .routes import HomeController, ViewsController, QueryController, RunController
 
 if TYPE_CHECKING:
     from duckalog.config import Config
@@ -106,7 +106,7 @@ def create_app(
             HomeController,
             ViewsController,
             QueryController,
-            BuildController,
+            RunController,
             health_check,
             static_router,
         ],

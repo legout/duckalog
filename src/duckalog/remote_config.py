@@ -12,7 +12,7 @@ from typing import Any, TYPE_CHECKING
 from urllib.parse import urlparse
 
 from .errors import RemoteConfigError
-from .logging_utils import log_debug, log_info
+from .config.validators import log_debug, log_info
 
 if TYPE_CHECKING:
     from duckalog.config.models import Config

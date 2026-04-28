@@ -211,7 +211,7 @@ def main():
         print("1. Review and edit the .env file with your actual values")
         print("2. Source environment variables: source .env")
         print("3. Validate configurations: python validate-configs.py")
-        print("4. Build development catalog: duckalog build catalog-dev.yaml")
+        print("4. Build development catalog: duckalog run catalog-dev.yaml")
         print("5. Test production config with real values when ready")
 
     except Exception as e:

@@ -56,7 +56,7 @@ duckdb:
 #### Memory Usage Monitoring
 ```bash
 # Monitor memory usage during build
-time -v duckalog build config/performance.yaml
+time -v duckalog run config/performance.yaml
 
 # Check DuckDB memory usage
 duckdb analytics.duckdb -c "
@@ -109,7 +109,7 @@ duckdb:
 # Test optimal thread count
 for threads in 1 2 4 6 8; do
   echo "Testing with $threads threads..."
-  time duckalog build config/performance.yaml --threads $threads
+  time duckalog run config/performance.yaml --threads $threads
 done
 
 # Monitor CPU usage
@@ -328,19 +328,19 @@ Monitor and analyze build performance:
 #### Build Timing
 ```bash
 # Time the build process
-time duckalog build config/performance.yaml
+time duckalog run config/performance.yaml
 
 # Detailed timing with verbose output
-duckalog build config/performance.yaml --verbose --timing
+duckalog run config/performance.yaml --verbose --timing
 ```
 
 #### Resource Monitoring
 ```bash
 # Monitor memory usage
-/usr/bin/time -v duckalog build config/performance.yaml
+/usr/bin/time -v duckalog run config/performance.yaml
 
 # Monitor CPU usage
-duckalog build config/performance.yaml &
+duckalog run config/performance.yaml &
 BUILD_PID=$!
 # Monitor in another terminal
 top -p $BUILD_PID
@@ -370,7 +370,7 @@ Establish baseline performance metrics:
 ```bash
 # Benchmark current configuration
 echo "Benchmarking current configuration..."
-time duckalog build config/performance.yaml
+time duckalog run config/performance.yaml
 
 # Test query performance
 duckdb analytics.duckdb -c "
@@ -389,15 +389,15 @@ Test each optimization individually:
 ```bash
 # Test memory optimization
 echo "Testing memory optimization..."
-time duckalog build config/memory_optimized.yaml
+time duckalog run config/memory_optimized.yaml
 
 # Test threading optimization  
 echo "Testing threading optimization..."
-time duckalog build config/thread_optimized.yaml
+time duckalog run config/thread_optimized.yaml
 
 # Test query optimization
 echo "Testing query optimization..."
-time duckalog build config/query_optimized.yaml
+time duckalog run config/query_optimized.yaml
 ```
 
 ### 3. Comparative Analysis
@@ -408,7 +408,7 @@ Compare performance across configurations:
 # Run comparative benchmarks
 for config in baseline memory_optimized thread_optimized query_optimized; do
   echo "Testing $config..."
-  time duckalog build configs/${config}.yaml
+  time duckalog run configs/${config}.yaml
   echo "---"
 done
 

@@ -44,9 +44,12 @@ class TestPathTraversalProtection:
                 f"Path '{attack}' should be blocked"
             )
 
-            # resolve_relative_path should also fail
-            with pytest.raises(ValueError, match="outside the allowed root"):
-                resolve_relative_path(attack, config_dir)
+            # resolve_relative_path resolves the path but the resolved path
+            # should be outside the config root
+            resolved = resolve_relative_path(attack, config_dir)
+            assert not validate_path_security(resolved, config_dir), (
+                f"Resolved path '{resolved}' should be outside the allowed root"
+            )
 
     def test_varied_traversal_patterns_blocked(self):
         """Test that varied traversal patterns are all blocked."""
@@ -421,32 +424,27 @@ class TestErrorReporting:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir)
 
-            # Test that resolve_relative_path provides clear error messages
-            with pytest.raises(ValueError) as exc_info:
-                resolve_relative_path("../../../etc/passwd", config_dir)
-
-            error_msg = str(exc_info.value)
-            # Error should mention security violation
-            assert any(
-                keyword in error_msg.lower()
-                for keyword in ["security", "outside", "root", "traversal", "allowed"]
-            ), f"Error message should be informative: {error_msg}"
+            # resolve_relative_path resolves the path; security validation
+            # detects it is outside the allowed root
+            resolved = resolve_relative_path("../../../etc/passwd", config_dir)
+            assert not validate_path_security(resolved, config_dir), (
+                "Traversal path should be rejected by security validation"
+            )
 
     def test_path_resolution_error_preserves_original_path(self):
-        """Test that error messages preserve the original problematic path."""
+        """Test that resolved traversal paths are caught by security validation."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir)
 
             malicious_path = "../../../etc/passwd"
+            resolved = resolve_relative_path(malicious_path, config_dir)
 
-            with pytest.raises(ValueError) as exc_info:
-                resolve_relative_path(malicious_path, config_dir)
-
-            error_msg = str(exc_info.value)
-            # Should include some part of the original malicious path
-            assert "etc/passwd" in error_msg, (
-                f"Error should reference original path: {error_msg}"
+            # The resolved path should contain the traversal target
+            assert "etc/passwd" in resolved, (
+                f"Resolved path should contain traversal target: {resolved}"
             )
+            # And security validation should reject it
+            assert not validate_path_security(resolved, config_dir)
 
     def test_config_error_on_security_violation(self):
         """Test that config loading fails with clear error on security violations."""

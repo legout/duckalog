@@ -25,7 +25,7 @@ cd examples/01-getting-started/04-sqlite-attachment
 python setup.py
 
 # 3. Build the catalog (attaches the SQLite database)
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # 4. Query the attached data
 duckalog query "SELECT COUNT(*) FROM legacy.customers"
@@ -39,7 +39,7 @@ duckalog query "SELECT * FROM legacy.orders LIMIT 5"
 Generated 100 users in data/legacy.db (customers table)
 Generated 500 sales in data/legacy.db (orders table)
 
-# After running duckalog build:
+# After running duckalog run:
 [INFO] Catalog built successfully: catalog.duckdb
 
 # After duckalog query:

@@ -194,13 +194,6 @@ class TestRemoteConfigCLI:
         # (this command wasn't updated for remote support in our implementation)
         assert result.exit_code != 0
 
-    def test_validate_paths_with_remote_uri_not_supported(self):
-        """Test that validate-paths command doesn't support remote URIs."""
-        result = self.runner.invoke(app, ["validate-paths", "s3://bucket/config.yaml"])
-
-        # Should fail because validate-paths still expects local files
-        assert result.exit_code != 0
-
 
 class TestRemoteConfigIntegration:
     """Integration tests for remote configuration functionality."""

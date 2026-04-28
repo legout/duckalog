@@ -350,7 +350,7 @@ Solutions:
 
 ```bash
 # Enable debug logging
-duckalog build config.yaml --log-level DEBUG
+duckalog run config.yaml --log-level DEBUG
 ```
 
 ## Best Practices

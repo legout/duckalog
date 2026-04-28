@@ -19,15 +19,15 @@ from ...engine import build_catalog, EngineError
 from htpy import button, div, form, label, p, span, textarea
 
 
-# Global build status tracking
-_build_status = {
-    "status": "idle",  # idle, building, complete, error
+# Global run status tracking
+_run_status = {
+    "status": "idle",  # idle, running, complete, error
     "progress": 0,
     "message": "",
     "timestamp": None,
     "error": None,
 }
-_build_lock = asyncio.Lock()
+_run_lock = asyncio.Lock()
 
 
 class QueryController(Controller):
@@ -186,46 +186,46 @@ class QueryController(Controller):
             yield SSE.patch_signals({"loading": False})
 
 
-class BuildController(Controller):
-    """Build status streaming controller."""
+class RunController(Controller):
+    """Run status streaming controller."""
 
-    path = "/build"
+    path = "/run"
 
     @post()
-    async def trigger_build(
+    async def trigger_run(
         self, request: Request, ctx: DashboardContext
     ) -> dict[str, str]:
-        """Trigger a catalog build."""
-        global _build_status, _build_lock
+        """Trigger a catalog run."""
+        global _run_status, _run_lock
 
-        async with _build_lock:
-            if _build_status["status"] == "building":
+        async with _run_lock:
+            if _run_status["status"] == "running":
                 raise HTTPException(
-                    status_code=409, detail="Build already in progress"
+                    status_code=409, detail="Run already in progress"
                 )
 
             # Reset status
-            _build_status = {
-                "status": "building",
+            _run_status = {
+                "status": "running",
                 "progress": 0,
-                "message": "Starting build...",
+                "message": "Starting run...",
                 "timestamp": datetime.now().isoformat(),
                 "error": None,
             }
 
-            # Trigger async build
-            asyncio.create_task(_run_build(ctx.config_path, ctx.db_path))
+            # Trigger async run
+            asyncio.create_task(_run_catalog(ctx.config_path, ctx.db_path))
 
             return {"status": "started"}
 
     @get("/status")
     @datastar_response
-    async def build_status(self, request: Request) -> AsyncGenerator:
-        """Stream build status updates via SSE."""
-        global _build_status
+    async def run_status(self, request: Request) -> AsyncGenerator:
+        """Stream run status updates via SSE."""
+        global _run_status
 
         # Send initial status
-        yield SSE.patch_signals(_build_status)
+        yield SSE.patch_signals(_run_status)
 
         # Send heartbeat every 30 seconds using patch_signals
         heartbeat_interval = 30
@@ -243,35 +243,35 @@ class BuildController(Controller):
             pass
 
 
-async def _run_build(config_path: str, db_path: str | None) -> None:
-    """Run the build process and update status."""
-    global _build_status
+async def _run_catalog(config_path: str, db_path: str | None) -> None:
+    """Run the catalog build process and update status."""
+    global _run_status
 
     try:
-        _build_status["progress"] = 10
-        _build_status["message"] = "Loading configuration..."
+        _run_status["progress"] = 10
+        _run_status["message"] = "Loading configuration..."
         await asyncio.sleep(0.1)
 
-        _build_status["progress"] = 30
-        _build_status["message"] = "Building catalog..."
+        _run_status["progress"] = 30
+        _run_status["message"] = "Building catalog..."
         await asyncio.sleep(0.1)
 
         # Run the actual build
         build_catalog(config_path, db_path=db_path, verbose=False)
 
-        _build_status["progress"] = 100
-        _build_status["message"] = "Build completed successfully"
-        _build_status["status"] = "complete"
-        _build_status["timestamp"] = datetime.now().isoformat()
+        _run_status["progress"] = 100
+        _run_status["message"] = "Run completed successfully"
+        _run_status["status"] = "complete"
+        _run_status["timestamp"] = datetime.now().isoformat()
 
     except EngineError as e:
-        _build_status["status"] = "error"
-        _build_status["error"] = str(e)
-        _build_status["message"] = f"Build failed: {e}"
-        _build_status["timestamp"] = datetime.now().isoformat()
+        _run_status["status"] = "error"
+        _run_status["error"] = str(e)
+        _run_status["message"] = f"Run failed: {e}"
+        _run_status["timestamp"] = datetime.now().isoformat()
     except Exception as e:
-        _build_status["status"] = "error"
-        _build_status["error"] = str(e)
-        _build_status["message"] = f"Unexpected error: {e}"
-        _build_status["timestamp"] = datetime.now().isoformat()
+        _run_status["status"] = "error"
+        _run_status["error"] = str(e)
+        _run_status["message"] = f"Unexpected error: {e}"
+        _run_status["timestamp"] = datetime.now().isoformat()
 

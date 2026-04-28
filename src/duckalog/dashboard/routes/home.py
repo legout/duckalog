@@ -31,23 +31,23 @@ class HomeController(Controller):
                     type="button",
                     class_="btn btn-primary",
                     **{
-                        "data-on-click": "$$post('/build')",
-                        "data-signal": "buildTrigger",
+                        "data-on-click": "$$post('/run')",
+                        "data-signal": "runTrigger",
                     },
-                )["Build Catalog"],
+                )["Run Catalog"],
             ),
-            # Build Status Card
+            # Run Status Card
             card(
-                "Build Status",
+                "Run Status",
                 div(
-                    id="build-status",
+                    id="run-status",
                     class_="space-y-3",
                     **{
                         "data-signals": json.dumps(
                             {
                                 "status": "idle",
                                 "progress": 0,
-                                "message": "No build in progress",
+                                "message": "No run in progress",
                                 "timestamp": None,
                                 "error": None,
                             }
@@ -56,29 +56,29 @@ class HomeController(Controller):
                 )[
                     div(class_="flex items-center gap-3")[
                         div(
-                            id="build-status-indicator",
+                            id="run-status-indicator",
                             class_="w-3 h-3 rounded-full bg-gray-300",
                         ),
                         span(
-                            id="build-status-text",
+                            id="run-status-text",
                             class_="text-sm font-medium",
                             **{"data-text": "$message"},
-                        )["No build in progress"],
+                        )["No run in progress"],
                     ],
                     div(
                         class_="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700",
-                        id="build-progress-container",
+                        id="run-progress-container",
                         **{"data-show": "$status"},
                     )[
                         div(
                             class_="bg-blue-600 h-2.5 rounded-full transition-all duration-300",
                             style="width: 0%",
-                            id="build-progress-bar",
+                            id="run-progress-bar",
                             **{"data-style": "width: $progress + '%'"},
                         )
                     ],
                     div(
-                        id="build-error",
+                        id="run-error",
                         class_="mt-2 p-3 bg-red-50 dark:bg-red-900 rounded-md hidden",
                         **{"data-show": "$error"},
                     )[

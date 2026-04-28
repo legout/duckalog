@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import duckdb
 from contextlib import contextmanager
-from pathlib import Path
 from collections.abc import Generator
-from typing import Any, Optional
 
 from .config import ConfigError, load_config
-from .engine import build_catalog
 from .sql_generation import generate_all_views_sql
 from .connection import CatalogConnection, connect_to_catalog as _connect_to_catalog
 
@@ -147,70 +144,6 @@ def connect_to_catalog_cm(
         yield catalog.get_connection()
 
 
-def connect_and_build_catalog(
-    config_path: str,
-    database_path: str | None = None,
-    dry_run: bool = False,
-    verbose: bool = False,
-    read_only: bool = False,
-    **kwargs: Any,
-) -> duckdb.DuckDBPyConnection | str | None:
-    """Build a catalog and create a DuckDB connection in one operation.
-
-    .. deprecated:: 0.6.0
-        Use :func:`connect_to_catalog` or :func:`connect_to_catalog_cm` instead.
-        Those functions provide smarter connection management and incremental updates.
-
-    Args:
-        config_path: Path to the YAML/JSON configuration file.
-        database_path: Optional database path override.
-        dry_run: If True, only validates configuration and returns SQL.
-        verbose: Enable verbose logging during build process.
-        read_only: Open the resulting connection in read-only mode.
-        **kwargs: Additional keyword arguments.
-
-    Returns:
-        A DuckDB connection object for immediate use, or SQL string when dry_run=True.
-    """
-    import warnings
-
-    warnings.warn(
-        "connect_and_build_catalog() is deprecated. Use connect_to_catalog() instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    if dry_run:
-        return build_catalog(
-            config_path,
-            db_path=database_path,
-            dry_run=True,
-            verbose=verbose,
-            filesystem=kwargs.get("filesystem"),
-        )
-
-    # Extract build kwargs that aren't for the connection
-    build_kwargs = {k: v for k, v in kwargs.items() if k in ["filesystem"]}
-
-    # Build first in read-write mode to ensure it exists and is up to date
-    build_catalog(
-        config_path=config_path,
-        db_path=database_path,
-        dry_run=False,
-        verbose=verbose,
-        **build_kwargs,
-    )
-
-    # Then return a connection in the requested mode
-    catalog = _connect_to_catalog(
-        config_path=config_path,
-        database_path=database_path,
-        read_only=read_only,
-        force_rebuild=False,  # Already built above
-    )
-    return catalog.get_connection()
-
-
 def validate_generated_config(content: str, format: str = "yaml") -> None:
     """Validate that generated configuration content can be loaded successfully."""
     from tempfile import NamedTemporaryFile
@@ -237,6 +170,5 @@ __all__ = [
     "validate_config",
     "connect_to_catalog",
     "connect_to_catalog_cm",
-    "connect_and_build_catalog",
     "validate_generated_config",
 ]

@@ -25,7 +25,7 @@ cd examples/01-getting-started/03-duckdb-attachment
 python setup.py
 
 # 3. Build the catalog (attaches the DuckDB file)
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # 4. Query the attached data
 duckalog query "SELECT COUNT(*) FROM reference.users"
@@ -39,7 +39,7 @@ duckalog query "SELECT * FROM reference.products LIMIT 5"
 Generated 100 users in data/reference.duckdb (users table)
 Generated 100 products in data/reference.duckdb (products table)
 
-# After running duckalog build:
+# After running duckalog run:
 [INFO] Catalog built successfully: catalog.duckdb
 
 # After duckalog query:

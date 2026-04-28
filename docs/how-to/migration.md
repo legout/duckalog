@@ -292,7 +292,7 @@ Validate that migrated views produce same results:
 duckdb original.duckdb < original_setup.sql
 
 # Build migrated database
-duckalog build migration/main.yaml
+duckalog run migration/main.yaml
 
 # Compare view definitions
 duckdb original.duckdb -c "SHOW ALL views;" > original_views.txt

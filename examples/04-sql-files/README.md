@@ -123,7 +123,7 @@ for view in config.views:
 ### 2. Build DuckDB Catalog
 ```bash
 # Build the catalog (requires DuckDB)
-duckalog build catalog.yaml --output=catalog.duckdb
+duckalog run catalog.yaml --output=catalog.duckdb
 ```
 
 ### 3. Query the Results

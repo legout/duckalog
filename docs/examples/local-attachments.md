@@ -314,7 +314,7 @@ cat attachments.sql
 ### 4. Build the Catalog
 
 ```bash
-duckalog build local-attachments.yaml
+duckalog run local-attachments.yaml
 ```
 
 This creates `unified_catalog.duckdb` with views over your attached databases.

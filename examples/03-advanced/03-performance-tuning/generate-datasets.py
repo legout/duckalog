@@ -283,7 +283,7 @@ def main():
 
     print()
     print("🚀 Next steps:")
-    print("1. Build a performance catalog: duckalog build catalog-workstation.yaml")
+    print("1. Build a performance catalog: duckalog run catalog-workstation.yaml")
     print("2. Run benchmarks: python benchmark.py --config catalog-workstation.yaml")
     print("3. Compare configurations: python benchmark.py --compare-results")
 

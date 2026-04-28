@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 import typer
 
-from duckalog.cli import _create_filesystem_from_options
+from duckalog.cli_filesystem import _create_filesystem_from_options
 
 
 class TestCLIFileSystem:
@@ -22,7 +22,7 @@ class TestCLIFileSystem:
     def test_create_filesystem_from_options_import_error(self):
         """Test that proper error is shown when fsspec is not available."""
         with (
-            patch("duckalog.cli.typer.echo") as mock_echo,
+            patch("duckalog.cli_filesystem.typer.echo") as mock_echo,
             patch.dict("sys.modules", {"fsspec": None}),
         ):
             with pytest.raises(typer.Exit):
@@ -33,7 +33,7 @@ class TestCLIFileSystem:
 
     def test_create_filesystem_from_options_s3_with_profile(self):
         """Test S3 filesystem creation with AWS profile."""
-        with patch("duckalog.cli.fsspec") as mock_fsspec:
+        with patch("duckalog.cli_filesystem.fsspec") as mock_fsspec:
             mock_fs = MagicMock()
             mock_fsspec.filesystem.return_value = mock_fs
 
@@ -48,7 +48,7 @@ class TestCLIFileSystem:
 
     def test_create_filesystem_from_options_s3_with_key_secret(self):
         """Test S3 filesystem creation with access key and secret."""
-        with patch("duckalog.cli.fsspec") as mock_fsspec:
+        with patch("duckalog.cli_filesystem.fsspec") as mock_fsspec:
             mock_fs = MagicMock()
             mock_fsspec.filesystem.return_value = mock_fs
 
@@ -68,7 +68,7 @@ class TestCLIFileSystem:
 
     def test_create_filesystem_from_options_s3_anon(self):
         """Test S3 filesystem creation with anonymous access."""
-        with patch("duckalog.cli.fsspec") as mock_fsspec:
+        with patch("duckalog.cli_filesystem.fsspec") as mock_fsspec:
             mock_fs = MagicMock()
             mock_fsspec.filesystem.return_value = mock_fs
 
@@ -79,7 +79,7 @@ class TestCLIFileSystem:
 
     def test_create_filesystem_from_options_github_token(self):
         """Test GitHub filesystem creation with token."""
-        with patch("duckalog.cli.fsspec") as mock_fsspec:
+        with patch("duckalog.cli_filesystem.fsspec") as mock_fsspec:
             mock_fs = MagicMock()
             mock_fsspec.filesystem.return_value = mock_fs
 
@@ -95,7 +95,7 @@ class TestCLIFileSystem:
     def test_create_filesystem_from_options_sftp_with_key_file(self):
         """Test SFTP filesystem creation with key file."""
         with (
-            patch("duckalog.cli.fsspec") as mock_fsspec,
+            patch("duckalog.cli_filesystem.fsspec") as mock_fsspec,
             patch("pathlib.Path.exists", return_value=True),
         ):
             mock_fs = MagicMock()
@@ -116,7 +116,7 @@ class TestCLIFileSystem:
 
     def test_create_filesystem_from_options_sftp_missing_host(self):
         """Test that error is raised when SFTP host is missing."""
-        with patch("duckalog.cli.typer.echo") as mock_echo:
+        with patch("duckalog.cli_filesystem.typer.echo") as mock_echo:
             with pytest.raises(typer.Exit):
                 _create_filesystem_from_options(protocol="sftp")
             mock_echo.assert_called_with(
@@ -125,7 +125,7 @@ class TestCLIFileSystem:
 
     def test_create_filesystem_from_options_protocol_inference_s3(self):
         """Test that protocol is inferred from AWS profile for S3."""
-        with patch("duckalog.cli.fsspec") as mock_fsspec:
+        with patch("duckalog.cli_filesystem.fsspec") as mock_fsspec:
             mock_fs = MagicMock()
             mock_fsspec.filesystem.return_value = mock_fs
 
@@ -138,7 +138,7 @@ class TestCLIFileSystem:
 
     def test_create_filesystem_from_options_protocol_inference_github(self):
         """Test that protocol is inferred from token for GitHub."""
-        with patch("duckalog.cli.fsspec") as mock_fsspec:
+        with patch("duckalog.cli_filesystem.fsspec") as mock_fsspec:
             mock_fs = MagicMock()
             mock_fsspec.filesystem.return_value = mock_fs
 
@@ -151,7 +151,7 @@ class TestCLIFileSystem:
 
     def test_create_filesystem_from_options_no_protocol_or_options(self):
         """Test that error is raised when no protocol can be inferred."""
-        with patch("duckalog.cli.typer.echo") as mock_echo:
+        with patch("duckalog.cli_filesystem.typer.echo") as mock_echo:
             with pytest.raises(typer.Exit):
                 _create_filesystem_from_options()
             mock_echo.assert_called_with(
@@ -161,7 +161,7 @@ class TestCLIFileSystem:
 
     def test_create_filesystem_from_options_mutual_exclusivity_aws(self):
         """Test that error is raised for mutually exclusive AWS options."""
-        with patch("duckalog.cli.typer.echo") as mock_echo:
+        with patch("duckalog.cli_filesystem.typer.echo") as mock_echo:
             with pytest.raises(typer.Exit):
                 _create_filesystem_from_options(
                     aws_profile="test-profile", key="test-key"
@@ -172,7 +172,7 @@ class TestCLIFileSystem:
 
     def test_create_filesystem_from_options_mutual_exclusivity_azure(self):
         """Test that error is raised for mutually exclusive Azure options."""
-        with patch("duckalog.cli.typer.echo") as mock_echo:
+        with patch("duckalog.cli_filesystem.typer.echo") as mock_echo:
             with pytest.raises(typer.Exit):
                 _create_filesystem_from_options(
                     azure_connection_string="conn_str", key="test-key"
@@ -184,7 +184,7 @@ class TestCLIFileSystem:
     def test_create_filesystem_from_options_missing_gcs_credentials_file(self):
         """Test that error is raised when GCS credentials file doesn't exist."""
         with (
-            patch("duckalog.cli.typer.echo") as mock_echo,
+            patch("duckalog.cli_filesystem.typer.echo") as mock_echo,
             patch("pathlib.Path.exists", return_value=False),
         ):
             with pytest.raises(typer.Exit):
@@ -198,7 +198,7 @@ class TestCLIFileSystem:
     def test_create_filesystem_from_options_missing_sftp_key_file(self):
         """Test that error is raised when SFTP key file doesn't exist."""
         with (
-            patch("duckalog.cli.typer.echo") as mock_echo,
+            patch("duckalog.cli_filesystem.typer.echo") as mock_echo,
             patch("pathlib.Path.exists", return_value=False),
         ):
             with pytest.raises(typer.Exit):
@@ -213,14 +213,14 @@ class TestCLIFileSystem:
 
     def test_create_filesystem_from_options_s3_missing_credentials(self):
         """Test that error is raised when S3 credentials are missing."""
-        with patch("duckalog.cli.typer.echo") as mock_echo:
+        with patch("duckalog.cli_filesystem.typer.echo") as mock_echo:
             with pytest.raises(typer.Exit):
                 _create_filesystem_from_options(protocol="s3")
             mock_echo.assert_called()
 
     def test_create_filesystem_from_options_azure_missing_credentials(self):
         """Test that error is raised when Azure credentials are missing."""
-        with patch("duckalog.cli.typer.echo") as mock_echo:
+        with patch("duckalog.cli_filesystem.typer.echo") as mock_echo:
             with pytest.raises(typer.Exit):
                 _create_filesystem_from_options(protocol="abfs")
             mock_echo.assert_called()
@@ -228,8 +228,8 @@ class TestCLIFileSystem:
     def test_create_filesystem_from_options_filesystem_creation_error(self):
         """Test that error is raised when filesystem creation fails."""
         with (
-            patch("duckalog.cli.fsspec") as mock_fsspec,
-            patch("duckalog.cli.typer.echo") as mock_echo,
+            patch("duckalog.cli_filesystem.fsspec") as mock_fsspec,
+            patch("duckalog.cli_filesystem.typer.echo") as mock_echo,
         ):
             mock_fsspec.filesystem.side_effect = Exception("Connection failed")
 

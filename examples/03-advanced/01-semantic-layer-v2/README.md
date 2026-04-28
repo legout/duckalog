@@ -55,7 +55,7 @@ duckalog generate-sql examples/semantic_layer_v2/catalog.yaml
 
 ### Build Catalog
 ```bash
-duckalog build examples/semantic_layer_v2/catalog.yaml --output sales_analytics.duckdb
+duckalog run examples/semantic_layer_v2/catalog.yaml --output sales_analytics.duckdb
 ```
 
 ## Semantic Models

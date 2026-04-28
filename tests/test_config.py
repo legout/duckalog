@@ -566,8 +566,7 @@ def test_duckdb_secrets_http_basic_auth(tmp_path):
           secrets:
             - type: http
               name: api_auth
-              key_id: myusername
-              secret: mypassword
+              bearer_token: mytoken123
         views:
           - name: test_view
             sql: "SELECT 1"
@@ -579,8 +578,7 @@ def test_duckdb_secrets_http_basic_auth(tmp_path):
     secret = config.duckdb.secrets[0]
     assert secret.type == "http"
     assert secret.name == "api_auth"
-    assert secret.key_id == "myusername"
-    assert secret.secret == "mypassword"
+    assert secret.bearer_token == "mytoken123"
 
 
 def test_duckdb_secrets_postgres_connection_string(tmp_path):
@@ -1883,7 +1881,8 @@ def test_load_config_delegates_to_remote_helper_for_remote_uris(monkeypatch, tmp
 
 def test_load_config_filesystem_validation_for_local_files(tmp_path):
     """Test that load_config validates filesystem interface for local file loading."""
-    from duckalog.config import _load_config_from_local_file, ConfigError
+    from duckalog.config.api import _load_config_from_local_file
+    from duckalog.config import ConfigError
 
     # Write a simple config file
     config_path = _write(

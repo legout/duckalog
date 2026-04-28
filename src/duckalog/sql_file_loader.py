@@ -15,7 +15,7 @@ from .errors import (
     SQLFileEncodingError,
     SQLTemplateError,
 )
-from .logging_utils import log_debug, log_info
+from .config.validators import log_debug, log_info
 
 
 class SQLFileLoader:

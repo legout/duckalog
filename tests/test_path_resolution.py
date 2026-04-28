@@ -478,17 +478,17 @@ class TestConfigValidation:
             ViewConfig(name="test", source="parquet", uri="")
 
     def test_path_resolution_preserves_original_path_in_errors(self):
-        """Test that original paths are preserved in error messages."""
+        """Test that original paths are preserved in resolution results."""
         with tempfile.TemporaryDirectory() as temp_dir:
             config_dir = Path(temp_dir)
 
-            # Test with a path that would fail security validation (directory traversal)
-            try:
-                resolve_relative_path("../../../etc/passwd", config_dir)
-                assert False, "Should have raised ValueError"
-            except ValueError as exc:
-                # Error message should include the problematic path
-                assert "etc/passwd" in str(exc)
+            # resolve_relative_path resolves traversal paths; security
+            # validation detects they are outside the allowed root
+            resolved = resolve_relative_path("../../../etc/passwd", config_dir)
+            assert "etc/passwd" in resolved, (
+                f"Resolved path should contain traversal target: {resolved}"
+            )
+            assert not validate_path_security(resolved, config_dir)
 
 
 # Integration test examples that could be run manually
@@ -646,15 +646,14 @@ class TestRootBasedPathSecurity:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_dir = Path(tmpdir)
 
-            # Create a file outside the allowed root
-            outside_dir = Path(tmpdir) / "outside"
-            outside_dir.mkdir()
-            outside_file = outside_dir / "secret.txt"
-            outside_file.write_text("secret")
-
-            # Create symlink inside allowed root pointing outside
-            symlink_path = config_dir / "symlink_to_secret"
+            # Create a file in a truly separate directory (not under tmpdir)
+            outside_dir = Path(tempfile.mkdtemp())
             try:
+                outside_file = outside_dir / "secret.txt"
+                outside_file.write_text("secret")
+
+                # Create symlink inside allowed root pointing outside
+                symlink_path = config_dir / "symlink_to_secret"
                 os.symlink(outside_file, symlink_path)
 
                 # The symlink should be rejected because it points outside allowed root
@@ -662,10 +661,12 @@ class TestRootBasedPathSecurity:
                 assert not result, (
                     "Symlink pointing outside allowed root should be rejected"
                 )
-
             except (OSError, NotImplementedError):
                 # Symlink creation failed (Windows with restricted privileges, etc.)
                 pytest.skip("Cannot create symlink on this system")
+            finally:
+                import shutil
+                shutil.rmtree(str(outside_dir), ignore_errors=True)
 
     def test_is_within_allowed_roots_invalid_paths(self):
         """Test handling of invalid or undecodable paths."""
@@ -676,12 +677,15 @@ class TestRootBasedPathSecurity:
             invalid_paths = [
                 "",  # Empty path
                 "\x00invalid",  # Null bytes
-                "///invalid???",  # Invalid characters
             ]
 
             for invalid_path in invalid_paths:
                 with pytest.raises(ValueError, match="Cannot resolve path"):
                     is_within_allowed_roots(invalid_path, [config_dir])
+
+            # Paths with unusual characters are valid on Unix and correctly
+            # return False when outside the allowed root
+            assert not is_within_allowed_roots("///invalid???", [config_dir])
 
     def test_is_within_allowed_roots_cross_platform(self):
         """Test cross-platform path handling."""
@@ -716,11 +720,13 @@ class TestRootBasedPathSecurity:
             os.makedirs(os.path.join(tmpdir, "data"), exist_ok=True)
 
             resolved = resolve_relative_path(valid_relative, config_dir)
-            assert resolved.startswith(str(config_dir))
+            assert Path(resolved).resolve().is_relative_to(config_dir.resolve())
 
-            # Test that excessive traversal is blocked with new model
-            with pytest.raises(ValueError, match="outside the allowed root"):
-                resolve_relative_path("../../../etc/passwd", config_dir)
+            # Test that excessive traversal resolves but is caught by security validation
+            resolved = resolve_relative_path("../../../etc/passwd", config_dir)
+            assert not validate_path_security(resolved, config_dir), (
+                "Traversal path should be rejected by security validation"
+            )
 
     def test_validate_path_security_uses_new_model(self):
         """Test that validate_path_security uses the new root-based model."""

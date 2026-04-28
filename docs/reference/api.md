@@ -59,7 +59,7 @@ All existing functions continue to work but are deprecated in favor of the new c
 from duckalog import (
     generate_sql,           # Generate SQL from config
     validate_config,        # Validate configuration
-    connect_and_build_catalog,  # Legacy build + connect
+    connect_to_catalog,     # Build and connect in one operation
 )
 ```
 
@@ -186,7 +186,7 @@ from duckalog import (
     validate_config,
     connect_to_catalog,
     connect_to_catalog_cm,
-    connect_and_build_catalog,
+    connect_to_catalog,
 )
 
 # Configuration models

@@ -31,3 +31,6 @@ mms2.db
 benchmarks/results/
 benchmarks/REPORT.md
 mms2.db.wal
+
+# bv (beads viewer) local config and caches
+.bv/

@@ -617,7 +617,7 @@ mv old-catalog.yaml migrated-config.yaml
 
 3. Test that it works:
 ```bash
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 ```
 
 4. Gradually split `migrated-config.yaml` into smaller files

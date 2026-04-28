@@ -290,10 +290,10 @@ duckalog generate-sql simple-parquet.yaml --output generated.sql
 cat generated.sql
 ```
 
-### 5. Build and Query Catalog (New Workflow)
+### 5. Build and Query Catalog
 
 ```bash
-# NEW: Single command to build and query
+# Query in a single command
 duckalog run simple-parquet.yaml --query "SELECT * FROM users LIMIT 10"
 
 # Interactive exploration
@@ -303,8 +303,7 @@ duckalog run simple-parquet.yaml --interactive
 # SELECT region, COUNT(*) as user_count FROM users GROUP BY region ORDER BY user_count DESC;
 # SELECT * FROM daily_active_users WHERE event_date >= CURRENT_DATE - INTERVAL 7 DAYS;
 
-# OLD: Two-step workflow (still works)
-duckalog build simple-parquet.yaml
+# Connect to the database and query directly
 duckdb simple_catalog.duckdb
 # Then run the queries above
 ```
@@ -312,7 +311,6 @@ duckdb simple_catalog.duckdb
 ### 7. Use Programmatically
 
 ```python
-# NEW: Use new connection management
 from duckalog import connect_to_catalog
 import polars as pl
 
@@ -337,12 +335,9 @@ with connect_to_catalog("simple-parquet.yaml") as conn:
     
     print(metrics_df)
 
-# OLD: Manual approach (still works)
-from duckalog import load_config, build_catalog
+# Alternative: direct DuckDB connection
 import duckdb
 
-# Load and build catalog manually
-build_catalog("simple-parquet.yaml")
 con = duckdb.connect("simple_catalog.duckdb")
 # Then run queries as above
 ```
@@ -443,4 +438,4 @@ views:
       WHERE DATE(timestamp) >= CURRENT_DATE - INTERVAL 30 DAYS
 ```
 
-This example provides a solid foundation for working with Parquet data in Duckalog. Adapt the patterns to your specific data structure and requirements.
+This example provides a solid foundation for working with Parquet data in Duckalog. Adapt the patterns to your specific data structure and requirements. in Duckalog. Adapt the patterns to your specific data structure and requirements.

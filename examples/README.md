@@ -93,7 +93,7 @@ cd 01-getting-started/01-parquet-basics
 python setup.py
 
 # 3. Build the catalog
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # 4. Query the data
 duckalog query "SELECT COUNT(*) FROM users"
@@ -150,7 +150,7 @@ Each example's `setup.py` script:
 python setup.py
 
 # Build catalog
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # Validate catalog
 duckalog validate catalog.yaml

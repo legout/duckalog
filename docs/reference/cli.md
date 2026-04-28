@@ -58,25 +58,25 @@ All commands support these filesystem options for accessing remote configuration
 ### Usage Examples
 ```bash
 # Local configuration file
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # S3 with access key and secret
-duckalog build s3://my-bucket/config.yaml --fs-key AKIA... --fs-secret wJalr...
+duckalog run s3://my-bucket/config.yaml --fs-key AKIA... --fs-secret wJalr...
 
 # S3 with AWS profile
-duckalog build s3://my-bucket/config.yaml --aws-profile my-profile
+duckalog run s3://my-bucket/config.yaml --aws-profile my-profile
 
 # GitHub with personal access token
-duckalog build github://user/repo/config.yaml --fs-token ghp_xxxxxxxxxxxx
+duckalog run github://user/repo/config.yaml --fs-token ghp_xxxxxxxxxxxx
 
 # Azure with connection string
-duckalog build abfs://account@container/config.yaml --azure-connection-string "..."
+duckalog run abfs://account@container/config.yaml --azure-connection-string "..."
 
 # SFTP with key authentication
-duckalog build sftp://server/config.yaml --sftp-host server.com --sftp-key-file ~/.ssh/id_rsa
+duckalog run sftp://server/config.yaml --sftp-host server.com --sftp-key-file ~/.ssh/id_rsa
 
 # Anonymous S3 access (public bucket)
-duckalog build s3://public-bucket/config.yaml --fs-anon
+duckalog run s3://public-bucket/config.yaml --fs-anon
 ```
 
 ### Verbose Output
@@ -85,7 +85,7 @@ Verbose logging (`--verbose` or `-v` flag) provides detailed information about c
 
 #### Configuration Loading
 ```bash
-duckalog build catalog.yaml --verbose
+duckalog run catalog.yaml --verbose
 ```
 
 **Shows:**
@@ -112,7 +112,7 @@ Verbose output now provides richer diagnostic information:
 
 #### Example Enhanced Output
 ```bash
-duckalog build complex-catalog.yaml --verbose
+duckalog run complex-catalog.yaml --verbose
 
 === Configuration Loading Diagnostics ===
 📁 Loading: complex-catalog.yaml
@@ -220,74 +220,6 @@ catalog> SELECT COUNT(*) FROM users;
 - **Incremental Updates**: Only missing views are created for faster builds
 - **Lazy Connections**: Database connections established only when needed
 - **Remote Configuration Support**: Works with all remote filesystem options
-
-### build - DEPRECATED
-
-Build or update a DuckDB catalog from a config file or remote URI. **Note**: The `run` command is now recommended as the primary workflow.
-
-#### Syntax
-```bash
-duckalog build [OPTIONS] CONFIG_PATH
-```
-
-#### Options
-```bash
---db-path PATH
-    Override DuckDB database path. Supports local paths and remote URIs (s3://, gs://, gcs://, abfs://, adl://, sftp://).
-    
---dry-run
-    Generate SQL without executing against DuckDB.
-    
---verbose, -v
-    Enable verbose logging output.
-    
---load-dotenv / --no-load-dotenv
-    Enable/disable automatic .env file loading. (default: --load-dotenv)
-```
-
-#### Examples
-```bash
-# Local configuration file (deprecated - use 'run' instead)
-duckalog build catalog.yaml
-
-# With custom database path
-duckalog build catalog.yaml --db-path analytics.duckdb
-
-# Dry run to generate SQL
-duckalog build catalog.yaml --dry-run
-
-# Remote configuration with S3
-duckalog build s3://my-bucket/config.yaml --fs-key AKIA... --fs-secret wJalr...
-
-# Remote configuration with AWS profile
-duckalog build s3://my-bucket/config.yaml --aws-profile my-profile
-
-# Export catalog to remote storage
-duckalog build config.yaml --db-path s3://my-bucket/catalog.duckdb
-```
-
-#### Output
-```bash
-# Success
-Catalog build completed.
-
-# Dry run SQL output
-CREATE OR REPLACE VIEW "users" AS SELECT * FROM parquet_scan('data/users.parquet');
-CREATE OR REPLACE VIEW "orders" AS SELECT * FROM parquet_scan('data/orders.parquet');
-```
-
-#### Migration to `run` Command
-```bash
-# Old workflow (still works but deprecated)
-duckalog build catalog.yaml
-duckalog query "SELECT * FROM users"
-
-# New recommended workflow
-duckalog run catalog.yaml --query "SELECT * FROM users"
-
-# For interactive use
-duckalog run catalog.yaml  # Starts interactive shell
-```
 
 ### validate
 
@@ -551,52 +483,8 @@ orders:
   Status: ❌ File not found
 ```
 
-### validate-paths
 
-Validate config and check path accessibility.
-
-#### Syntax
-```bash
-duckalog validate-paths [OPTIONS] CONFIG_PATH
-```
-
-#### Arguments
-```bash
-CONFIG_PATH
-    Path to configuration file (must exist and be local)
-```
-
-#### Options
-```bash
---verbose, -v
-    Enable verbose logging output.
-```
-
-#### Examples
-```bash
-# Validate configuration and check paths
-duckalog validate-paths catalog.yaml
-
-# Verbose validation
-duckalog validate-paths catalog.yaml --verbose
-```
-
-#### Output
-```bash
-✅ Configuration is valid.
-
-Checking file accessibility...
---------------------------------------------------
-✅ users: /path/to/config/data/users.parquet
-❌ orders: File not found: /path/to/orders.parquet
-
-❌ Found 1 inaccessible files:
-  - orders: File not found
-```
-
-### query
-
-Execute SQL queries against an existing DuckDB catalog and display results in tabular format. **Note**: For new workflows, consider using `duckalog run CONFIG_PATH --query "SQL"` instead.
+Execute SQL queries against an existing DuckDB catalog and display results in tabular format. **Note**: You can also run queries via `duckalog run CONFIG_PATH --query "SQL"`.
 
 #### Syntax
 ```bash
@@ -825,7 +713,7 @@ duckalog init --verbose
 🔧 Next steps:
    1. Edit catalog.yaml to customize views and data sources
    2. Run 'duckalog validate catalog.yaml' to check your configuration
-   3. Run 'duckalog build catalog.yaml' to create your catalog
+   3. Run 'duckalog run catalog.yaml' to create your catalog
 ```
 
 #### Options
@@ -935,117 +823,6 @@ Starting dashboard at http://127.0.0.1:8787
 Warning: binding to a non-loopback host may expose dashboard to others on your network.
 ```
 
-### init-env
-
-Generate .env file templates for common use cases.
-
-#### Syntax
-```bash
-duckalog init-env [OPTIONS]
-```
-
-#### Options
-```bash
---template, -t TEMPLATE
-    Template to use: basic, development, production, cloud, or custom (default: basic).
-    
---output, -o FILE
-    Output file path. Defaults to .env for basic template, or template-specific name for others.
-    
---force, -f
-    Overwrite existing files without prompting.
-    
---verbose, -v
-    Enable verbose output.
-```
-
-#### Templates
-```bash
-basic       - Basic .env file with common variables (default)
-development - Development environment variables
-production  - Production environment variables
-cloud       - Cloud service configuration variables
-```
-
-#### Examples
-```bash
-# Generate basic .env template
-duckalog init-env
-
-# Generate development template
-duckalog init-env --template development
-
-# Generate production template with custom output
-duckalog init-env --template production --output .env.production
-
-# Force overwrite existing file
-duckalog init-env --force
-```
-
-#### Output
-```bash
-✅ Created basic .env template: .env
-
-Next steps:
-   1. Edit .env and fill in your actual values
-   2. Run 'duckalog build catalog.yaml' to test your configuration
-   3. Add .env to your .gitignore file to avoid committing secrets
-```
-
-#### Options
-```bash
---host HOST
-    Bind to specific host (default: 127.0.0.1)
-    
---port PORT
-    Use specific port (default: 8787)
-    
---row-limit NUM
-    Limit ad-hoc query results (default: 500)
-    
---db-path, --database-path PATH
-    Override database path from configuration
-    
---verbose, -v
-    Enable verbose logging
-    
---no-open
-    Don't open browser automatically
-```
-
-#### Examples
-```bash
-# Basic dashboard
-duckalog ui catalog.yaml
-
-# Custom host and port
-duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
-
-# With row limit
-duckalog ui catalog.yaml --row-limit 1000
-
-# Production deployment
-export DUCKALOG_ADMIN_TOKEN="your-secure-token"
-duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
-```
-
-#### Output
-```bash
-# Success
-🚀 Starting Duckalog dashboard...
-🌐 Dashboard URL: http://127.0.0.1:8787
-📊 Database: catalog.duckdb
-👥 Views: 15
-🔗 Attachments: 3
-💡 Press Ctrl+C to stop the server
-
-# With admin token
-🔐 Admin token authentication enabled
-🌐 Dashboard URL: http://0.0.0.0:8000
-🔑 Use admin token for mutating operations
-```
-
-## Remote Configuration Support
 
 All commands support remote configuration files with these URI schemes:
 
@@ -1102,7 +879,7 @@ fs = fsspec.filesystem(
 )
 
 # Use with any command
-duckalog build s3://bucket/config.yaml --filesystem fs
+duckalog run s3://bucket/config.yaml --filesystem fs
 ```
 
 ## Remote Configuration Support
@@ -1137,46 +914,46 @@ github://user/repo/config.yaml
 #### AWS S3
 ```bash
 # Using access keys
-duckalog build s3://bucket/config.yaml --fs-key AKIA... --fs-secret wJalr...
+duckalog run s3://bucket/config.yaml --fs-key AKIA... --fs-secret wJalr...
 
 # Using AWS profile (recommended)
-duckalog build s3://bucket/config.yaml --aws-profile my-profile
+duckalog run s3://bucket/config.yaml --aws-profile my-profile
 
 # Anonymous access (public buckets)
-duckalog build s3://public-bucket/config.yaml --fs-anon
+duckalog run s3://public-bucket/config.yaml --fs-anon
 ```
 
 #### Google Cloud Storage
 ```bash
 # Using service account file
-duckalog build gs://bucket/config.yaml --gcs-credentials-file /path/to/creds.json
+duckalog run gs://bucket/config.yaml --gcs-credentials-file /path/to/creds.json
 
 # Using application default credentials
-duckalog build gs://bucket/config.yaml
+duckalog run gs://bucket/config.yaml
 ```
 
 #### Azure Blob Storage
 ```bash
 # Using connection string
-duckalog build abfs://account@container/config.yaml --azure-connection-string "..."
+duckalog run abfs://account@container/config.yaml --azure-connection-string "..."
 
 # Using account key and secret
-duckalog build abfs://account@container/config.yaml --fs-key accountname --fs-secret accountkey
+duckalog run abfs://account@container/config.yaml --fs-key accountname --fs-secret accountkey
 ```
 
 #### SFTP
 ```bash
 # Using SSH key file
-duckalog build sftp://server/config.yaml --sftp-host server.com --sftp-key-file ~/.ssh/id_rsa
+duckalog run sftp://server/config.yaml --sftp-host server.com --sftp-key-file ~/.ssh/id_rsa
 
 # Using password authentication
-duckalog build sftp://server/config.yaml --sftp-host server.com --fs-key username --fs-secret password
+duckalog run sftp://server/config.yaml --sftp-host server.com --fs-key username --fs-secret password
 ```
 
 #### GitHub
 ```bash
 # Using personal access token
-duckalog build github://user/repo/config.yaml --fs-token ghp_xxxxxxxxxxxx
+duckalog run github://user/repo/config.yaml --fs-token ghp_xxxxxxxxxxxx
 ```
 
 ## Error Handling and Exit Codes
@@ -1247,11 +1024,11 @@ Enhanced diagnostics provide insights into:
 #### Gradual Feature Adoption
 ```bash
 # Continue using existing patterns
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # Gradually adopt new features
 duckalog validate catalog.yaml --diagnostics
-duckalog build catalog.yaml --verbose  # Enhanced diagnostics
+duckalog run catalog.yaml --verbose  # Enhanced diagnostics
 
 # Use advanced features for complex scenarios
 duckalog validate complex-catalog.yaml --diagnostics --cache-stats

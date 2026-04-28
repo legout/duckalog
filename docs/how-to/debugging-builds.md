@@ -21,11 +21,11 @@ Get detailed information about what's happening during the build:
 
 ```bash
 # Enable verbose output
-duckalog build catalog.yaml --verbose
+duckalog run catalog.yaml --verbose
 
 # Enable debug logging (more detailed)
 export DUCKALOG_LOG_LEVEL=DEBUG
-duckalog build catalog.yaml --verbose
+duckalog run catalog.yaml --verbose
 ```
 
 ### 2. Validate Configuration First
@@ -75,7 +75,7 @@ views:
 
 ```bash
 # Test minimal config
-duckalog build test_minimal.yaml
+duckalog run test_minimal.yaml
 
 # If this works, gradually add complexity
 # Add one view at a time to identify the problematic one
@@ -225,7 +225,7 @@ Follow this step-by-step approach:
 #### Step 1: Reproduce the Error
 ```bash
 # Ensure error is reproducible
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 # Note the exact error message
 ```
 
@@ -239,9 +239,9 @@ duckalog build catalog.yaml
 
 ```bash
 # Test each component
-duckalog build test_views.yaml
-duckalog build test_attachments.yaml
-duckalog build test_imports.yaml
+duckalog run test_views.yaml
+duckalog run test_attachments.yaml
+duckalog run test_imports.yaml
 # Identify which component fails
 ```
 
@@ -274,7 +274,7 @@ duckdb catalog.duckdb
 duckalog validate catalog.yaml
 
 # Test build
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 ```
 
 ### 7. Advanced Debugging Techniques
@@ -322,7 +322,7 @@ duckdb:
 ### 1. Successful Build Test
 ```bash
 # Build should complete without errors
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # Check exit code
 echo $?
@@ -362,15 +362,15 @@ For complex configurations with many views:
 
 ```bash
 # Build specific views only
-duckalog build catalog.yaml --include-views "view1,view2"
+duckalog run catalog.yaml --include-views "view1,view2"
 
 # Exclude problematic views
-duckalog build catalog.yaml --exclude-views "problem_view"
+duckalog run catalog.yaml --exclude-views "problem_view"
 
 # Build incrementally
 for view in view1 view2 view3; do
   echo "Building view: $view"
-  duckalog build catalog.yaml --include-views "$view"
+  duckalog run catalog.yaml --include-views "$view"
 done
 ```
 
@@ -384,11 +384,11 @@ curl -I https://example.com/config.yaml
 
 # Download and test locally
 curl -o local_config.yaml https://example.com/config.yaml
-duckalog build local_config.yaml
+duckalog run local_config.yaml
 
 # Test with authentication
 export AWS_ACCESS_KEY_ID=test_key
-duckalog build s3://bucket/config.yaml
+duckalog run s3://bucket/config.yaml
 ```
 
 ### 3. Performance Debugging
@@ -407,10 +407,10 @@ duckdb:
 
 ```bash
 # Monitor resource usage
-time duckalog build catalog.yaml
+time duckalog run catalog.yaml
 
 # Check memory usage
-/usr/bin/time -v duckalog build catalog.yaml
+/usr/bin/time -v duckalog run catalog.yaml
 
 # Profile with DuckDB
 duckdb catalog.duckdb -c "PRAGMA profiling_mode;"
@@ -427,13 +427,13 @@ duckdb catalog.duckdb -c "PRAGMA profiling_mode;"
 **Solution**:
 ```bash
 # Enable verbose logging
-duckalog build catalog.yaml --verbose
+duckalog run catalog.yaml --verbose
 
 # Check for hanging processes
 ps aux | grep duckalog
 
 # Use timeout
-timeout 300 duckalog build catalog.yaml
+timeout 300 duckalog run catalog.yaml
 ```
 
 ### Memory Errors
@@ -464,7 +464,7 @@ pkill -f duckdb
 rm -f catalog.duckdb.wal catalog.duckdb.lock
 
 # Build with different database name
-duckalog build catalog.yaml --db-path catalog_new.duckdb
+duckalog run catalog.yaml --db-path catalog_new.duckdb
 ```
 
 ### Permission Errors

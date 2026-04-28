@@ -53,7 +53,7 @@ nano .env
 source scripts/setup-dev.sh
 
 # Build development catalog
-duckalog build catalog-dev.yaml
+duckalog run catalog-dev.yaml
 
 # Validate the configuration
 python validate-configs.py dev
@@ -67,7 +67,7 @@ export ENVIRONMENT=production
 # Set your production credentials...
 
 # Build production catalog
-duckalog build catalog-prod.yaml
+duckalog run catalog-prod.yaml
 
 # Validate production configuration
 python validate-configs.py prod

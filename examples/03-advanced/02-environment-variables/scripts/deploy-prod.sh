@@ -136,7 +136,7 @@ except Exception as e:
 
 # Create production catalog
 echo "🏗️  Building production catalog..."
-duckalog build catalog-prod.yaml
+duckalog run catalog-prod.yaml
 
 if [ $? -ne 0 ]; then
     echo "❌ Production catalog build failed"

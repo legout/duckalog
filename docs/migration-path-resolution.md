@@ -230,7 +230,7 @@ mv data/* /original/data/location/
 After migration, verify:
 
 - [ ] `duckalog validate` works from any working directory
-- [ ] `duckalog build` creates the expected views
+- [ ] `duckalog run` creates the expected views
 - [ ] `duckalog generate-sql` produces correct SQL with absolute paths
 - [ ] Web UI (if used) loads and functions correctly
 - [ ] All data sources are accessible

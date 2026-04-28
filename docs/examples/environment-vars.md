@@ -148,10 +148,10 @@ views:
 **Step 3: Use with Duckalog**
 ```bash
 # No need to manually load .env - it's automatic!
-duckalog build catalog.yaml
+duckalog run catalog.yaml
 
 # Check verbose output to see .env loading
-duckalog build catalog.yaml --verbose
+duckalog run catalog.yaml --verbose
 ```
 
 ### .env File Discovery Examples
@@ -709,7 +709,7 @@ cat generated.sql
 
 ```bash
 # Build with environment variables
-duckalog build config.yaml
+duckalog run config.yaml
 
 # This will create catalog.duckdb (or whatever name you specified)
 ```
@@ -773,7 +773,7 @@ ls -la .env
 cat .env
 
 # Run with verbose logging to see .env loading
-duckalog build config.yaml --verbose
+duckalog run config.yaml --verbose
 ```
 
 Expected verbose output:
@@ -857,7 +857,7 @@ ANOTHER_VAR="quoted value"
 
 ```bash
 # Run with maximum verbosity to see .env loading process
-duckalog build config.yaml --verbose 2>&1 | grep -i env
+duckalog run config.yaml --verbose 2>&1 | grep -i env
 
 # Look for these log messages:
 # "Loading .env files" - .env discovery started

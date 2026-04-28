@@ -351,7 +351,7 @@ cat preview.sql
 Create your unified analytics catalog:
 
 ```bash
-duckalog build docs/examples/multi-source-analytics-config.yaml
+duckalog run docs/examples/multi-source-analytics-config.yaml
 ```
 
 This will:

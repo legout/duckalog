@@ -245,7 +245,7 @@ views:
 ```bash
 # Regular security checks
 duckalog validate catalog.yaml                    # Basic validation
-duckalog validate-paths catalog.yaml --verbose   # Full path security check
+duckalog show-paths catalog.yaml --check --verbose   # Full path security check
 ```
 
 ## Team Collaboration Guidelines
@@ -398,7 +398,7 @@ jobs:
       run: duckalog validate catalog.yaml
     
     - name: Check Path Accessibility
-      run: duckalog validate-paths catalog.yaml
+      run: duckalog show-paths catalog.yaml --check
     
     - name: Test from Different Directories
       run: |
@@ -427,7 +427,7 @@ find . -name "catalog*.yaml" -o -name "catalog*.yml" | while read catalog; do
         echo "✅ Configuration valid"
         
         # Check path accessibility
-        if duckalog validate-paths "$catalog"; then
+        if duckalog show-paths "$catalog" --check; then
             echo "✅ All paths accessible"
         else
             echo "❌ Path issues detected"
@@ -604,7 +604,7 @@ for catalog in $catalogs; do
     fi
     
     # Path validation
-    if duckalog validate-paths "$catalog" 2>/dev/null; then
+    if duckalog show-paths "$catalog" --check 2>/dev/null; then
         echo "  ✅ All paths accessible"
     else
         echo "  ❌ Path accessibility issues"

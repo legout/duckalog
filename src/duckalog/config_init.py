@@ -9,7 +9,7 @@ from typing import Any, Literal
 import yaml
 
 from .config import Config, load_config
-from .logging_utils import log_info
+from .config.validators import log_info
 
 ConfigFormat = Literal["yaml", "json"]
 

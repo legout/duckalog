@@ -17,6 +17,7 @@ from typing import Any, Iterable, Optional
 from dotenv import dotenv_values
 
 from duckalog.errors import ConfigError
+from duckalog.remote_config import is_remote_uri as _is_remote_uri
 from ..validators import log_debug, log_info
 from .base import EnvProcessor
 
@@ -91,24 +92,6 @@ def env_cache_scope(cache: Optional[EnvCache] = None):
 
 
 _dotenv_max_depth = 10  # Maximum directory depth for .env file search
-
-
-def _is_remote_uri(path: str) -> bool:
-    try:
-        from duckalog.remote_config import is_remote_uri as check_remote_uri
-
-        return check_remote_uri(path)
-    except ImportError:
-        remote_schemes = [
-            "http://",
-            "https://",
-            "s3://",
-            "gcs://",
-            "az://",
-            "abfs://",
-            "sftp://",
-        ]
-        return any(path.startswith(scheme) for scheme in remote_schemes)
 
 
 def _find_dotenv_files(

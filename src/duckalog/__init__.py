@@ -27,9 +27,7 @@ from .config_init import (
 
 # Core Connection & Engine
 from .connection import CatalogConnection
-from .engine import build_catalog
 from .python_api import (
-    connect_and_build_catalog,
     connect_to_catalog,
     connect_to_catalog_cm,
     generate_sql,
@@ -79,8 +77,6 @@ __all__ = [
     "CatalogConnection",
     "connect_to_catalog",
     "connect_to_catalog_cm",
-    "connect_and_build_catalog",
-    "build_catalog",
     # Configuration & Models
     "Config",
     "load_config",
