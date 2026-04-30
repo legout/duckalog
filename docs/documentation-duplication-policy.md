@@ -41,7 +41,7 @@ This document outlines the strategy for maintaining consistency between `README.
 1. **Always** edit `docs/_snippets/intro-quickstart.md` first
 2. Test both locations render correctly:
    - README.md renders properly on GitHub  
-   - docs/index.md renders properly in MkDocs site
+   - docs/index.md renders properly in Zensical site
 3. Never edit the same content in both places independently
 
 ### When updating README-only content:
@@ -59,13 +59,13 @@ This document outlines the strategy for maintaining consistency between `README.
 ## Technical Implementation
 
 ### Snippet Inclusion
-Both files use MkDocs `pymdownx.snippets` syntax:
+Both files use Python Markdown `pymdownx.snippets` syntax:
 ```markdown
 --8<-- "docs/_snippets/intro-quickstart.md"
 ```
 
 ### Validation
-- Run `mkdocs build` to verify docs site builds without warnings
+- Run `uv run zensical build` to verify docs site builds without warnings
 - Check README.md renders properly on GitHub or local preview
 - Ensure snippet paths are correct and content loads
 
@@ -90,7 +90,7 @@ When updating shared content:
 - [ ] Edit `docs/_snippets/intro-quickstart.md`
 - [ ] Verify README.md renders correctly
 - [ ] Verify docs/index.md renders correctly  
-- [ ] Run `mkdocs build` to ensure no warnings
+- [ ] Run `uv run zensical build` to ensure no warnings
 - [ ] Check any internal links still work
 
 This policy ensures consistency while allowing each location to serve its specific audience effectively.

@@ -211,6 +211,17 @@ class CatalogConnection:
 
         if views_to_create:
             log_info("Creating missing views", count=len(views_to_create))
+            # Ensure schemas exist before creating views
+            schemas_to_create = sorted(
+                {v.db_schema for v in views_to_create if v.db_schema}
+            )
+            for schema in schemas_to_create:
+                from .sql_generation import generate_create_schema_sql
+
+                sql = generate_create_schema_sql(schema)
+                log_debug("Creating schema if not exists", schema=schema)
+                self.conn.execute(sql)
+
             for view in views_to_create:
                 try:
                     sql = generate_view_sql(view)

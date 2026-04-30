@@ -108,9 +108,7 @@ dev = [
     "httpx>=0.28.1",
     "ipython>=8.18.1",
     "marimo>=0.18.0",
-    "mkdocs>=1.5.0",
-    "mkdocs-material>=9.0.0",
-    "mkdocstrings[python]>=0.24.0",
+    "mkdocstrings-python>=1.0.0",
     "mypy>=1.18.2",
     "pandas>=2.3.3",
     "polars>=1.35.2",
@@ -121,4 +119,5 @@ dev = [
     "psutil>=5.9.0",
     "ruff>=0.14.5",
     "types-PyYAML>=6.0.0",
+    "zensical>=0.0.11",
 ]

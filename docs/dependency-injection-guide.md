@@ -1,6 +1,9 @@
 # Dependency Injection Guide for Duckalog Configuration Architecture
 
-This guide provides a comprehensive overview of the new dependency injection patterns introduced in the refactored Duckalog configuration architecture. The new modular structure enables better testability, extensibility, and customization of configuration loading behavior.
+This guide provides a comprehensive overview of the dependency injection patterns in the Duckalog configuration architecture. The modular structure enables better testability, extensibility, and customization of configuration loading behavior.
+
+!!! warning "Implementation Status"
+    Some interfaces described in this guide (notably `ConfigLoader` and `SQLFileLoader` from `duckalog.config.loading.base`) represent the intended architecture but are not yet fully implemented in the current codebase. The `EnvProcessor`, `ImportResolver`, `PathValidator`, and `PathResolver` protocols are available in `duckalog.config.resolution.base` and `duckalog.config.security.base`. For SQL file loading, use `duckalog.sql_file_loader.SQLFileLoader` directly.
 
 ## Table of Contents
 
@@ -18,9 +21,7 @@ The refactored configuration architecture is organized into modular components t
 src/duckalog/config/
 ├── api.py                    # Public API orchestration
 ├── loading/                  # Configuration loading components
-│   ├── base.py              # Abstract base classes
-│   ├── file.py              # File-based loading (planned)
-│   ├── remote.py            # Remote URI loading (planned)
+│   ├── __init__.py
 │   └── sql.py               # SQL file processing
 ├── resolution/              # Configuration resolution components
 │   ├── base.py              # Abstract base classes and protocols

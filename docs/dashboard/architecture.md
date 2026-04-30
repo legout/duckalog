@@ -344,7 +344,7 @@ The previous ASGI-based dashboard has been completely replaced. Key changes:
 | No styling | Tailwind CSS |
 | Disabled CLI | Working CLI |
 
-See [Migration Guide](migration.md) for details.
+See [Migration Guide](../how-to/migration.md) for details.
 
 ## Future Enhancements
 

@@ -779,4 +779,4 @@ Report security vulnerabilities:
 
 ---
 
-*Last updated: Duckalog v0.1.0*
+*Last updated: Duckalog v0.6.0*

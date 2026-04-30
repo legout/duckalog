@@ -1,6 +1,9 @@
 # Migration Guide: Configuration Architecture Refactor
 
-This guide helps developers migrate from the monolithic `loader.py` architecture to the new modular configuration architecture. The refactoring improves maintainability, eliminates circular dependencies, and introduces dependency injection patterns while maintaining 100% backward compatibility.
+This guide helps developers understand the modular configuration architecture refactor. The refactoring improves maintainability, eliminates circular dependencies, and introduces dependency injection patterns while maintaining backward compatibility.
+
+!!! warning "Implementation Status"
+    Some interfaces described in this guide (notably `ConfigLoader` and `SQLFileLoader` from `duckalog.config.loading.base`) represent the intended architecture but are not yet fully implemented in the current codebase. The `EnvProcessor`, `ImportResolver`, `PathValidator`, and `PathResolver` protocols are available in `duckalog.config.resolution.base` and `duckalog.config.security.base`. For SQL file loading, use `duckalog.sql_file_loader.SQLFileLoader` directly.
 
 ## Table of Contents
 
@@ -23,10 +26,10 @@ The configuration system has been restructured from a monolithic 1670-line `load
 #### Old Architecture
 ```
 config/
-├── loader.py          # 1670 lines - handled everything
+├── loader.py          # Monolithic configuration loading (removed)
 ├── __init__.py        # Re-exports and utilities
 ├── models.py          # Pydantic models
-├── interpolation.py   # Environment variable processing
+├── interpolation.py   # Environment variable processing (removed)
 └── validators.py      # Path validation and utilities
 ```
 
@@ -34,11 +37,8 @@ config/
 ```
 config/
 ├── api.py             # Public API orchestration layer
-├── loading/           # File and remote loading adapters
+├── loading/           # SQL file loading
 │   ├── __init__.py
-│   ├── base.py        # Abstract base classes
-│   ├── file.py        # Local file loading
-│   ├── remote.py      # Remote URI loading
 │   └── sql.py         # SQL file loading
 ├── resolution/        # Path and import resolution
 │   ├── __init__.py
@@ -51,14 +51,12 @@ config/
 │   └── path.py        # Path security implementation
 ├── __init__.py        # Backward-compatible re-exports
 ├── models.py          # Pydantic models (unchanged)
-├── interpolation.py   # Legacy compatibility
-└── validators.py      # Legacy compatibility
-└── loader.py          # Legacy compatibility (deprecated)
+└── validators.py      # Path validation utilities
 ```
 
 ### Why the Changes Were Made
 
-1. **Eliminated Circular Dependencies**: Removed circular import between `config/__init__.py` and `remote_config.py`
+1. **Eliminated Circular Dependencies**: Resolved circular imports by restructuring module boundaries between configuration loading and resolution components
 2. **Single Responsibility Principle**: Each module now has a focused, well-defined responsibility
 3. **Improved Testability**: Dependency injection enables better mocking and testing
 4. **Enhanced Extensibility**: Abstract base classes allow custom implementations
@@ -68,9 +66,9 @@ config/
 ### Timeline and Compatibility
 
 - **Phase 1** (Complete): New modular structure implemented alongside legacy code
-- **Phase 2** (Current): Full backward compatibility maintained with deprecation warnings
-- **Phase 3** (Future): Legacy code will be removed in a major version release
-- **Migration Window**: 2-3 releases with gradual deprecation warnings
+- **Phase 2** (Complete): Legacy modules (`loader.py`, `interpolation.py`) removed; full backward compatibility maintained through re-exports in `config/__init__.py`
+- **Phase 3** (Current): Stable modular architecture with dependency injection and caching
+- **Migration Status**: The refactor is complete. Existing code continues to work unchanged.
 
 ---
 
@@ -173,18 +171,7 @@ class StrictPathValidator(PathValidator):
 
 ### Breaking Changes - Actual Breaking Changes
 
-**There are currently no breaking changes.** All existing code continues to work unchanged. The following will change in a future major version:
-
-#### Future Breaking Changes (Planned)
-```python
-# These imports will be deprecated and eventually removed:
-from duckalog.config.loader import *  # Will be removed
-from duckalog.config.interpolation import *  # Will be removed
-
-# Use these instead:
-from duckalog.config.resolution.env import *
-from duckalog.config.loading import *
-```
+**There are currently no breaking changes.** All existing code continues to work unchanged through backward-compatible re-exports in `duckalog.config.__init__`. The monolithic `loader.py` and `interpolation.py` modules have been removed; their functionality is now provided by the modular structure under `duckalog.config.api`, `duckalog.config.resolution`, and `duckalog.config.loading`.
 
 ---
 
@@ -194,13 +181,12 @@ from duckalog.config.loading import *
 
 #### Old Import Patterns (Still Work)
 ```python
-# Direct imports from old modules
-from duckalog.config.loader import _load_config_from_local_file
-from duckalog.config.interpolation import _interpolate_env
-from duckalog.config.validators import log_info, log_debug
-
 # Public API imports (unchanged)
 from duckalog.config import load_config, Config, ConfigError
+
+# Note: The monolithic loader.py and interpolation.py modules were removed.
+# Their functionality is now provided by the modular structure under
+# duckalog.config.api, duckalog.config.resolution, and duckalog.config.loading.
 ```
 
 #### New Import Patterns (Recommended)
@@ -220,16 +206,17 @@ from duckalog.config.loading.base import ConfigLoader, SQLFileLoader
 
 #### Old Custom Filesystem Implementation
 ```python
-# Old approach: Monkey patching and internal access
-from duckalog.config.loader import _load_config_from_local_file
+# Old approach: Pass custom filesystem directly to load_config
+from duckalog.config import load_config
+import fsspec
 
 class CustomFilesystem:
     def open(self, path, mode='r'):
         # Custom filesystem logic
         pass
 
-# Use via internal function (fragile)
-config = _load_config_from_local_file(
+# Use via load_config filesystem parameter
+config = load_config(
     "catalog.yaml",
     filesystem=CustomFilesystem()
 )
@@ -275,14 +262,13 @@ config = load_config(
 
 #### Old Testing Pattern
 ```python
-# Old approach: Mock internal functions
+# Old approach: Mock internal functions (no longer available)
 from unittest.mock import patch
-from duckalog.config.loader import _load_config_from_local_file
 
-@patch('duckalog.config.loader._resolve_paths_in_config')
+@patch('duckalog.config.api._resolve_paths_in_config')
 def test_config_loading(mock_resolve):
     mock_resolve.return_value = resolved_config
-    config = _load_config_from_local_file("test.yaml")
+    config = load_config("test.yaml")
     assert config is not None
 ```
 
@@ -576,14 +562,13 @@ def benchmark_cached_vs_uncached():
 
 If you encounter issues with the new architecture, you have several rollback options:
 
-#### 1. Use Legacy Import Paths
+#### 1. Use Public API
 ```python
-# Fall back to legacy imports if needed
-from duckalog.config.loader import _load_config_from_local_file
-from duckalog.config.interpolation import _interpolate_env
+# The public API continues to work unchanged
+from duckalog.config import load_config
+from duckalog.config.api import load_config
 
-# This will continue to work until the major version change
-config = _load_config_from_local_file("catalog.yaml")
+config = load_config("catalog.yaml")
 ```
 
 #### 2. Environment Variable for Legacy Mode
@@ -598,9 +583,9 @@ config = load_config("catalog.yaml")  # Will use legacy implementation
 
 #### 3. Direct Module Import
 ```python
-# Import directly from legacy modules
-import duckalog.config.loader as legacy_loader
-config = legacy_loader.load_config_from_file("catalog.yaml")
+# Import directly from the new API module
+from duckalog.config.api import load_config
+config = load_config("catalog.yaml")
 ```
 
 ### Feature Flags for Gradual Migration
@@ -671,13 +656,13 @@ config = CompatibilityLayer.load_config_with_fallback("catalog.yaml")
 **A:** Dependency injection makes your code more testable, enables better mocking, allows custom implementations, and reduces coupling between components.
 
 #### Q: Can I still use internal functions like `_load_config_from_local_file`?
-**A:** Yes, these functions are still available for backward compatibility, but they are deprecated and will be removed in a future major version.
+**A:** No. The monolithic `loader.py` module was removed as part of the refactor. Use `duckalog.config.api.load_config()` or the re-exported `duckalog.config.load_config()` instead.
 
 #### Q: How do I implement custom filesystems now?
 **A:** Implement the `ConfigLoader` abstract base class from `duckalog.config.loading.base` and pass it to `load_config()` via the `filesystem` parameter.
 
 #### Q: What happened to the circular dependency issues?
-**A:** The circular dependency between `config/__init__.py` and `remote_config.py` has been eliminated by moving remote URI detection to a separate utility module.
+**A:** The circular dependency between configuration loading and resolution modules has been eliminated by restructuring module boundaries and introducing clean abstraction layers.
 
 #### Q: Can I still use environment variable interpolation?
 **A:** Yes, environment variable interpolation continues to work exactly as before. The new architecture provides the `EnvProcessor` protocol for custom environment processing if needed.
@@ -689,7 +674,7 @@ config = CompatibilityLayer.load_config_with_fallback("catalog.yaml")
 **A:** No, there are no breaking changes in this release. All changes are additive and maintain full backward compatibility.
 
 #### Q: When will the legacy code be removed?
-**A:** Legacy code will be removed in a future major version release, with deprecation warnings starting in the next minor version.
+**A:** The monolithic `loader.py` and `interpolation.py` modules were already removed. Their functionality is provided by the modular structure. The public API (`duckalog.config.load_config`, `duckalog.config.Config`, etc.) continues to work unchanged through re-exports.
 
 ### Troubleshooting Migration Issues
 

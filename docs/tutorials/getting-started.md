@@ -429,11 +429,11 @@ Key concepts you learned:
 - **Date Functions**: DATE_TRUNC for time-based analysis
 - **View Dependencies**: Views can reference other views
 
-## Step 3: Multi-Source Joins
+## Step 4: Multi-Source Joins
 
 Combine data from multiple sources using joins and attachments.
 
-### 3.1 Create Additional Data Source
+### 4.1 Create Additional Data Source
 
 Add an orders data source to join with users:
 
@@ -485,7 +485,7 @@ views:
     description: "User order summary statistics"
 ```
 
-### 3.2 Build and Test Joins
+### 4.2 Build and Test Joins
 
 ```bash
 # Build with joins
@@ -508,7 +508,7 @@ LEFT JOIN orders o ON u.user_id = o.user_id;
 "
 ```
 
-### 3.3 Understanding Join Concepts
+### 4.3 Understanding Join Concepts
 
 Key concepts you learned:
 
@@ -517,11 +517,11 @@ Key concepts you learned:
 - **NULL handling**: Using COALESCE for missing values
 - **Performance**: Views can reference other views efficiently
 
-## Step 4: Using Config Imports for Modularity
+## Step 5: Using Config Imports for Modularity
 
 Organize your configuration using imports for better maintainability.
 
-### 4.1 Create Modular Configuration
+### 5.1 Create Modular Configuration
 
 Split your configuration into logical modules:
 
@@ -600,7 +600,7 @@ views:
       GROUP BY u.user_id, u.username, u.email
 ```
 
-### 4.2 Create Main Configuration
+### 5.2 Create Main Configuration
 
 Create a main configuration that imports the modules:
 
@@ -614,7 +614,7 @@ imports:
   - ./transforms/analytics.yaml
 ```
 
-### 4.3 Build and Test Modular Configuration
+### 5.3 Build and Test Modular Configuration
 
 ```bash
 # NEW: Build and test with imports
@@ -641,7 +641,7 @@ duckalog run step4_modular.yaml
 duckdb tutorial.duckdb -c "SHOW TABLES; SELECT * FROM users LIMIT 3;"
 ```
 
-### 4.4 Understanding Import Benefits
+### 5.4 Understanding Import Benefits
 
 Advantages of using imports:
 

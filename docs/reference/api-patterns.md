@@ -100,18 +100,9 @@ view_sql = sql.generate_view_sql(view_config)
 quoted_identifier = utils.quote_ident("users table")
 safe_literal = utils.quote_literal("path/to/file.parquet")
 
-# Option 3: Unified SQL namespace
-from duckalog import SQL
-
-# Access all SQL functionality through a single namespace
-view_sql = SQL.generate.generate_view_sql(view_config)
-quoted_identifier = SQL.utils.quote_ident("users table")
-safe_literal = SQL.utils.quote_literal("path/to/file.parquet")
-loader = SQL.files.SQLFileLoader()
-
-# Generate complete catalog SQL
-config = Config(version="1.0", duckdb=DuckDBConfig(), views=[view_config])
-catalog_sql = SQL.generate.generate_all_views_sql(config)
+# Option 3: Unified SQL namespace (not yet available)
+# A future `SQL` namespace may consolidate SQL functionality.
+# For now, use the direct imports shown in Options 1 and 2.
 ```
 
 ### 3. Custom SQL File Loader

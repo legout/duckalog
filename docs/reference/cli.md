@@ -223,80 +223,7 @@ catalog> SELECT COUNT(*) FROM users;
 
 ### validate
 
-Validate a config file and report success or failure. Enhanced with new architecture diagnostics.
-
-#### Syntax
-```bash
-duckalog validate [OPTIONS] CONFIG_PATH
-```
-
-#### Options
-```bash
---format FORMAT
-    Output format: text (default) or json for enhanced diagnostics
-    
---diagnostics
-    Show detailed loading and import resolution diagnostics
-    
---cache-stats
-    Show performance statistics for configuration loading
-    
---verbose, -v
-    Enable verbose logging output
-```
-
-#### Examples
-```bash
-# Basic validation
-duckalog validate catalog.yaml
-
-# Enhanced diagnostics
-duckalog validate catalog.yaml --diagnostics
-
-# JSON output with metrics
-duckalog validate catalog.yaml --format json --cache-stats
-
-# Remote configuration with diagnostics
-duckalog validate s3://bucket/config.yaml --diagnostics
-```
-
-#### Output
-```bash
-# Basic validation
-Config is valid.
-
-# Enhanced diagnostics
-✅ Configuration 'catalog.yaml' is valid
-
-=== Loading Diagnostics ===
-📁 Configuration file: catalog.yaml
-🔄 Caching: Enabled (request-scoped)
-📊 Load time: 0.089s
-🔗 Import depth: 2 levels
-📝 Views: 15, Attachments: 3
-
-=== Import Resolution ===
-├── ./base.yaml [cached]
-├── ./shared/secrets.yaml [cached]
-└── ./views/
-    ├── users.yaml
-    ├── orders.yaml
-    └── analytics.yaml
-
-# JSON output with metrics
-{
-  "status": "valid",
-  "load_time_ms": 89,
-  "cache_hits": 2,
-  "cache_misses": 4,
-  "import_depth": 2,
-  "diagnostics": {
-    "views": 15,
-    "attachments": 3,
-    "secrets": 2
-  }
-}
-```
+Validate a config file and report success or failure.
 
 #### Syntax
 ```bash
@@ -328,65 +255,6 @@ Config is valid.
 
 # Error
 Config error: [specific error message]
-```
-
-### Advanced Validation Options
-
-The enhanced validation command leverages the new architecture for deeper insights:
-
-#### Performance Analysis
-```bash
-# Analyze configuration loading performance
-duckalog validate catalog.yaml --cache-stats --verbose
-
-# Compare performance across runs
-duckalog validate catalog.yaml --format json --cache-stats
-```
-
-#### Import Chain Analysis
-```bash
-# Show import resolution details
-duckalog validate catalog.yaml --diagnostics --verbose
-
-# Identify performance bottlenecks
-duckalog validate catalog.yaml --diagnostics --cache-stats
-```
-
-#### Output Examples
-
-**Performance Statistics:**
-```bash
-duckalog validate catalog.yaml --cache-stats
-
-✅ Configuration is valid
-
-=== Performance Statistics ===
-⏱️  Total load time: 0.089s
-💾 Cache hit ratio: 40% (2/5 files)
-📊 Import depth: 3 levels
-🔗 Files processed: 8 total
-📝 SQL files loaded: 12
-```
-
-**JSON with Metrics:**
-```bash
-duckalog validate catalog.yaml --format json --cache-stats
-
-{
-  "status": "valid",
-  "performance": {
-    "load_time_ms": 89,
-    "cache_hits": 2,
-    "cache_misses": 3,
-    "import_depth": 3,
-    "files_processed": 8
-  },
-  "diagnostics": {
-    "views": 15,
-    "attachments": 3,
-    "sql_files": 12
-  }
-}
 ```
 
 ### generate-sql
@@ -667,13 +535,13 @@ duckalog init [OPTIONS]
 --format FORMAT
     Output format: yaml or json (default: yaml)
     
---database, --database-name NAME
+--database, -d TEXT
     DuckDB database filename (default: analytics_catalog.duckdb)
     
---project, --project-name NAME
+--project, -p TEXT
     Project name used in comments (default: my_analytics_project)
     
---force, -f
+--force
     Overwrite existing file without prompting.
     
 --skip-existing
@@ -719,22 +587,25 @@ duckalog init --verbose
 #### Options
 ```bash
 --output, -o FILE
-    Output file path (default: catalog.yaml)
+    Output file path. Defaults to catalog.yaml or catalog.json based on format.
     
---format FORMAT
-    Configuration format (yaml, json)
+--format, -f TEXT
+    Output format: yaml or json (default: yaml)
     
---database, --database-name NAME
-    Database name (default: catalog)
+--database, -d TEXT
+    DuckDB database filename (default: analytics_catalog.duckdb)
     
---project, --project-name NAME
-    Project name for examples
+--project, -p TEXT
+    Project name used in comments (default: my_analytics_project)
     
---force, -f
-    Overwrite existing file
+--force
+    Overwrite existing file without prompting.
+    
+--skip-existing
+    Skip file creation if it already exists.
     
 --verbose, -v
-    Enable verbose logging
+    Enable verbose logging output.
 ```
 
 #### Examples
@@ -798,7 +669,7 @@ CONFIG_PATH
 --row-limit NUM
     Max rows to show in query results.
     
---db-path TEXT
+--db TEXT
     Path to DuckDB database file (optional).
     
 --verbose, -v
@@ -992,9 +863,9 @@ The CLI now supports advanced configuration patterns through the underlying arch
 # Multiple commands benefit from shared internal caching
 # When processing multiple related files:
 
-duckalog validate base.yaml --diagnostics
-duckalog validate analytics.yaml --diagnostics  # Reuses base imports
-duckalog validate reports.yaml --diagnostics    # Reuses common imports
+duckalog show-imports base.yaml --diagnostics
+duckalog show-imports analytics.yaml --diagnostics  # Reuses base imports
+duckalog show-imports reports.yaml --diagnostics    # Reuses common imports
 ```
 
 ### Performance Optimization Features
@@ -1026,12 +897,10 @@ Enhanced diagnostics provide insights into:
 # Continue using existing patterns
 duckalog run catalog.yaml
 
-# Gradually adopt new features
-duckalog validate catalog.yaml --diagnostics
-duckalog run catalog.yaml --verbose  # Enhanced diagnostics
+# Use verbose output for diagnostics
+duckalog run catalog.yaml --verbose
 
-# Use advanced features for complex scenarios
-duckalog validate complex-catalog.yaml --diagnostics --cache-stats
+duckalog show-imports catalog.yaml --diagnostics
 ```
 
 ## Best Practices
@@ -1045,7 +914,7 @@ duckalog validate complex-catalog.yaml --diagnostics --cache-stats
 
 ### Performance Optimization
 - **Leverage caching**: Run multiple operations together for cache benefits
-- **Monitor performance**: Use `--diagnostics` and `--cache-stats` for insights
+- **Monitor performance**: Use verbose output (`--verbose`) for insights
 - **Optimize imports**: Structure imports for efficient resolution
 - **Use verbose output** for troubleshooting complex configurations
 
@@ -1057,7 +926,7 @@ duckalog validate complex-catalog.yaml --diagnostics --cache-stats
 - **Use authentication** consistently across remote configurations
 
 ### Advanced Usage
-- **Complex configurations**: Use `--diagnostics` to understand import chains
+- **Complex configurations**: Use `show-imports --diagnostics` to understand import chains
 - **Performance tuning**: Monitor cache statistics and load times
 - **Batch operations**: Run multiple related operations together
 - **Error handling**: Use enhanced output for faster problem resolution

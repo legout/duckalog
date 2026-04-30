@@ -14,6 +14,7 @@
 
 ### Fixed
 - Fixed latent bug in `show_paths` where `resolved` was undefined for absolute URI paths
+- **Schema Auto-Creation**: Views with `db_schema` now automatically create the schema via `CREATE SCHEMA IF NOT EXISTS` before view creation, fixing "Schema with name X does not exist!" errors in both full builds and incremental connections
 
 ## [2025-12-18] - 0.5.0
 

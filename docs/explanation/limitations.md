@@ -207,13 +207,13 @@ def catalog_health_check(catalog_path):
         conn = connect_to_catalog(catalog_path)
         
         # Test basic functionality
-        result = conn.execute("SELECT 1").fetchone()
+        result = conn.get_connection().execute("SELECT 1").fetchone()
         
         # Check memory usage
-        memory = conn.execute("PRAGMA current_memory_usage").fetchone()
+        memory = conn.get_connection().execute("PRAGMA current_memory_usage").fetchone()
         
         # Test file accessibility
-        conn.execute("SELECT COUNT(*) FROM information_schema.tables").fetchall()
+        conn.get_connection().execute("SELECT COUNT(*) FROM information_schema.tables").fetchall()
         
         return True, f"Memory usage: {memory}"
     except Exception as e:

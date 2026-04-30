@@ -176,7 +176,9 @@ Duckalog 0.4.0+ features a refactored configuration architecture with request-sc
 #### Use Columnar Formats
 ```bash
 # Convert CSV to Parquet for 5-10x performance improvement
-duckalog extract-csv --source data.csv --target data.parquet
+# Use DuckDB directly or your preferred ETL tool
+# Example with DuckDB CLI:
+duckdb -c "COPY (SELECT * FROM read_csv_auto('data.csv')) TO 'data.parquet' (FORMAT PARQUET)"
 ```
 
 #### Optimize Parquet Files
@@ -283,7 +285,7 @@ import time
 
 conn = duckalog.connect_to_catalog("catalog.yaml")
 start_time = time.time()
-result = conn.execute("SELECT COUNT(*) FROM large_table").fetchone()
+result = conn.get_connection().execute("SELECT COUNT(*) FROM large_table").fetchone()
 query_time = time.time() - start_time
 print(f"Query completed in {query_time:.2f} seconds")
 ```
@@ -346,7 +348,7 @@ def benchmark_query(conn, query, iterations=5):
     times = []
     for i in range(iterations):
         start = time.time()
-        result = conn.execute(query).fetchall()
+        result = conn.get_connection().execute(query).fetchall()
         times.append(time.time() - start)
     
     avg_time = sum(times) / len(times)

@@ -21,13 +21,13 @@ conn = connect_to_catalog("catalog.yaml")
 # Use as context manager for automatic cleanup
 with connect_to_catalog("catalog.yaml") as conn:
     # conn is a CatalogConnection object
-    result = conn.execute("SELECT COUNT(*) FROM users").fetchall()
+    result = conn.get_connection().execute("SELECT COUNT(*) FROM users").fetchall()
 
 # Force rebuild of all views
 conn = connect_to_catalog("catalog.yaml", force_rebuild=True)
 
 # Custom database path
-conn = connect_to_catalog("catalog.yaml", db_path="custom.duckdb")
+conn = connect_to_catalog("catalog.yaml", database_path="custom.duckdb")
 ```
 
 #### Key Features of CatalogConnection
@@ -87,20 +87,11 @@ conn = connect_to_catalog("catalog.yaml")
 #### Key Methods
 
 ```python
-# Execute SQL (returns DuckDB result)
-result = conn.execute("SELECT * FROM users")
-
 # Get raw DuckDB connection when needed
 duckdb_conn = conn.get_connection()
 
-# Force rebuild catalog
-conn.rebuild_catalog()
-
-# Check if connection is ready
-is_ready = conn.is_ready()
-
-# Get catalog metadata
-metadata = conn.get_metadata()
+# Clean up the connection and resources
+conn.close()
 ```
 
 #### Context Manager Usage
@@ -112,7 +103,7 @@ with connect_to_catalog("catalog.yaml") as conn:
     # Pragmas, settings, and attachments restored
     # Cleanup performed on exit
     
-    result = conn.execute("SELECT COUNT(*) FROM users").fetchone()
+    result = conn.get_connection().execute("SELECT COUNT(*) FROM users").fetchone()
     print(f"Total users: {result[0]}")
 
 # Connection automatically cleaned up
@@ -130,7 +121,7 @@ with connect_to_catalog("catalog.yaml") as conn:
     # - Custom functions
     
     # All views are available
-    for table in conn.execute("SHOW TABLES").fetchall():
+    for table in conn.get_connection().execute("SHOW TABLES").fetchall():
         print(f"Available view: {table[0]}")
 ```
 
@@ -242,13 +233,13 @@ from duckalog import connect_to_catalog
 
 # Pattern 1: Single connection with multiple queries
 conn = connect_to_catalog("catalog.yaml")
-users = conn.execute("SELECT * FROM users").fetchall()
-orders = conn.execute("SELECT * FROM orders").fetchall()
+users = conn.get_connection().execute("SELECT * FROM users").fetchall()
+orders = conn.get_connection().execute("SELECT * FROM orders").fetchall()
 
 # Pattern 2: Context manager for automatic cleanup
 with connect_to_catalog("catalog.yaml") as conn:
     # Process data with automatic connection management
-    results = conn.execute("""
+    results = conn.get_connection().execute("""
         SELECT u.username, COUNT(o.order_id) as order_count
         FROM users u
         LEFT JOIN orders o ON u.user_id = o.user_id
@@ -259,8 +250,8 @@ with connect_to_catalog("catalog.yaml") as conn:
 with connect_to_catalog("analytics.yaml") as analytics_conn:
     with connect_to_catalog("warehouse.yaml") as warehouse_conn:
         # Both connections managed independently
-        analytics_data = analytics_conn.execute("SELECT * FROM metrics").fetchall()
-        warehouse_data = warehouse_conn.execute("SELECT * FROM inventory").fetchall()
+        analytics_data = analytics_conn.get_connection().execute("SELECT * FROM metrics").fetchall()
+        warehouse_data = warehouse_conn.get_connection().execute("SELECT * FROM inventory").fetchall()
 ```
 
 ### Performance Optimization
@@ -275,8 +266,7 @@ conn = connect_to_catalog("catalog.yaml", force_rebuild=True)
 # Connection reuse across operations
 with connect_to_catalog("catalog.yaml") as conn:
     # Reuse same connection for multiple queries
-    metadata = conn.get_metadata()  # Cached connection
-    results = conn.execute("COMPLEX_QUERY").fetchall()
+    results = conn.get_connection().execute("COMPLEX_QUERY").fetchall()
     # Connection reused, no reconnection overhead
 ```
 

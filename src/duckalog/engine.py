@@ -933,6 +933,17 @@ def _setup_iceberg_catalogs(
 def _create_views(
     conn: duckdb.DuckDBPyConnection, config: Config, verbose: bool
 ) -> None:
+    # Create any referenced schemas before creating views
+    schemas_to_create = sorted(
+        {v.db_schema for v in config.views if v.db_schema}
+    )
+    for schema in schemas_to_create:
+        from .sql_generation import generate_create_schema_sql
+
+        sql = generate_create_schema_sql(schema)
+        log_info("Creating schema if not exists", schema=schema)
+        conn.execute(sql)
+
     for view in config.views:
         from .sql_generation import generate_view_sql
 

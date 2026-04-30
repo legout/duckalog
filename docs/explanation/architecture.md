@@ -218,12 +218,16 @@ sequenceDiagram
 - Perform environment variable interpolation and path resolution
 - Validate configuration schema and security boundaries
 - Handle file I/O, remote access, and error management
+- Resolve configuration imports with request-scoped caching
 
 **Key Components:**
 - **`models.py`**: Pydantic models for configuration schema validation
-- **`loader.py`**: Core configuration loading functionality including SQL file loading
-- **`interpolation.py`**: Environment variable substitution engine
-- **`validators.py`**: Path security validation and normalization
+- **`api.py`**: Public API orchestration for configuration loading
+- **`loading/sql.py`**: SQL file loading and processing
+- **`resolution/env.py`**: Environment variable substitution engine
+- **`resolution/imports.py`**: Configuration import resolution with caching
+- **`security/path.py`**: Path security validation and normalization
+- **`validators.py`**: Legacy compatibility validators
 
 **Key Features:**
 - Supports both YAML and JSON formats
@@ -244,9 +248,10 @@ sequenceDiagram
     Config->>File: Read file content
     File-->>Config: Raw YAML content
     Config->>Config: Parse YAML/JSON
-    Config->>Config: interpolate_env(raw_dict)
+    Config->>Config: resolve environment variables
     Config->>Env: Get ${env:VAR} values
     Env-->>Config: Real values
+    Config->>Config: Validate against Pydantic models
     Config-->>CLI: Validated Config object
 ```
 
@@ -945,6 +950,6 @@ Duckalog's architecture provides a robust, maintainable, and extensible foundati
 
 ## Related Documentation
 
-- **[User Guide](guides/index.md)**: How to use Duckalog in practice
-- **[API Reference](reference/index.md)**: Complete API documentation
+- **[User Guide](../guides/index.md)**: How to use Duckalog in practice
+- **[API Reference](../reference/index.md)**: Complete API documentation
 - **Examples**: See the `examples/` directory for configuration samples

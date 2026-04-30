@@ -8,6 +8,18 @@ from .sql_utils import quote_ident, quote_literal, render_options
 from .errors import EngineError
 
 
+def generate_create_schema_sql(schema_name: str) -> str:
+    """Generate a ``CREATE SCHEMA IF NOT EXISTS`` statement.
+
+    Args:
+        schema_name: The schema to create.
+
+    Returns:
+        A SQL statement that creates the schema if it does not already exist.
+    """
+    return f"CREATE SCHEMA IF NOT EXISTS {quote_ident(schema_name)};"
+
+
 def generate_view_sql(view: ViewConfig) -> str:
     """Generate a ``CREATE OR REPLACE VIEW`` statement for a single view.
 
