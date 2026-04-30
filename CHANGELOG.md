@@ -1,4 +1,9 @@
 # Changelog
+## [2026-04-30] - 0.6.2
+
+### Changed
+- **Dependencies**: Capped DuckDB dependency to `<1.5.0` for compatibility stability
+
 ## [2026-04-30] - 0.6.1
 
 ### Fixed
