@@ -13,10 +13,10 @@ from pathlib import Path
 import pytest
 
 from duckalog.config import ConfigError
+from duckalog.config.security.path import is_within_allowed_roots
 from duckalog.config.validators import (
     resolve_relative_path,
     validate_path_security,
-    is_within_allowed_roots,
 )
 
 
