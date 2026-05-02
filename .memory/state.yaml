@@ -1,0 +1,449 @@
+active_branch: main
+initialized: "2026-04-01T21:17:01Z"
+last_commit:
+  branch: main
+  hash: 49b78b2d
+  timestamp: "2026-04-22T19:29:12.669Z"
+  summary: "Initialized pi-execflow in the repo for br tracking: added .execflow workflow docs/settings and linked the root AGENTS.md to them."
+sessions:
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T14-17-15-176Z_41f84a69-a00d-4e7a-8dd8-77b2be80e8af.jsonl"
+    branch: main
+    started: "2026-04-14T14:17:17.426Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T14-46-43-406Z_0ae894e6-04a6-499f-8872-1ba4fb066202.jsonl"
+    branch: main
+    started: "2026-04-14T14:46:45.343Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-02-03-741Z_82737d0d-6ed3-4772-a43f-3631d231f420.jsonl"
+    branch: main
+    started: "2026-04-14T17:02:05.462Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-03-24-189Z_6a48fd95-2360-4a98-9c0c-2e9564c25cf8-0-9fd51878.jsonl"
+    branch: main
+    started: "2026-04-14T17:03:27.413Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-04-36-471Z_b9fb45e5-fba1-4fed-bf11-cf55da16acf0-0-fc696fa2.jsonl"
+    branch: main
+    started: "2026-04-14T17:04:39.801Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-07-43-526Z_53c9510d-5a2b-4a90-9ec8-b55addd31c2e-0-ff463939.jsonl"
+    branch: main
+    started: "2026-04-14T17:07:47.133Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-10-11-359Z_d959360e-9d3a-454e-b1de-50cf11d48454-0-fd578c31.jsonl"
+    branch: main
+    started: "2026-04-14T17:10:15.079Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-13-05-784Z_93ebf39a-d681-4824-b58e-0ba56fe5b0ff-0-14d46f31.jsonl"
+    branch: main
+    started: "2026-04-14T17:13:09.371Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-21-22-813Z_f9588ee7-0cc1-4c2d-b160-ba955b25f639-0-a2d73a96.jsonl"
+    branch: main
+    started: "2026-04-14T17:21:26.835Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-26-16-891Z_ceef76df-fb6a-4f7b-8bb6-dc68bfb1ca97-0-be748371.jsonl"
+    branch: main
+    started: "2026-04-14T17:26:20.285Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-27-45-829Z_cddbca22-e39a-41aa-a695-3ce61538e36f-0-0eeb28c1.jsonl"
+    branch: main
+    started: "2026-04-14T17:27:49.123Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-32-24-856Z_66e3587e-a049-4926-a019-dca4fefd8567-0-72c50f84.jsonl"
+    branch: main
+    started: "2026-04-14T17:32:28.405Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-35-03-252Z_640f197f-426c-4fdd-8e58-eceee2e5f0c4-0-f7f02e96.jsonl"
+    branch: main
+    started: "2026-04-14T17:35:06.835Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-38-09-111Z_50ff0ab1-2ecf-413c-bc84-8b9c195d67ea-0-503a4f9b.jsonl"
+    branch: main
+    started: "2026-04-14T17:38:12.699Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-45-25-977Z_4b984b8f-fa82-44ec-b0fa-7a7bbae814f2-0-6fab2f90.jsonl"
+    branch: main
+    started: "2026-04-14T17:45:29.801Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-50-01-960Z_1bf9f4a4-bd8a-4dea-8a08-05ed25228afd.jsonl"
+    branch: main
+    started: "2026-04-14T17:50:03.259Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-52-15-491Z_d39e648b-863e-46e9-963d-ed9fae6ff22d-0-997fa142.jsonl"
+    branch: main
+    started: "2026-04-14T17:52:19.425Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-53-59-914Z_692725d4-50f1-45d0-af16-76466f20322a-0-6d3a4a44.jsonl"
+    branch: main
+    started: "2026-04-14T17:54:03.457Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T17-58-20-216Z_caa8f14e-5d39-42e9-bd0c-3196864b449e-0-ebc1de3f.jsonl"
+    branch: main
+    started: "2026-04-14T17:58:23.969Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T18-04-22-105Z_786c9914-619a-4bc1-a2be-8cdb313780e7-0-0547f1b2.jsonl"
+    branch: main
+    started: "2026-04-14T18:04:26.070Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T18-08-51-483Z_fe239475-9a62-4ed0-adea-fa26dc14e713-0-a67b340c.jsonl"
+    branch: main
+    started: "2026-04-14T18:08:55.191Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T18-14-37-125Z_a20c0817-58a6-444d-ad34-da81fd938bc9-0-7a739db2.jsonl"
+    branch: main
+    started: "2026-04-14T18:14:41.044Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T18-19-39-672Z_507c675c-1684-48b0-97c5-aba770f4f1b5-0-f81b96eb.jsonl"
+    branch: main
+    started: "2026-04-14T18:19:44.105Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T18-24-46-279Z_bdc81f84-c252-459a-ac81-101a05eb35f3-0-329c6d3d.jsonl"
+    branch: main
+    started: "2026-04-14T18:24:49.868Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T18-30-59-089Z_5a9c7eea-442c-4728-a242-263befb4879b-0-aff3d4ca.jsonl"
+    branch: main
+    started: "2026-04-14T18:31:02.931Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T19-25-11-508Z_cfe39494-c894-49e3-862b-a2d4430e152b-0-a46bfbc8.jsonl"
+    branch: main
+    started: "2026-04-14T19:25:15.886Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T19-29-05-508Z_dcb97299-b291-4f0d-a135-27a03fa271d6-0-77e06a26.jsonl"
+    branch: main
+    started: "2026-04-14T19:29:09.283Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T19-30-00-103Z_e5ea925a-f092-4284-9d96-5a0783fe8a6b-0-e3b87660.jsonl"
+    branch: main
+    started: "2026-04-14T19:30:03.587Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T19-36-39-794Z_cf9657de-f5ef-4603-b74d-750f53a6ffe0-0-2427d8b0.jsonl"
+    branch: main
+    started: "2026-04-14T19:36:43.200Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T19-40-45-407Z_19a1e07a-0e3c-4f06-86d1-75806c797d51-0-26612890.jsonl"
+    branch: main
+    started: "2026-04-14T19:40:48.673Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T19-48-47-624Z_f4b356b0-7d77-4c6f-8bb3-96a8994d97ca-0-4ff0c29b.jsonl"
+    branch: main
+    started: "2026-04-14T19:48:51.247Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T19-52-07-156Z_67c714ac-5661-4f6e-98a1-59a3d3b8e336-0-8638d9c9.jsonl"
+    branch: main
+    started: "2026-04-14T19:52:11.304Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T20-06-13-345Z_f37d778f-a39c-4a9c-909e-20a024fae7fd-0-2cac2f29.jsonl"
+    branch: main
+    started: "2026-04-14T20:06:16.772Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T20-14-06-789Z_d0dec0cf-6aaa-4a5e-8a22-104bb5000cab-0-260d5719.jsonl"
+    branch: main
+    started: "2026-04-14T20:14:10.396Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T20-18-41-737Z_b85dee1e-194a-460b-b5ab-0bad2e8f6297-0-bf7f18e7.jsonl"
+    branch: main
+    started: "2026-04-14T20:18:45.349Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T20-19-15-764Z_7692c519-3dc9-40bc-b5f5-0506b3724a2b-0-4d720c43.jsonl"
+    branch: main
+    started: "2026-04-14T20:19:19.119Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T20-19-48-406Z_1a772fe5-dc50-4536-9ba2-797a58333d38-0-71269706.jsonl"
+    branch: main
+    started: "2026-04-14T20:19:51.880Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T20-26-26-076Z_89e1b11a-654f-4fd6-be24-266beaf69487-0-28c97e25.jsonl"
+    branch: main
+    started: "2026-04-14T20:26:29.959Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T20-38-50-561Z_e0a9024b-445e-49f1-bd2f-938d2ba889bb-0-9d9b4d84.jsonl"
+    branch: main
+    started: "2026-04-14T20:38:54.341Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T20-59-30-037Z_99a2455e-f58d-4584-bbf9-a6268c3c6d60-0-75ce4d81.jsonl"
+    branch: main
+    started: "2026-04-14T20:59:33.499Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-14T21-45-24-942Z_ede2be57-315de7d2-f09a2458-da6c.jsonl"
+    branch: main
+    started: "2026-04-14T21:45:29.388Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-15T05-36-03-393Z_6119f534-0b0e-45d9-9e78-f372c0536c0f.jsonl"
+    branch: main
+    started: "2026-04-15T05:36:04.861Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-21T09-05-50-368Z_019daf49-eb20-7291-8b62-84fa7eaab148.jsonl"
+    branch: main
+    started: "2026-04-21T09:05:52.404Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-21T09-15-56-334Z_019daf53-2a2e-7271-8c9e-a57943a83443.jsonl"
+    branch: main
+    started: "2026-04-21T09:15:58.205Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-21T11-01-12-861Z_019dafb3-8c1d-722c-9450-90684c8474a4.jsonl"
+    branch: main
+    started: "2026-04-21T11:01:15.030Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-21T11-07-02-567Z_019dafb8-e227-77cd-8021-bc133d759dd2.jsonl"
+    branch: main
+    started: "2026-04-21T11:07:04.430Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-22T19-26-32-783Z_019db6a8-8d4f-762d-a205-8f586bae5e47.jsonl"
+    branch: main
+    started: "2026-04-22T19:26:35.055Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-22T20-28-25-471Z_019db6e1-33ff-760f-ae45-c7bc62b8f03a.jsonl"
+    branch: main
+    started: "2026-04-22T20:28:28.047Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-22T20-29-09-761Z_019db6e1-e100-765b-99b3-9455a1dc8ba4.jsonl"
+    branch: main
+    started: "2026-04-22T20:29:11.670Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-22T20-53-52-304Z_019db6f8-8030-74da-b2f4-1aa6a3392331.jsonl"
+    branch: main
+    started: "2026-04-22T20:53:54.388Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-22T21-06-05-817Z_019db703-b179-7788-bf6c-e0b6182d126d.jsonl"
+    branch: main
+    started: "2026-04-22T21:06:07.657Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-22T22-08-17-886Z_019db73c-a3dd-712c-8ca0-84aadd3e8c2e.jsonl"
+    branch: main
+    started: "2026-04-22T22:08:19.697Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-22T22-13-31-396Z_019db741-6c84-7239-8bb3-3caea22e7366.jsonl"
+    branch: main
+    started: "2026-04-22T22:13:33.231Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-22T22-28-58-501Z_019db74f-9204-710b-a3cf-78e468575652.jsonl"
+    branch: main
+    started: "2026-04-22T22:29:00.215Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-24T18-52-12-431Z_019dc0d5-d50e-76ee-9f06-d39352c4f250.jsonl"
+    branch: main
+    started: "2026-04-24T18:52:14.116Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-24T18-53-23-066Z_019dc0d6-e8f8-7284-a475-b34352f25e78.jsonl"
+    branch: main
+    started: "2026-04-24T18:53:24.712Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-24T18-55-12-475Z_019dc0d8-945a-7359-82b1-0cb93c5d0f68.jsonl"
+    branch: main
+    started: "2026-04-24T18:55:13.859Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-24T18-55-12-475Z_019dc0d8-945a-7359-82b1-0cb93c5d0f68/fb06f4ac/run-1/2026-04-24T19-03-45-784Z_019dc0e0-6978-73a9-a42c-9085a3841e76.jsonl"
+    branch: main
+    started: "2026-04-24T19:03:47.683Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-24T18-55-12-475Z_019dc0d8-945a-7359-82b1-0cb93c5d0f68/fb06f4ac/run-2/2026-04-24T19-03-45-765Z_019dc0e0-6964-73f0-83b8-d76322007b91.jsonl"
+    branch: main
+    started: "2026-04-24T19:03:47.703Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-24T18-55-12-475Z_019dc0d8-945a-7359-82b1-0cb93c5d0f68/fb06f4ac/run-0/2026-04-24T19-03-45-824Z_019dc0e0-699f-74ac-b801-0c97f81430e6.jsonl"
+    branch: main
+    started: "2026-04-24T19:03:47.792Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-24T18-55-12-475Z_019dc0d8-945a-7359-82b1-0cb93c5d0f68/fb06f4ac/run-3/2026-04-24T19-03-45-804Z_019dc0e0-698b-73f4-a6ba-413679e171d5.jsonl"
+    branch: main
+    started: "2026-04-24T19:03:47.811Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-24T19-09-16-724Z_019dc0e5-7633-77ee-9358-dea9408d32be.jsonl"
+    branch: main
+    started: "2026-04-24T19:09:18.049Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-27T08-17-14-810Z_019dce03-9637-777f-854b-9cec9c9b1019.jsonl"
+    branch: main
+    started: "2026-04-27T08:17:16.267Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-27T08-47-53-130Z_019dce1f-a32a-7138-b1b6-3d83cb07212d.jsonl"
+    branch: main
+    started: "2026-04-27T08:47:54.729Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-27T08-56-55-936Z_019dce27-eb80-72af-9fb1-f80bf1d5c044.jsonl"
+    branch: main
+    started: "2026-04-27T08:56:57.947Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-27T08-56-55-936Z_019dce27-eb80-72af-9fb1-f80bf1d5c044/768b61fa/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-27T08:58:07.031Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-27T08-56-55-936Z_019dce27-eb80-72af-9fb1-f80bf1d5c044/88d47a97/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-27T08:58:07.034Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-27T08-56-55-936Z_019dce27-eb80-72af-9fb1-f80bf1d5c044/f2c5627c/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-27T08:58:07.041Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-27T08-56-55-936Z_019dce27-eb80-72af-9fb1-f80bf1d5c044/d487c2d3/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-27T08:58:07.058Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T05-03-11-196Z_019dd278-475b-7568-a4c8-e3f8179d806e.jsonl"
+    branch: main
+    started: "2026-04-28T05:03:12.868Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T05-24-53-434Z_019dd28c-2639-76ce-925b-8897b79d2e49.jsonl"
+    branch: main
+    started: "2026-04-28T05:24:54.965Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T05-56-02-415Z_019dd2a8-aaef-719f-a863-c96460e59cde.jsonl"
+    branch: main
+    started: "2026-04-28T05:56:04.104Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T05-56-10-820Z_019dd2a8-cbc3-7765-a49c-9e4d0e76731a.jsonl"
+    branch: main
+    started: "2026-04-28T05:56:12.065Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T05-58-01-434Z_019dd2aa-7bd9-75a9-b498-d3f38b5f6ac3.jsonl"
+    branch: main
+    started: "2026-04-28T05:58:02.915Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T05-58-42-115Z_019dd2ab-1ac3-7649-8086-b125045cad6c.jsonl"
+    branch: main
+    started: "2026-04-28T05:58:43.402Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T05-59-28-380Z_019dd2ab-cf7b-73f1-a635-135387b7b818.jsonl"
+    branch: main
+    started: "2026-04-28T05:59:29.819Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T06-01-50-628Z_019dd2ad-fb23-70e4-9761-1fc4306581d1.jsonl"
+    branch: main
+    started: "2026-04-28T06:01:52.136Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T06-02-38-794Z_019dd2ae-b74a-768c-930a-01dedb3f9be2.jsonl"
+    branch: main
+    started: "2026-04-28T06:02:40.248Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T06-28-17-730Z_019dd2c6-32c1-7549-acb3-150c0bc4f9b2.jsonl"
+    branch: main
+    started: "2026-04-28T06:28:19.529Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T06-31-18-792Z_019dd2c8-f607-779b-9890-7ba44538b88e.jsonl"
+    branch: main
+    started: "2026-04-28T06:31:20.447Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T06-32-42-968Z_019dd2ca-3ed8-77b8-8b29-61d57adac2c9.jsonl"
+    branch: main
+    started: "2026-04-28T06:32:44.202Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T06-33-44-741Z_019dd2cb-3024-752e-b7e2-08560bb8214d.jsonl"
+    branch: main
+    started: "2026-04-28T06:33:46.336Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T06-34-22-409Z_019dd2cb-c349-72dd-ab9a-2d93776e2561.jsonl"
+    branch: main
+    started: "2026-04-28T06:34:23.543Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T11-32-27-651Z_019dd3dc-ab82-723c-8f24-b33e3d1a0720.jsonl"
+    branch: main
+    started: "2026-04-28T11:32:29.432Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T11-51-35-416Z_019dd3ee-2ef7-7375-b2fa-34ec02ad5b2d.jsonl"
+    branch: main
+    started: "2026-04-28T11:51:37.095Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T11-56-25-718Z_019dd3f2-9cf5-75b7-a472-04bf7f4f833e.jsonl"
+    branch: main
+    started: "2026-04-28T11:56:26.976Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T11-57-05-958Z_019dd3f3-3a25-70df-9dd5-5f948da04b8e.jsonl"
+    branch: main
+    started: "2026-04-28T11:57:07.510Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T11-58-09-865Z_019dd3f4-33c8-7004-bcbd-e90c5da34f69.jsonl"
+    branch: main
+    started: "2026-04-28T11:58:11.264Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T12-23-54-968Z_019dd40b-c757-75b4-9f56-9cd9fc738aa5.jsonl"
+    branch: main
+    started: "2026-04-28T12:23:56.768Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T12-24-03-142Z_019dd40b-e745-7184-b1d4-5ef9e2fc188d.jsonl"
+    branch: main
+    started: "2026-04-28T12:24:04.465Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T12-25-44-600Z_019dd40d-7397-7108-a83a-a2d9efa0a3b9.jsonl"
+    branch: main
+    started: "2026-04-28T12:25:45.782Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T12-28-20-476Z_019dd40f-d47c-77e6-8532-37b93e01f29e.jsonl"
+    branch: main
+    started: "2026-04-28T12:28:21.625Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T12-42-38-835Z_019dd41c-ed72-72bd-b949-61245f235ba1.jsonl"
+    branch: main
+    started: "2026-04-28T12:42:40.532Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T12-50-05-769Z_019dd423-bf49-70bf-9da8-bd302584f2e0.jsonl"
+    branch: main
+    started: "2026-04-28T12:50:07.402Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T12-50-37-435Z_019dd424-3afa-761e-b969-e4c00bebc630.jsonl"
+    branch: main
+    started: "2026-04-28T12:50:38.926Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T12-52-52-015Z_019dd426-48ae-771b-97b0-296692a77f80.jsonl"
+    branch: main
+    started: "2026-04-28T12:52:53.477Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T12-53-20-086Z_019dd426-b655-74db-85e4-8fdcccd29a0d.jsonl"
+    branch: main
+    started: "2026-04-28T12:53:21.581Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T16-24-53-415Z_019dd4e8-65a6-74cb-bab7-6c1aa41505b9.jsonl"
+    branch: main
+    started: "2026-04-28T16:24:55.133Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T16-28-06-398Z_019dd4eb-577c-74cb-938e-b1ac14d5857b.jsonl"
+    branch: main
+    started: "2026-04-28T16:28:08.142Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T16-43-29-878Z_019dd4f9-6ed5-728f-9462-613549987401.jsonl"
+    branch: main
+    started: "2026-04-28T16:43:31.550Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T16-44-10-906Z_019dd4fa-0f19-7668-b636-3f2507ac0114.jsonl"
+    branch: main
+    started: "2026-04-28T16:44:12.246Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T19-10-32-168Z_019dd580-0ce7-7254-a1a7-1a32b350cf0b.jsonl"
+    branch: main
+    started: "2026-04-28T19:10:34.127Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T19-13-03-303Z_019dd582-5b46-7441-add9-8c5e79ed32c6.jsonl"
+    branch: main
+    started: "2026-04-28T19:13:05.038Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T19-18-23-238Z_019dd587-3d05-75ad-a9e7-79231b606bfe.jsonl"
+    branch: main
+    started: "2026-04-28T19:18:24.956Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T19-25-16-798Z_019dd58d-8c7d-774e-83e5-cdf36914799b.jsonl"
+    branch: main
+    started: "2026-04-28T19:25:18.269Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T19-25-16-798Z_019dd58d-8c7d-774e-83e5-cdf36914799b/3a332eaa/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-28T19:45:32.012Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T19-25-16-798Z_019dd58d-8c7d-774e-83e5-cdf36914799b/53318353/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-28T19:48:24.073Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T19-25-16-798Z_019dd58d-8c7d-774e-83e5-cdf36914799b/246770a2/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-28T19:50:51.740Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T19-52-18-259Z_019dd5a6-4a52-714c-95a0-03216afe910a.jsonl"
+    branch: main
+    started: "2026-04-28T19:52:19.709Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T19-52-24-997Z_019dd5a6-64a4-7069-94de-6438e6888ee3.jsonl"
+    branch: main
+    started: "2026-04-28T19:52:26.328Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T19-52-24-997Z_019dd5a6-64a4-7069-94de-6438e6888ee3/b7eb1861/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-28T19:59:28.461Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T19-52-24-997Z_019dd5a6-64a4-7069-94de-6438e6888ee3/13e5537d/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-28T20:15:27.834Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T20-27-09-886Z_019dd5c6-34bd-72d8-a81d-c8bc9f01f2db.jsonl"
+    branch: main
+    started: "2026-04-28T20:27:11.533Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T20-37-41-225Z_019dd5cf-d6e8-71eb-aba6-ca9daf59fa4e.jsonl"
+    branch: main
+    started: "2026-04-28T20:37:42.873Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T20-37-41-225Z_019dd5cf-d6e8-71eb-aba6-ca9daf59fa4e/4fe99d4a/run-2/session.jsonl"
+    branch: main
+    started: "2026-04-28T20:39:05.673Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T20-37-41-225Z_019dd5cf-d6e8-71eb-aba6-ca9daf59fa4e/4fe99d4a/run-3/session.jsonl"
+    branch: main
+    started: "2026-04-28T20:39:05.676Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T20-37-41-225Z_019dd5cf-d6e8-71eb-aba6-ca9daf59fa4e/4fe99d4a/run-1/session.jsonl"
+    branch: main
+    started: "2026-04-28T20:39:05.681Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T20-37-41-225Z_019dd5cf-d6e8-71eb-aba6-ca9daf59fa4e/4fe99d4a/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-28T20:39:05.710Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T21-19-24-371Z_019dd5f6-08d2-710e-ba98-beca512d6f94.jsonl"
+    branch: main
+    started: "2026-04-28T21:19:26.169Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T22-00-46-113Z_019dd61b-e721-7294-810e-c7e5470b127a.jsonl"
+    branch: main
+    started: "2026-04-28T22:00:47.323Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T22-01-22-116Z_019dd61c-73c4-718a-bd76-2cb6ab0a856a.jsonl"
+    branch: main
+    started: "2026-04-28T22:01:23.669Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-28T22-35-06-640Z_019dd63b-5810-7668-bd7a-a7761af0e8b0.jsonl"
+    branch: main
+    started: "2026-04-28T22:35:07.995Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-29T09-17-41-509Z_019dd887-a505-7219-9eaf-b619ff566021.jsonl"
+    branch: main
+    started: "2026-04-29T09:17:43.204Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-29T09-17-41-509Z_019dd887-a505-7219-9eaf-b619ff566021/6be8c9a3/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-29T09:22:53.047Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-29T09-17-41-509Z_019dd887-a505-7219-9eaf-b619ff566021/59d7833a/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-29T09:28:28.474Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-29T09-44-55-448Z_019dd8a0-9397-72aa-940f-582fd030fc3c.jsonl"
+    branch: main
+    started: "2026-04-29T09:44:57.172Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-29T10-48-18-018Z_019dd8da-9962-75bc-b19c-c964467e3ecf.jsonl"
+    branch: main
+    started: "2026-04-29T10:48:19.523Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-29T11-15-35-898Z_019dd8f3-9759-75cd-bbed-5b94d997906f.jsonl"
+    branch: main
+    started: "2026-04-29T11:15:37.216Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-29T15-10-14-855Z_019dd9ca-6b45-7538-b0a7-0325e5a36cce.jsonl"
+    branch: main
+    started: "2026-04-29T15:10:16.521Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-29T15-47-55-085Z_019dd9ec-e84d-7053-afc1-575f5ed4090f.jsonl"
+    branch: main
+    started: "2026-04-29T15:47:56.433Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T07-56-10-763Z_019ddd63-6084-7323-9974-396b3afc250e.jsonl"
+    branch: main
+    started: "2026-04-30T07:56:12.493Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T08-41-53-193Z_019ddd8d-3926-7673-bc3e-56e7dfc9cbed.jsonl"
+    branch: main
+    started: "2026-04-30T08:41:55.623Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T08-41-53-193Z_019ddd8d-3926-7673-bc3e-56e7dfc9cbed/2f591e5a/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-30T08:43:32.397Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T08-41-53-193Z_019ddd8d-3926-7673-bc3e-56e7dfc9cbed/6ac98077/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-30T09:02:32.669Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T08-41-53-193Z_019ddd8d-3926-7673-bc3e-56e7dfc9cbed/dd2b12e9/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-30T09:20:08.720Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T08-41-53-193Z_019ddd8d-3926-7673-bc3e-56e7dfc9cbed/37b26dc1/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-30T09:25:12.166Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T09-28-34-615Z_019dddb7-f837-74bb-b656-ff26738d36df.jsonl"
+    branch: main
+    started: "2026-04-30T09:28:36.144Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T08-41-53-193Z_019ddd8d-3926-7673-bc3e-56e7dfc9cbed/50c9e245/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-30T09:31:07.521Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T08-41-53-193Z_019ddd8d-3926-7673-bc3e-56e7dfc9cbed/d68f74eb/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-30T09:36:24.410Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T08-41-53-193Z_019ddd8d-3926-7673-bc3e-56e7dfc9cbed/28d37518/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-30T09:53:01.189Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T08-41-53-193Z_019ddd8d-3926-7673-bc3e-56e7dfc9cbed/5d7c9e6f/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-30T10:37:34.475Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T08-41-53-193Z_019ddd8d-3926-7673-bc3e-56e7dfc9cbed/f31f6d1e/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-30T10:42:08.328Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T08-41-53-193Z_019ddd8d-3926-7673-bc3e-56e7dfc9cbed/adb2ceff/run-0/session.jsonl"
+    branch: main
+    started: "2026-04-30T10:46:48.049Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T13-22-23-337Z_019dde8e-07e9-75aa-b0eb-defd6d51daab.jsonl"
+    branch: main
+    started: "2026-04-30T13:22:25.034Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T13-23-58-314Z_019dde8f-7ae8-73ba-948b-5d35c69d5429.jsonl"
+    branch: main
+    started: "2026-04-30T13:23:59.714Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-04-30T13-25-57-793Z_019dde91-4da1-738c-9863-893d122b4f3a.jsonl"
+    branch: main
+    started: "2026-04-30T13:25:58.968Z"
+  - file: "/Users/volker/.pi/agent/sessions/--Users-volker-coding-libs-duckalog--/2026-05-02T09-09-32-898Z_019de7f3-4461-7094-9247-692591974016.jsonl"
+    branch: main
+    started: "2026-05-02T09:09:34.690Z"

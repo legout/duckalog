@@ -37,7 +37,6 @@ mms2.db.wal
 .pi/prompts/
 .DS_Store
 
-# Agent memory and temporary files
-.memory/
+# Temporary research and context files
 code_context.md
 research.md
