@@ -7,7 +7,7 @@ filesystem option normalization and fsspec protocol construction.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import typer
 

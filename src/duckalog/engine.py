@@ -13,6 +13,7 @@ import duckdb
 
 from .config import Config, load_config, is_relative_path, resolve_relative_path
 from .config import get_logger, log_debug, log_info, log_error, log_warning
+from .errors import EngineError
 
 # Optional imports for remote export functionality
 try:
@@ -449,8 +450,6 @@ class ConfigDependencyGraph:
             config_path=config_path,
             was_built=True,
         )
-
-from .errors import EngineError
 
 
 def build_catalog(

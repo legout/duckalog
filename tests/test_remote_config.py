@@ -3,14 +3,11 @@
 import json
 import os
 import tempfile
-from unittest.mock import Mock, patch, mock_open
-from urllib.parse import urlparse
+from unittest.mock import Mock, patch
 
 import pytest
 import yaml
 
-from duckalog import load_config
-from duckalog.config import ConfigError
 from duckalog.remote_config import (
     RemoteConfigError,
     fetch_remote_content,

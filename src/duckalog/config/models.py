@@ -1025,7 +1025,7 @@ class Config(BaseModel):
             return (None, reference)
 
         # Create lookup dictionaries for view resolution
-        view_by_name: dict[str, ViewConfig] = {view.name: view for view in self.views}
+        _view_by_name: dict[str, ViewConfig] = {view.name: view for view in self.views}
         view_by_schema_name: dict[tuple[Optional[str], str], ViewConfig] = {
             (view.db_schema, view.name): view for view in self.views
         }

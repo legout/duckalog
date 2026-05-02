@@ -24,8 +24,7 @@ class ViewsController(Controller):
         views = ctx.get_views()
 
         # Convert views to table format
-        columns = ["Name", "Schema", "Source Type", "Description"]
-        rows = [
+        _rows = [
             (
                 a(
                     href=f"/views/{v['name']}",

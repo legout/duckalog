@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from duckalog.engine import EngineError, build_catalog, is_remote_export_uri
+from duckalog.engine import EngineError, _upload_to_remote, build_catalog, is_remote_export_uri
 
 
 class TestRemoteExportURI:
@@ -134,8 +134,6 @@ class TestRemoteExportUpload:
             temp_path.unlink()
 
 
-# Import function for testing
-from duckalog.engine import _upload_to_remote
 
 
 class TestBuildCatalogRemoteExport:

@@ -133,7 +133,7 @@ class TestFilesystemIntegration:
         # Create a mock filesystem
         mock_fs = MagicMock()
 
-        result = load_config("s3://bucket/config.yaml", filesystem=mock_fs)
+        load_config("s3://bucket/config.yaml", filesystem=mock_fs)
 
         # Should have called remote loader with filesystem
         mock_load_from_uri.assert_called_once()
@@ -173,7 +173,7 @@ class TestFilesystemIntegration:
             )
             mock_fs.open.return_value.__enter__.return_value = mock_file
 
-            result = load_config(local_file, filesystem=mock_fs)
+            load_config(local_file, filesystem=mock_fs)
 
             # Should NOT have called remote loader
             mock_load_from_uri.assert_not_called()

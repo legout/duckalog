@@ -3,13 +3,13 @@
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import duckdb
 import pytest
 import typer
 
-from duckalog.cli import query, _display_table, _fail
+from duckalog.cli import query, _display_table
 
 
 class TestCLIQuery:

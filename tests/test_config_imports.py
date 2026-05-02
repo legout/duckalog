@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import os
 import textwrap
 from pathlib import Path
 from unittest.mock import patch
-from typing import Any
 
 import pytest
 
@@ -14,7 +12,6 @@ from duckalog import load_config
 from duckalog.errors import (
     CircularImportError,
     DuplicateNameError,
-    ImportError,
     ImportFileNotFoundError,
     ImportValidationError,
 )
@@ -1756,7 +1753,7 @@ def test_empty_selective_imports_normalization(tmp_path):
     from duckalog import load_config
 
     # Create config with empty SelectiveImports
-    imports = SelectiveImports()
+    SelectiveImports()
     config = load_config(str(config_path))
 
     # Should normalize to empty list

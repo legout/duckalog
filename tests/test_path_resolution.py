@@ -3,16 +3,14 @@
 import os
 import tempfile
 from pathlib import Path
-from typing import List
 
 import pytest
 import yaml
 
 from duckalog.config import (
-    Config,
     load_config,
 )
-from duckalog.errors import ConfigError, PathResolutionError
+from duckalog.errors import ConfigError
 from duckalog.config import (
     detect_path_type,
     is_relative_path,
@@ -347,7 +345,7 @@ class TestConfigIntegration:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             config_dir = temp_path / "config"
-            data_dir = temp_path / "data"
+            temp_path / "data"
 
             config_dir.mkdir()
 
@@ -698,7 +696,7 @@ class TestRootBasedPathSecurity:
 
             # Test paths with mixed separators (if applicable)
             mixed_path = tmpdir + "\\subdir\\file.parquet"
-            result = is_within_allowed_roots(mixed_path, [config_dir])
+            is_within_allowed_roots(mixed_path, [config_dir])
             # This should work on Unix (treating backslash as regular char)
             # or fail gracefully on Windows
 

@@ -1,6 +1,4 @@
-import pytest
 import yaml
-from pathlib import Path
 from duckalog.config.api import load_config
 from duckalog.config.resolution.imports import request_cache_scope
 

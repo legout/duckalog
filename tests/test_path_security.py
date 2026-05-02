@@ -9,13 +9,11 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
 from duckalog.config import ConfigError
 from duckalog.config.validators import (
-    PathResolutionError,
     resolve_relative_path,
     validate_path_security,
     is_within_allowed_roots,

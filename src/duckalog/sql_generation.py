@@ -174,14 +174,14 @@ def _build_http_params(secret: SecretConfig) -> list[str]:
         params.append(f"BEARER_TOKEN {quote_literal(secret.bearer_token)}")
     elif secret.header:
         raise EngineError(
-            f"HTTP secrets with custom headers are not supported in current DuckDB versions. "
-            f"Only BEARER_TOKEN authentication is supported for HTTP secrets."
+            "HTTP secrets with custom headers are not supported in current DuckDB versions. "
+            "Only BEARER_TOKEN authentication is supported for HTTP secrets."
         )
     else:
         if secret.key_id or secret.secret:
             raise EngineError(
-                f"HTTP secrets with basic authentication (USERNAME/PASSWORD) are not supported in current DuckDB versions. "
-                f"Only BEARER_TOKEN authentication is supported for HTTP secrets."
+                "HTTP secrets with basic authentication (USERNAME/PASSWORD) are not supported in current DuckDB versions. "
+                "Only BEARER_TOKEN authentication is supported for HTTP secrets."
             )
     return params
 

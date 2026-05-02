@@ -1,6 +1,4 @@
-from abc import ABC, abstractmethod
-from typing import Any, Optional, Union, Protocol, runtime_checkable, TYPE_CHECKING
-from pathlib import Path
+from typing import Any, Optional, Protocol, runtime_checkable, TYPE_CHECKING
 from dataclasses import dataclass, field
 import threading
 

@@ -1,9 +1,7 @@
 import os
 import pytest
 import yaml
-import tempfile
 from pathlib import Path
-from typing import Generator
 
 from duckalog.config.api import load_config
 from duckalog.config.resolution.imports import request_cache_scope, RequestContext
@@ -112,7 +110,7 @@ def test_env_interpolation_performance(benchmark):
 def test_sql_file_loading_performance(benchmark, tmp_path):
     """Benchmark loading many SQL files."""
     from duckalog.config.loading.sql import load_sql_files_from_config
-    from duckalog.config.models import Config, ViewConfig, DuckDBConfig
+    from duckalog.config.models import ViewConfig, DuckDBConfig
 
     sql_dir = tmp_path / "sql"
     sql_dir.mkdir()

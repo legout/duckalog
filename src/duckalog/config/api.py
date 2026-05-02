@@ -80,7 +80,7 @@ def _load_config_from_local_file(
         request_cache_scope(context=context) as request_context,
         path_resolution_context(),
     ):
-        resolver = DefaultImportResolver(context=request_context)
+        _resolver = DefaultImportResolver(context=request_context)
         return _load_config_with_imports(
             file_path=path,
             filesystem=filesystem,

@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import tempfile
-import textwrap
-from pathlib import Path
 
 import duckdb
 import pytest
@@ -220,7 +217,7 @@ def test_cycle_detection(tmp_path):
     )
 
     # Create config B that references A (creating a cycle)
-    config_b = _write_config(
+    _write_config(
         tmp_path / "config_b.yaml",
         f"""
         version: 1
@@ -352,7 +349,7 @@ def test_dry_run_cycle_detection(tmp_path):
         """,
     )
 
-    config_b = _write_config(
+    _write_config(
         tmp_path / "config_b.yaml",
         f"""
         version: 1
@@ -382,7 +379,7 @@ def test_relative_path_resolution_in_attachments(tmp_path):
     nested_dir.mkdir()
 
     # Create child config in nested directory
-    child_config = _write_config(
+    _write_config(
         nested_dir / "child.yaml",
         """
         version: 1

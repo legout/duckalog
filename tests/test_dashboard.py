@@ -2,7 +2,6 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 from litestar.testing import TestClient
@@ -91,7 +90,6 @@ class TestDashboardContext:
         ctx = DashboardContext(config=config, config_path=str(config_path))
 
         # Import asyncio for async execution
-        import asyncio
 
         async def run_test():
             async for columns, rows in ctx.execute_query("SELECT 1 as x, 2 as y"):
@@ -112,7 +110,6 @@ class TestDashboardContext:
         ctx = DashboardContext(config=config, config_path=str(config_path))
 
         # Import asyncio for async execution
-        import asyncio
 
         async def run_test():
             with pytest.raises(ValueError, match="read-only"):
@@ -449,7 +446,6 @@ class TestRealtimeQueryStreaming:
 
     def test_streamed_query_returns_rows_progressive(self, tmp_path: Path):
         """Test that query execution streams rows progressively."""
-        import asyncio
         from duckalog.config import load_config
         from duckalog.dashboard.state import DashboardContext
 
@@ -482,7 +478,6 @@ class TestRealtimeQueryStreaming:
 
     def test_large_result_set_batched_without_blocking(self, tmp_path: Path):
         """Test that large result sets are streamed in batches without blocking."""
-        import asyncio
         from duckalog.config import load_config
         from duckalog.dashboard.state import DashboardContext
 
@@ -510,7 +505,6 @@ class TestRealtimeQueryStreaming:
 
     def test_query_error_stops_stream(self, tmp_path: Path):
         """Test that query errors stop the stream and return error."""
-        import asyncio
         from duckalog.config import load_config
         from duckalog.dashboard.state import DashboardContext
 
@@ -751,7 +745,6 @@ class TestCLIIntegration:
     def test_cli_ui_with_custom_host(self, tmp_path: Path):
         """Test CLI command with custom host option."""
         from duckalog.cli import ui
-        from pathlib import Path
 
         config_path = _write_config(tmp_path)
 
@@ -1124,12 +1117,8 @@ class TestViewSearchIntegration:
 
     def test_view_listing_empty_state(self, dashboard_app):
         """Test view listing with no views configured."""
-        from duckalog.config import load_config
-        from duckalog.dashboard.app import create_app
-        from pathlib import Path
 
         # Create a config with no views
-        tmp_config = dashboard_app  # Reuse fixture
         # This would need a special fixture, but we test the structure exists
         with TestClient(app=dashboard_app) as client:
             resp = client.get("/views")
@@ -1260,13 +1249,12 @@ class TestConcurrentQueries:
 
     def test_concurrent_queries_no_blocking(self, tmp_path: Path):
         """Test that multiple queries can execute concurrently without blocking."""
-        import asyncio
         from duckalog.config import load_config
         from duckalog.dashboard.app import create_app
 
         config_path = _write_config(tmp_path)
         config = load_config(str(config_path))
-        app = create_app(config, config_path=str(config_path))
+        create_app(config, config_path=str(config_path))
 
         async def run_concurrent_queries():
             # Access the context directly for testing
@@ -1312,7 +1300,6 @@ class TestConcurrentQueries:
 
     def test_query_uses_threadpool(self, tmp_path: Path):
         """Test that query execution doesn't block the event loop."""
-        import asyncio
         from datetime import datetime
         from duckalog.config import load_config
         from duckalog.dashboard.state import DashboardContext

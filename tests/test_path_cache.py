@@ -1,4 +1,3 @@
-import pytest
 from pathlib import Path
 from duckalog import load_config
 from duckalog.config.security.path import (
@@ -64,7 +63,7 @@ def test_load_config_uses_path_cache(tmp_path):
     (data_dir / "test1.parquet").touch()
 
     config_path = config_dir / "catalog.yaml"
-    config_path.write_text(f"""
+    config_path.write_text("""
 version: 1
 duckdb:
   database: ":memory:"

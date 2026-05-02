@@ -5,22 +5,15 @@ and attachments) and redacted logging.  Path-security primitives live in
 ``duckalog.config.security.path`` and should be imported directly from there.
 """
 
-import os
-import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 from duckalog.errors import ConfigError, PathResolutionError
 from duckalog.config.security.path import (
     DefaultPathResolver,
-    DefaultPathValidator,
-    detect_path_type,
     is_relative_path,
-    is_within_allowed_roots,
-    normalize_path_for_sql,
     resolve_relative_path,
-    validate_file_accessibility,
     validate_path_security,
 )
 

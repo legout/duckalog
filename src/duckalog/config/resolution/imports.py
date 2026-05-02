@@ -4,15 +4,13 @@ from __future__ import annotations
 
 import concurrent.futures
 import json
-import os
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional, Union, TYPE_CHECKING
-import threading
 
 if TYPE_CHECKING:
-    from ..models import Config
+    pass
 
 import yaml
 
@@ -34,9 +32,8 @@ from ..validators import (
     _resolve_paths_in_config,
 )
 from ..loading.sql import load_sql_files_from_config, process_sql_file_references
-from ..validators import validate_path_security
 from ..security.path import path_resolution_context
-from .env import EnvCache, DefaultEnvProcessor, _load_dotenv_files_for_config
+from .env import EnvCache, _load_dotenv_files_for_config
 from ...performance import PerformanceMetrics
 
 from .base import ImportContext, ImportResolver

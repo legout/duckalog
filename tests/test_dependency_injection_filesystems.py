@@ -1,16 +1,14 @@
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Optional, Union
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 
 import pytest
 import yaml
 from fsspec.implementations.memory import MemoryFileSystem
 
-from duckalog.config import load_config, Config, ConfigError
+from duckalog.config import load_config, ConfigError
 from duckalog.sql_file_loader import SQLFileLoader
-from duckalog.errors import PathResolutionError
 
 
 class CustomMockFilesystem:

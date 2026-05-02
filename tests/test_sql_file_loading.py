@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from duckalog import ConfigError, load_config
-from duckalog.errors import SQLFileError, SQLFileNotFoundError, SQLTemplateError
+from duckalog.errors import SQLFileNotFoundError, SQLTemplateError
 
 # Conditional import to avoid issues during development
 try:
@@ -194,7 +194,7 @@ class TestConfigIntegrationWithSQLFiles:
 
         config_path = tmp_path / "catalog.yaml"
         config_path.write_text(
-            textwrap.dedent(f"""
+            textwrap.dedent("""
             version: 1
             duckdb:
               database: catalog.duckdb
@@ -220,7 +220,7 @@ class TestConfigIntegrationWithSQLFiles:
 
         config_path = tmp_path / "catalog.yaml"
         config_path.write_text(
-            textwrap.dedent(f"""
+            textwrap.dedent("""
             version: 1
             duckdb:
               database: catalog.duckdb
@@ -272,7 +272,7 @@ class TestConfigIntegrationWithSQLFiles:
 
         config_path = tmp_path / "catalog.yaml"
         config_path.write_text(
-            textwrap.dedent(f"""
+            textwrap.dedent("""
             version: 1
             duckdb:
               database: catalog.duckdb
@@ -343,7 +343,7 @@ class TestConfigIntegrationWithSQLFiles:
 
         config_path = tmp_path / "catalog.yaml"
         config_path.write_text(
-            textwrap.dedent(f"""
+            textwrap.dedent("""
             version: 1
             duckdb:
               database: catalog.duckdb
@@ -465,7 +465,7 @@ class TestTemplateEdgeCases:
 
         loader = SQLFileLoader()
 
-        with pytest.raises(SQLTemplateError) as exc:
+        with pytest.raises(SQLTemplateError):
             loader.load_sql_file(
                 file_path="template.sql",
                 config_file_path=str(tmp_path / "catalog.yaml"),

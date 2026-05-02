@@ -1773,7 +1773,7 @@ def test_duckalog_attachment_path_resolution(tmp_path):
 
     config_path = _write(
         tmp_path / "catalog.yaml",
-        f"""
+        """
         version: 1
         duckdb:
           database: catalog.duckdb
@@ -1940,7 +1940,6 @@ def test_load_config_filesystem_validation_for_local_files(tmp_path):
 
 def test_load_config_uri_detection(monkeypatch):
     """Test URI detection for load_config dispatch."""
-    from duckalog.remote_config import is_remote_uri
 
     # Test local paths (no scheme)
     assert not is_remote_uri("catalog.yaml")

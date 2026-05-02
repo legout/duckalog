@@ -5,7 +5,6 @@ from __future__ import annotations
 import concurrent.futures
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import urlparse
 
 from ..validators import log_debug, log_info
 from duckalog.sql_file_loader import SQLFileLoader

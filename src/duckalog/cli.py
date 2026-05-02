@@ -7,7 +7,7 @@ import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from loguru import logger
 
@@ -15,10 +15,10 @@ import typer
 
 from .cli_display import _display_table, _interactive_loop, _fail
 from .cli_filesystem import _create_filesystem_from_options
-from .cli_imports import _collect_import_graph, _compute_import_diagnostics, _print_import_tree
+from .cli_imports import _collect_import_graph, _print_import_tree
 from .config import load_config, validate_file_accessibility, log_error, log_info
 from .config_init import create_config_template, validate_generated_config
-from .connection import CatalogConnection, connect_to_catalog
+from .connection import connect_to_catalog
 from .engine import build_catalog
 from .errors import ConfigError, EngineError
 from .sql_generation import generate_all_views_sql
