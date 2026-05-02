@@ -885,7 +885,7 @@ class Config(BaseModel):
 
     version: int
     duckdb: DuckDBConfig
-    views: list[ViewConfig]
+    views: list[ViewConfig] = Field(default_factory=list)
     attachments: AttachmentsConfig = Field(default_factory=AttachmentsConfig)
     iceberg_catalogs: list[IcebergCatalogConfig] = Field(default_factory=list)
     semantic_models: list[SemanticModelConfig] = Field(default_factory=list)

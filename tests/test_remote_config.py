@@ -253,18 +253,18 @@ class TestRemoteConfigLoading:
             load_config_from_uri("s3://bucket/config.yaml")
 
     @patch("duckalog.remote_config.fetch_remote_content")
-    def test_load_config_from_uri_validation_error(self, mock_fetch):
-        """Test handling of config validation errors."""
-        # Mock content that fails validation
+    def test_load_config_from_uri_empty_views(self, mock_fetch):
+        """Test that empty views list is valid (views are optional)."""
         mock_fetch.return_value = """
         version: 1
         duckdb:
           database: ":memory:"
-        views: []  # Missing required views
+        views: []
         """
 
-        with pytest.raises(RemoteConfigError, match="Remote config validation failed"):
-            load_config_from_uri("s3://bucket/config.yaml")
+        config = load_config_from_uri("s3://bucket/config.yaml")
+        assert config.version == 1
+        assert len(config.views) == 0
 
     @patch("duckalog.remote_config.fetch_remote_content")
     def test_load_config_from_uri_with_timeout(self, mock_fetch):
