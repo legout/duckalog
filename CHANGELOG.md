@@ -1,4 +1,9 @@
 # Changelog
+## [2026-05-02] - 0.6.3
+
+### Fixed
+- **Optional Views**: The `views` field is now optional and defaults to an empty list. Catalogs with only attachments (no views) are now valid.
+
 ## [2026-04-30] - 0.6.2
 
 ### Changed
