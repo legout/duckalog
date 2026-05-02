@@ -1,0 +1,95 @@
+[project]
+site_name = "Duckalog"
+site_description = "Build DuckDB catalogs from declarative YAML/JSON configs."
+site_url = "https://legout.github.io/duckalog/"
+repo_url = "https://github.com/legout/duckalog"
+repo_name = "legout/duckalog"
+docs_dir = "docs"
+site_dir = "site"
+edit_uri = "edit/main/docs/"
+nav = [
+  { "Home" = "index.md" },
+  { "Getting Started" = [
+    { "Overview" = "tutorials/index.md" },
+    { "Tutorial" = "tutorials/getting-started.md" },
+    { "Dashboard Tutorial" = "tutorials/dashboard-basics.md" },
+  ] },
+  { "Dashboard" = [
+    { "Architecture" = "dashboard/architecture.md" },
+    { "Components" = "dashboard/components.md" },
+    { "Datastar Patterns" = "dashboard/datastar-patterns.md" },
+  ] },
+  { "How-to Guides" = [
+    { "Overview" = "how-to/index.md" },
+    { "Environment Management" = "how-to/environment-management.md" },
+    { "Debugging Builds" = "how-to/debugging-builds.md" },
+    { "Path Resolution" = "how-to/path-resolution.md" },
+    { "Migration" = "how-to/migration.md" },
+    { "Migrating to Path Resolution" = "migration-path-resolution.md" },
+    { "Migrating to Config Architecture" = "migration-refactor-config-architecture.md" },
+    { "Performance Tuning" = "how-to/performance-tuning.md" },
+    { "Secrets Persistence" = "how-to/secrets-persistence.md" },
+  ] },
+  { "Reference" = [
+    { "Overview" = "reference/index.md" },
+    { "Python API" = "reference/api.md" },
+    { "API Patterns" = "reference/api-patterns.md" },
+    { "CLI Commands" = "reference/cli.md" },
+    { "Configuration Schema" = "reference/config-schema.md" },
+  ] },
+  { "Understanding" = [
+    { "Architecture" = "explanation/architecture.md" },
+    { "Architecture Decisions" = "architecture/index.md" },
+    { "Dependency Injection" = "dependency-injection-guide.md" },
+    { "Path Resolution" = "path-resolution.md" },
+    { "Philosophy" = "explanation/philosophy.md" },
+    { "Performance" = "explanation/performance.md" },
+    { "Limitations" = "explanation/limitations.md" },
+    { "Comparison" = "explanation/comparison.md" },
+  ] },
+  { "Examples" = [
+    { "Overview" = "examples/index.md" },
+    { "Simple Parquet" = "examples/simple-parquet.md" },
+    { "Multi-Source Analytics" = "examples/multi-source-analytics.md" },
+    { "DuckDB Secrets" = "examples/duckdb-secrets.md" },
+    { "DuckDB Settings" = "examples/duckdb-settings.md" },
+    { "Environment Variables" = "examples/environment-vars.md" },
+    { "Local Attachments" = "examples/local-attachments.md" },
+    { "Path Resolution Examples" = "examples/path-resolution-examples.md" },
+    { "Config Imports" = "examples/config-imports.md" },
+  ] },
+  { "Security" = "SECURITY.md" },
+]
+
+[project.theme]
+variant = "classic"
+features = [
+  "navigation.tabs",
+  "navigation.sections",
+  "navigation.path",
+  "navigation.top",
+  "content.action.edit",
+  "content.action.view",
+]
+
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.toc]
+permalink = true
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.pymdownx.snippets]
+[project.markdown_extensions.pymdownx.superfences]
+custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
+
+[project.plugins.mkdocstrings.handlers.python]
+paths = ["src"]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "google"
+show_root_heading = true
+show_source = false
