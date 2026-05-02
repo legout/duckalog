@@ -1,0 +1,4406 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Build DuckDB catalogs from declarative YAML/JSON configs.">
+      
+      
+      
+        <link rel="canonical" href="https://legout.github.io/duckalog/explanation/comparison/">
+      
+      
+        <link rel="prev" href="../limitations/">
+      
+      
+        <link rel="next" href="../../examples/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.37">
+    
+    
+      
+        <title>Comparison with Alternatives - Duckalog</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/classic/main.a2001754.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,500,500i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,a=__md_scope)=>JSON.parse(t.getItem(a.pathname+"."+e)),__md_set=(e,t,a=localStorage,_=__md_scope)=>{try{a.setItem(_.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#comparison-with-alternatives" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Duckalog" class="md-header__button md-logo" aria-label="Duckalog" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Duckalog
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Comparison with Alternatives
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/legout/duckalog" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    legout/duckalog
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/" class="md-tabs__link">
+          
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dashboard/architecture/" class="md-tabs__link">
+          
+  
+  Dashboard
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../how-to/" class="md-tabs__link">
+          
+  
+  How-to Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reference/" class="md-tabs__link">
+          
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  Understanding
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../examples/" class="md-tabs__link">
+          
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../SECURITY/" class="md-tabs__link">
+        
+  
+  Security
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Duckalog" class="md-nav__button md-logo" aria-label="Duckalog" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Duckalog
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/legout/duckalog" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    legout/duckalog
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/dashboard-basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dashboard
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dashboard/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dashboard/components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dashboard/datastar-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datastar Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/environment-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/debugging-builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Debugging Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Path Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration-path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrating to Path Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migration-refactor-config-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrating to Config Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/performance-tuning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance Tuning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/secrets-persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Secrets Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/api-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/config-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understanding
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Understanding
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dependency-injection-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependency Injection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Path Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../philosophy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+        <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Comparison Overview
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#direct-competitors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Direct Competitors
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Direct Competitors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-dbt-data-build-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs dbt (Data Build Tool)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs dbt (Data Build Tool)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog-over-dbt" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog over dbt
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-dbt-over-duckalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose dbt over Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-apache-airflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Apache Airflow
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Apache Airflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-airflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Airflow
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-materialize" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Materialize
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Materialize">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-materialize" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Materialize
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database-alternatives" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Database Alternatives
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Database Alternatives">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-direct-duckdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Direct DuckDB
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Direct DuckDB">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-direct-duckdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Use Direct DuckDB
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs PostgreSQL
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs PostgreSQL">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose PostgreSQL
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-clickhouse" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs ClickHouse
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs ClickHouse">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-clickhouse" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose ClickHouse
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cloud-data-warehouses" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Cloud Data Warehouses
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cloud Data Warehouses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-bigquery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs BigQuery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs BigQuery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-bigquery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose BigQuery
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-snowflake" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Snowflake
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Snowflake">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-snowflake" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Snowflake
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-processing-frameworks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Data Processing Frameworks
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Processing Frameworks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-apache-spark" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Apache Spark
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Apache Spark">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-spark" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Spark
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-pandas" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Pandas
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Pandas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-pandas" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Pandas
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#selection-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Selection Guide
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Selection Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quick-decision-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🎯 <strong>Quick Decision Matrix</strong>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detailed-use-case-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📊 <strong>Detailed Use Case Analysis</strong>
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📊 Detailed Use Case Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scenario-1-startup-analytics-team-5-people-500gb-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scenario 1: Startup Analytics Team (5 people, 500GB data)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-2-enterprise-data-platform-50-people-10tb-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scenario 2: Enterprise Data Platform (50+ people, 10TB+ data)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-3-real-time-application-analytics-100ms-latency-requirement" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scenario 3: Real-time Application Analytics (100ms latency requirement)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-4-data-science-research-team-3-researchers-200gb-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scenario 4: Data Science Research Team (3 researchers, 200GB data)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-5-compliance-and-auditing-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scenario 5: Compliance and Auditing Requirements
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Migration Paths
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Migration Paths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-duckalog-to-other-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        From Duckalog to Other Tools
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="From Duckalog to Other Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-dbt" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog → dbt
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-direct-duckdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog → Direct DuckDB
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-other-tools-to-duckalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        From Other Tools to Duckalog
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="From Other Tools to Duckalog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manual-sql-scripts-duckalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Manual SQL Scripts → Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pandas-workflows-duckalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pandas Workflows → Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cost-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Cost Comparison
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cost Comparison">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#5-year-total-cost-of-ownership-per-year-averages" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        💰 <strong>5-Year Total Cost of Ownership</strong> (Per year averages)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cost-scaling-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📈 <strong>Cost Scaling Patterns</strong>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Conclusion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-strengths" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Strengths
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Limitations
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-duckalog-is-the-right-choice" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When Duckalog is the Right Choice
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/simple-parquet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simple Parquet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/multi-source-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Source Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/duckdb-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DuckDB Secrets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/duckdb-settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DuckDB Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/environment-vars/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/local-attachments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Attachments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/path-resolution-examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Path Resolution Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/config-imports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Imports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SECURITY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Comparison Overview
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#direct-competitors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Direct Competitors
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Direct Competitors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-dbt-data-build-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs dbt (Data Build Tool)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs dbt (Data Build Tool)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog-over-dbt" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog over dbt
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-dbt-over-duckalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose dbt over Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-apache-airflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Apache Airflow
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Apache Airflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-airflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Airflow
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-materialize" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Materialize
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Materialize">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-materialize" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Materialize
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database-alternatives" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Database Alternatives
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Database Alternatives">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-direct-duckdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Direct DuckDB
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Direct DuckDB">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-direct-duckdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Use Direct DuckDB
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs PostgreSQL
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs PostgreSQL">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose PostgreSQL
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-clickhouse" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs ClickHouse
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs ClickHouse">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-clickhouse" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose ClickHouse
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cloud-data-warehouses" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Cloud Data Warehouses
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cloud Data Warehouses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-bigquery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs BigQuery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs BigQuery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-bigquery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose BigQuery
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-snowflake" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Snowflake
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Snowflake">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-snowflake" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Snowflake
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-processing-frameworks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Data Processing Frameworks
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Processing Frameworks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-apache-spark" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Apache Spark
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Apache Spark">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-spark" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Spark
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-vs-pandas" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog vs Pandas
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Duckalog vs Pandas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-duckalog_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-choose-pandas" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When to Choose Pandas
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#selection-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Selection Guide
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Selection Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quick-decision-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        🎯 <strong>Quick Decision Matrix</strong>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detailed-use-case-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📊 <strong>Detailed Use Case Analysis</strong>
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📊 Detailed Use Case Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scenario-1-startup-analytics-team-5-people-500gb-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scenario 1: Startup Analytics Team (5 people, 500GB data)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-2-enterprise-data-platform-50-people-10tb-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scenario 2: Enterprise Data Platform (50+ people, 10TB+ data)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-3-real-time-application-analytics-100ms-latency-requirement" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scenario 3: Real-time Application Analytics (100ms latency requirement)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-4-data-science-research-team-3-researchers-200gb-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scenario 4: Data Science Research Team (3 researchers, 200GB data)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-5-compliance-and-auditing-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scenario 5: Compliance and Auditing Requirements
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Migration Paths
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Migration Paths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-duckalog-to-other-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        From Duckalog to Other Tools
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="From Duckalog to Other Tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-dbt" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog → dbt
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalog-direct-duckdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Duckalog → Direct DuckDB
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-other-tools-to-duckalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        From Other Tools to Duckalog
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="From Other Tools to Duckalog">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manual-sql-scripts-duckalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Manual SQL Scripts → Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pandas-workflows-duckalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pandas Workflows → Duckalog
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cost-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Cost Comparison
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cost Comparison">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#5-year-total-cost-of-ownership-per-year-averages" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        💰 <strong>5-Year Total Cost of Ownership</strong> (Per year averages)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cost-scaling-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        📈 <strong>Cost Scaling Patterns</strong>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conclusion
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Conclusion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-strengths" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Strengths
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Limitations
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-duckalog-is-the-right-choice" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When Duckalog is the Right Choice
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../.." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../architecture/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Understanding
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+    <a href="https://github.com/legout/duckalog/edit/main/docs/explanation/comparison.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/legout/duckalog/raw/main/docs/explanation/comparison.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
+    </a>
+  
+
+
+<h1 id="comparison-with-alternatives">Comparison with Alternatives<a class="headerlink" href="#comparison-with-alternatives" title="Permanent link">&para;</a></h1>
+<p>Understanding how Duckalog compares to other data tools helps you make informed decisions about your data architecture and choose the right solution for your needs.</p>
+<h2 id="comparison-overview">Comparison Overview<a class="headerlink" href="#comparison-overview" title="Permanent link">&para;</a></h2>
+<p>Duckalog occupies a specific niche in the data ecosystem: <strong>medium-scale, configuration-driven analytical data warehousing</strong>. It's important to understand its strengths and limitations compared to other tools.</p>
+<h2 id="direct-competitors">Direct Competitors<a class="headerlink" href="#direct-competitors" title="Permanent link">&para;</a></h2>
+<h3 id="duckalog-vs-dbt-data-build-tool">Duckalog vs dbt (Data Build Tool)<a class="headerlink" href="#duckalog-vs-dbt-data-build-tool" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Duckalog</th>
+<th>dbt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Target Scale</strong></td>
+<td>GB-TB (single-node)</td>
+<td>TB-PB (distributed)</td>
+</tr>
+<tr>
+<td><strong>Database Backend</strong></td>
+<td>DuckDB (embedded)</td>
+<td>Snowflake, BigQuery, Redshift, PostgreSQL</td>
+</tr>
+<tr>
+<td><strong>Configuration</strong></td>
+<td>YAML/JSON configuration files</td>
+<td>Jinja SQL templates + JSON configs</td>
+</tr>
+<tr>
+<td><strong>Complexity</strong></td>
+<td>Simple, minimal setup</td>
+<td>More complex, enterprise features</td>
+</tr>
+<tr>
+<td><strong>Local Development</strong></td>
+<td>Excellent (no infrastructure needed)</td>
+<td>Limited (requires cloud connections)</td>
+</tr>
+<tr>
+<td><strong>Cost</strong></td>
+<td>Very low (compute only)</td>
+<td>Higher (cloud storage + compute)</td>
+</tr>
+<tr>
+<td><strong>Programming Model</strong></td>
+<td>Declarative configuration</td>
+<td>SQL + Jinja templating</td>
+</tr>
+<tr>
+<td><strong>Community</strong></td>
+<td>Small, focused</td>
+<td>Large, enterprise-focused</td>
+</tr>
+<tr>
+<td><strong>Use Case</strong></td>
+<td>Team analytics, data products</td>
+<td>Enterprise data platforms</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-choose-duckalog-over-dbt">When to Choose Duckalog over dbt<a class="headerlink" href="#when-to-choose-duckalog-over-dbt" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Small to medium teams (1-20 people)</li>
+<li>Local-first development workflow</li>
+<li>Limited budget for cloud services</li>
+<li>Simpler data transformations</li>
+<li>Need for rapid iteration and testing</li>
+</ul>
+<h4 id="when-to-choose-dbt-over-duckalog">When to Choose dbt over Duckalog<a class="headerlink" href="#when-to-choose-dbt-over-duckalog" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Enterprise scale (&gt;100TB data)</li>
+<li>Multiple cloud data warehouses</li>
+<li>Complex data modeling requirements</li>
+<li>Need for enterprise features (testing, documentation, scheduling)</li>
+<li>Established data engineering practices</li>
+</ul>
+<hr />
+<h3 id="duckalog-vs-apache-airflow">Duckalog vs Apache Airflow<a class="headerlink" href="#duckalog-vs-apache-airflow" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Duckalog</th>
+<th>Apache Airflow</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Focus</strong></td>
+<td>Data transformation cataloging</td>
+<td>General workflow orchestration</td>
+</tr>
+<tr>
+<td><strong>Complexity</strong></td>
+<td>Simple configuration</td>
+<td>Complex DAG programming</td>
+</tr>
+<tr>
+<td><strong>Setup</strong></td>
+<td>Single command installation</td>
+<td>Significant infrastructure setup</td>
+</tr>
+<tr>
+<td><strong>Scalability</strong></td>
+<td>Limited (single-node)</td>
+<td>Distributed, scalable</td>
+</tr>
+<tr>
+<td><strong>Learning Curve</strong></td>
+<td>Low</td>
+<td>High</td>
+</tr>
+<tr>
+<td><strong>Monitoring</strong></td>
+<td>Basic logs</td>
+<td>Comprehensive monitoring</td>
+</tr>
+<tr>
+<td><strong>Scheduling</strong></td>
+<td>Manual/external</td>
+<td>Built-in scheduling</td>
+</tr>
+<tr>
+<td><strong>Community</strong></td>
+<td>Small</td>
+<td>Large, mature</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-choose-duckalog">When to Choose Duckalog<a class="headerlink" href="#when-to-choose-duckalog" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Simple data transformation workflows</li>
+<li>Need for rapid setup and iteration</li>
+<li>Limited orchestration requirements</li>
+<li>Data team focused on analytics</li>
+</ul>
+<h4 id="when-to-choose-airflow">When to Choose Airflow<a class="headerlink" href="#when-to-choose-airflow" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Complex multi-step workflows</li>
+<li>Need for sophisticated scheduling</li>
+<li>Enterprise-grade monitoring</li>
+<li>Integration with many external systems</li>
+</ul>
+<hr />
+<h3 id="duckalog-vs-materialize">Duckalog vs Materialize<a class="headerlink" href="#duckalog-vs-materialize" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Duckalog</th>
+<th>Materialize</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Processing Model</strong></td>
+<td>Batch processing</td>
+<td>Streaming/real-time</td>
+</tr>
+<tr>
+<td><strong>Query Latency</strong></td>
+<td>Seconds to minutes</td>
+<td>Milliseconds</td>
+</tr>
+<tr>
+<td><strong>Setup Complexity</strong></td>
+<td>Simple</td>
+<td>Complex</td>
+</tr>
+<tr>
+<td><strong>Scale</strong></td>
+<td>GB-TB</td>
+<td>TB-PB</td>
+</tr>
+<tr>
+<td><strong>Use Case</strong></td>
+<td>Analytics and reporting</td>
+<td>Real-time applications</td>
+</tr>
+<tr>
+<td><strong>State Management</strong></td>
+<td>File-based</td>
+<td>Distributed state store</td>
+</tr>
+<tr>
+<td><strong>Memory Usage</strong></td>
+<td>Moderate</td>
+<td>High</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-choose-duckalog_1">When to Choose Duckalog<a class="headerlink" href="#when-to-choose-duckalog_1" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Batch analytics workloads</li>
+<li>Historical data analysis</li>
+<li>Cost-effective solutions</li>
+<li>Simpler data pipelines</li>
+</ul>
+<h4 id="when-to-choose-materialize">When to Choose Materialize<a class="headerlink" href="#when-to-choose-materialize" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Real-time analytics</li>
+<li>River-level query requirements</li>
+<li>Event-driven architectures</li>
+<li>Low-latency applications</li>
+</ul>
+<h2 id="database-alternatives">Database Alternatives<a class="headerlink" href="#database-alternatives" title="Permanent link">&para;</a></h2>
+<h3 id="duckalog-vs-direct-duckdb">Duckalog vs Direct DuckDB<a class="headerlink" href="#duckalog-vs-direct-duckdb" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Duckalog (over DuckDB)</th>
+<th>Direct DuckDB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Configuration Management</strong></td>
+<td>YAML-based, version control</td>
+<td>SQL scripts, manual</td>
+</tr>
+<tr>
+<td><strong>Multi-source Support</strong></td>
+<td>Built-in attachments</td>
+<td>Manual loading</td>
+</tr>
+<tr>
+<td><strong>Environment Management</strong></td>
+<td>Environment variables, deprecation</td>
+<td>Manual connection management</td>
+</tr>
+<tr>
+<td><strong>SQL Generation</strong></td>
+<td>Automatic from configuration</td>
+<td>Manual SQL writing</td>
+</tr>
+<tr>
+<td><strong>Reproducibility</strong></td>
+<td>Guaranteed by design</td>
+<td>Depends on procedures</td>
+</tr>
+<tr>
+<td><strong>Error Handling</strong></td>
+<td>Built-in validation</td>
+<td>Manual testing</td>
+</tr>
+<tr>
+<td><strong>Documentation</strong></td>
+<td>Self-documenting configs</td>
+<td>Separate documentation</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-choose-duckalog_2">When to Choose Duckalog<a class="headerlink" href="#when-to-choose-duckalog_2" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Need for consistent, reproducible builds</li>
+<li>Multiple data sources to integrate</li>
+<li>Team-based development workflow</li>
+<li>Want configuration-as-code approach</li>
+</ul>
+<h4 id="when-to-use-direct-duckdb">When to Use Direct DuckDB<a class="headerlink" href="#when-to-use-direct-duckdb" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Simple, single-source analysis</li>
+<li>Ad-hoc data exploration</li>
+<li>Learning DuckDB basics</li>
+<li>Maximum control over SQL</li>
+</ul>
+<hr />
+<h3 id="duckalog-vs-postgresql">Duckalog vs PostgreSQL<a class="headerlink" href="#duckalog-vs-postgresql" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Duckalog</th>
+<th>PostgreSQL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Workload Type</strong></td>
+<td>Analytical (OLAP)</td>
+<td>Transactional (OLTP)</td>
+</tr>
+<tr>
+<td><strong>Query Performance</strong></td>
+<td>Fast for complex analytics</td>
+<td>Fast for simple point queries</td>
+</tr>
+<tr>
+<td><strong>Data Type Optimizations</strong></td>
+<td>Columnar, compression</td>
+<td>Row-based, ACID guarantees</td>
+</tr>
+<tr>
+<td><strong>Extensions</strong></td>
+<td>Basic analytic functions</td>
+<td>Rich extension ecosystem</td>
+</tr>
+<tr>
+<td><strong>Concurrent Users</strong></td>
+<td>Limited (10-20)</td>
+<td>High (100s-1000s)</td>
+</tr>
+<tr>
+<td><strong>Transaction Support</strong></td>
+<td>Limited</td>
+<td>Full ACID compliance</td>
+</tr>
+<tr>
+<td><strong>Replication</strong></td>
+<td>Not supported</td>
+<td>Native streaming replication</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-choose-duckalog_3">When to Choose Duckalog<a class="headerlink" href="#when-to-choose-duckalog_3" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Analytics and reporting workloads</li>
+<li>Complex JOIN and aggregation queries</li>
+<li>Columnar data processing</li>
+<li>Data science and ML feature engineering</li>
+</ul>
+<h4 id="when-to-choose-postgresql">When to Choose PostgreSQL<a class="headerlink" href="#when-to-choose-postgresql" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Transactional applications</li>
+<li>High concurrent user loads</li>
+<li>Need for ACID guarantees</li>
+<li>Rich data type requirements</li>
+</ul>
+<hr />
+<h3 id="duckalog-vs-clickhouse">Duckalog vs ClickHouse<a class="headerlink" href="#duckalog-vs-clickhouse" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Duckalog</th>
+<th>ClickHouse</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Scale</strong></td>
+<td>Single-node GB-TB</td>
+<td>Distributed TB-PB</td>
+</tr>
+<tr>
+<td><strong>Setup Complexity</strong></td>
+<td>Very simple</td>
+<td>Complex distributed setup</td>
+</tr>
+<tr>
+<td><strong>Query Language</strong></td>
+<td>Standard SQL</td>
+<td>Extended SQL with nuances</td>
+</tr>
+<tr>
+<td><strong>Real-time Capabilities</strong></td>
+<td>Limited (batch)</td>
+<td>Excellent streaming</td>
+</tr>
+<tr>
+<td><strong>Compression</strong></td>
+<td>DuckDB's LZ4/SNAPPY</td>
+<td>Advanced compression options</td>
+</tr>
+<tr>
+<td><strong>Replication</strong></td>
+<td>Not supported</td>
+<td>Native replication</td>
+</tr>
+<tr>
+<td><strong>Memory Efficiency</strong></td>
+<td>Good</td>
+<td>Excellent</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-choose-duckalog_4">When to Choose Duckalog<a class="headerlink" href="#when-to-choose-duckalog_4" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Simpler setup and maintenance</li>
+<li>Local development environment</li>
+<li>Lower operational overhead</li>
+<li>Standard SQL compatibility</li>
+</ul>
+<h4 id="when-to-choose-clickhouse">When to Choose ClickHouse<a class="headerlink" href="#when-to-choose-clickhouse" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Petabyte-scale analytics</li>
+<li>Real-time data ingestion</li>
+<li>High concurrent query load</li>
+<li>Advanced compression requirements</li>
+</ul>
+<h2 id="cloud-data-warehouses">Cloud Data Warehouses<a class="headerlink" href="#cloud-data-warehouses" title="Permanent link">&para;</a></h2>
+<h3 id="duckalog-vs-bigquery">Duckalog vs BigQuery<a class="headerlink" href="#duckalog-vs-bigquery" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Duckalog</th>
+<th>BigQuery</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Deployment</strong></td>
+<td>Self-hosted, controlled</td>
+<td>Fully managed cloud service</td>
+</tr>
+<tr>
+<td><strong>Pricing Model</strong></td>
+<td>Compute cost only</td>
+<td>Pay-per-query + storage</td>
+</tr>
+<tr>
+<td><strong>Setup Time</strong></td>
+<td>Minutes</td>
+<td>Account setup time</td>
+</tr>
+<tr>
+<td><strong>Data Governance</strong></td>
+<td>Your control</td>
+<td>Google's infrastructure</td>
+</tr>
+<tr>
+<td><strong>Performance</strong></td>
+<td>Excellent for GB-TB</td>
+<td>Excellent for TB-PB</td>
+</tr>
+<tr>
+<td><strong>Integration</strong></td>
+<td>Python/CLI ecosystem</td>
+<td>Google Cloud ecosystem</td>
+</tr>
+<tr>
+<td><strong>Security</strong></td>
+<td>Your responsibility</td>
+<td>Google's security model</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-choose-duckalog_5">When to Choose Duckalog<a class="headerlink" href="#when-to-choose-duckalog_5" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Limited budget for cloud services</li>
+<li>Need for data sovereignty/control</li>
+<li>Development and testing environments</li>
+<li>Cost-sensitive workloads</li>
+</ul>
+<h4 id="when-to-choose-bigquery">When to Choose BigQuery<a class="headerlink" href="#when-to-choose-bigquery" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Massive scale requirements (&gt;10TB)</li>
+<li>Need for serverless operations</li>
+<li>Google Cloud ecosystem integration</li>
+<li>Enterprise compliance requirements</li>
+</ul>
+<hr />
+<h3 id="duckalog-vs-snowflake">Duckalog vs Snowflake<a class="headerlink" href="#duckalog-vs-snowflake" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Duckalog</th>
+<th>Snowflake</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Architecture</strong></td>
+<td>Single-node embedded</td>
+<td>Multi-cluster shared data</td>
+</tr>
+<tr>
+<td><strong>Scaling</strong></td>
+<td>Manual vertical scaling</td>
+<td>Automatic scaling</td>
+</tr>
+<tr>
+<td><strong>Cost Structure</strong></td>
+<td>Predictable compute costs</td>
+<td>Credits-based consumption</td>
+</tr>
+<tr>
+<td><strong>Data Sharing</strong></td>
+<td>File-based sharing</td>
+<td>Native data marketplace</td>
+</tr>
+<tr>
+<td><strong>Time Travel</strong></td>
+<td>Limited</td>
+<td>Full time travel capabilities</td>
+</tr>
+<tr>
+<td><strong>Zero-Copy Cloning</strong></td>
+<td>Not supported</td>
+<td>Native feature</td>
+</tr>
+<tr>
+<td><strong>Semi-structured Data</strong></td>
+<td>Limited JSON support</td>
+<td>Excellent VARIANT support</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-choose-duckalog_6">When to Choose Duckalog<a class="headerlink" href="#when-to-choose-duckalog_6" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Predictable, low-cost operations</li>
+<li>Simple use cases with structured data</li>
+<li>Development environments</li>
+<li>When you want to avoid cloud vendor lock-in</li>
+</ul>
+<h4 id="when-to-choose-snowflake">When to Choose Snowflake<a class="headerlink" href="#when-to-choose-snowflake" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Need for elastic scaling</li>
+<li>Complex multi-tenant workloads</li>
+<li>Requirements for data sharing</li>
+<li>Enterprise features like time travel</li>
+</ul>
+<h2 id="data-processing-frameworks">Data Processing Frameworks<a class="headerlink" href="#data-processing-frameworks" title="Permanent link">&para;</a></h2>
+<h3 id="duckalog-vs-apache-spark">Duckalog vs Apache Spark<a class="headerlink" href="#duckalog-vs-apache-spark" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Duckalog</th>
+<th>Apache Spark</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Processing Model</strong></td>
+<td>Single-node SQL analytics</td>
+<td>Distributed data processing</td>
+</tr>
+<tr>
+<td><strong>Language Support</strong></td>
+<td>SQL + Python</td>
+<td>Scala, Python, Java, R, SQL</td>
+</tr>
+<tr>
+<td><strong>Setup Complexity</strong></td>
+<td>Very simple</td>
+<td>Complex cluster setup</td>
+</tr>
+<tr>
+<td><strong>Memory Management</strong></td>
+<td>Python-level process</td>
+<td>JVM garbage collection</td>
+</tr>
+<tr>
+<td><strong>Use Case Focus</strong></td>
+<td>Analytics</td>
+<td>General-purpose data processing</td>
+</tr>
+<tr>
+<td><strong>Ecosystem</strong></td>
+<td>Focused on analytics</td>
+<td>Massive ecosystem</td>
+</tr>
+<tr>
+<td><strong>Learning Curve</strong></td>
+<td>Low</td>
+<td>High</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-choose-duckalog_7">When to Choose Duckalog<a class="headerlink" href="#when-to-choose-duckalog_7" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Data analytics and BI use cases</li>
+<li>Team of data analysts</li>
+<li>Need for rapid setup and iteration</li>
+<li>Smaller datasets (&lt;1TB)</li>
+</ul>
+<h4 id="when-to-choose-spark">When to Choose Spark<a class="headerlink" href="#when-to-choose-spark" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Complex ETL pipelines</li>
+<li>Machine learning model training</li>
+<li>Stream processing requirements</li>
+<li>Large-scale distributed processing</li>
+</ul>
+<hr />
+<h3 id="duckalog-vs-pandas">Duckalog vs Pandas<a class="headerlink" href="#duckalog-vs-pandas" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Duckalog</th>
+<th>Pandas</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Data Scale</strong></td>
+<td>GB-TB (disk-based)</td>
+<td>GB (memory-based)</td>
+</tr>
+<tr>
+<td><strong>Operations</strong></td>
+<td>SQL-based analytics</td>
+<td>DataFrame operations</td>
+</tr>
+<tr>
+<td><strong>Memory Usage</strong></td>
+<td>Efficient columnar</td>
+<td>Higher memory overhead</td>
+</tr>
+<tr>
+<td><strong>Concurrent Access</strong></td>
+<td>Limited</td>
+<td>Single-threaded</td>
+</tr>
+<tr>
+<td><strong>Persistence</strong></td>
+<td>Native database</td>
+<td>Export to various formats</td>
+</tr>
+<tr>
+<td><strong>Ecosystem</strong></td>
+<td>DuckDB ecosystem</td>
+<td>Python data science ecosystem</td>
+</tr>
+<tr>
+<td><strong>Use Case</strong></td>
+<td>Data warehousing</td>
+<td>Data manipulation/analysis</td>
+</tr>
+</tbody>
+</table>
+<h4 id="when-to-choose-duckalog_8">When to Choose Duckalog<a class="headerlink" href="#when-to-choose-duckalog_8" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Need for persistent data storage</li>
+<li>Multiple users accessing same data</li>
+<li>SQL-based analytics</li>
+<li>Data larger than memory</li>
+</ul>
+<h4 id="when-to-choose-pandas">When to Choose Pandas<a class="headerlink" href="#when-to-choose-pandas" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Interactive data exploration</li>
+<li>Complex data manipulation</li>
+<li>Integration with ML libraries</li>
+<li>Data preprocessing for ML</li>
+</ul>
+<h2 id="selection-guide">Selection Guide<a class="headerlink" href="#selection-guide" title="Permanent link">&para;</a></h2>
+<h3 id="quick-decision-matrix">🎯 <strong>Quick Decision Matrix</strong><a class="headerlink" href="#quick-decision-matrix" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Your Primary Need</th>
+<th>Best Choice</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Single-user analytics with &lt;10GB data</strong></td>
+<td>Duckalog or Direct DuckDB</td>
+</tr>
+<tr>
+<td><strong>Team analytics with 10GB-1TB data</strong></td>
+<td><strong>Duckalog</strong></td>
+</tr>
+<tr>
+<td><strong>Enterprise data platform (&gt;1TB)</strong></td>
+<td>dbt + Cloud Warehouse</td>
+</tr>
+<tr>
+<td><strong>Real-time streaming analytics</strong></td>
+<td>Materialize or ClickHouse</td>
+</tr>
+<tr>
+<td><strong>Complex workflow orchestration</strong></td>
+<td>Apache Airflow</td>
+</tr>
+<tr>
+<td><strong>Machine learning feature engineering</strong></td>
+<td>Duckalog or Spark</td>
+</tr>
+<tr>
+<td><strong>Simple data exploration</strong></td>
+<td>Pandas + DuckDB</td>
+</tr>
+<tr>
+<td><strong>Cost-sensitive production system</strong></td>
+<td><strong>Duckalog</strong></td>
+</tr>
+<tr>
+<td><strong>Zero-maintenance cloud solution</strong></td>
+<td>BigQuery or Snowflake</td>
+</tr>
+</tbody>
+</table>
+<h3 id="detailed-use-case-analysis">📊 <strong>Detailed Use Case Analysis</strong><a class="headerlink" href="#detailed-use-case-analysis" title="Permanent link">&para;</a></h3>
+<h4 id="scenario-1-startup-analytics-team-5-people-500gb-data">Scenario 1: Startup Analytics Team (5 people, 500GB data)<a class="headerlink" href="#scenario-1-startup-analytics-team-5-people-500gb-data" title="Permanent link">&para;</a></h4>
+<p><strong>Problem</strong>: Need to build analytics infrastructure quickly with limited budget
+<strong>Recommendation</strong>: <strong>Duckalog</strong>
+- ✅ Low setup cost and complexity
+- ✅ Scales to current data size
+- ✅ Supports team collaboration
+- ✅ Easy to iterate and change</p>
+<h4 id="scenario-2-enterprise-data-platform-50-people-10tb-data">Scenario 2: Enterprise Data Platform (50+ people, 10TB+ data)<a class="headerlink" href="#scenario-2-enterprise-data-platform-50-people-10tb-data" title="Permanent link">&para;</a></h4>
+<p><strong>Problem</strong>: Need enterprise-grade data platform with multiple systems
+<strong>Recommendation</strong>: <strong>dbt + Snowflake/BigQuery</strong>
+- ✅ Scales to petabytes
+- ✅ Enterprise features (testing, documentation)
+- ✅ Multi-cloud support
+- ✅ Professional services and support</p>
+<h4 id="scenario-3-real-time-application-analytics-100ms-latency-requirement">Scenario 3: Real-time Application Analytics (100ms latency requirement)<a class="headerlink" href="#scenario-3-real-time-application-analytics-100ms-latency-requirement" title="Permanent link">&para;</a></h4>
+<p><strong>Problem</strong>: Need low-latency analytics for user-facing features
+<strong>Recommendation</strong>: <strong>ClickHouse or Materialize</strong>
+- ✅ Millisecond query latency
+- ✅ High concurrent load
+- ✅ Real-time data ingestion
+- ✅ Built-in replication</p>
+<h4 id="scenario-4-data-science-research-team-3-researchers-200gb-data">Scenario 4: Data Science Research Team (3 researchers, 200GB data)<a class="headerlink" href="#scenario-4-data-science-research-team-3-researchers-200gb-data" title="Permanent link">&para;</a></h4>
+<p><strong>Problem</strong>: Need flexible data exploration and ML model training
+<strong>Recommendation</strong>: <strong>Duckalog + Jupyter notebooks</strong>
+- ✅ SQL interface familiar to analysts
+- ✅ Python ecosystem integration
+- ✅ Version-controlled experiments
+- ✅ Easy collaboration</p>
+<h4 id="scenario-5-compliance-and-auditing-requirements">Scenario 5: Compliance and Auditing Requirements<a class="headerlink" href="#scenario-5-compliance-and-auditing-requirements" title="Permanent link">&para;</a></h4>
+<p><strong>Problem</strong>: Need reproducible, auditable data transformations
+<strong>Recommendation</strong>: <strong>Duckalog</strong>
+- ✅ Configuration-as-code approach
+- ✅ Git-based version control
+- ✅ Deterministic builds
+- ✅ Clear data lineage</p>
+<h2 id="migration-paths">Migration Paths<a class="headerlink" href="#migration-paths" title="Permanent link">&para;</a></h2>
+<h3 id="from-duckalog-to-other-tools">From Duckalog to Other Tools<a class="headerlink" href="#from-duckalog-to-other-tools" title="Permanent link">&para;</a></h3>
+<h4 id="duckalog-dbt">Duckalog → dbt<a class="headerlink" href="#duckalog-dbt" title="Permanent link">&para;</a></h4>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Duckalog configuration</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">views</span><span class="p">:</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transformed_data</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="no">SELECT user_id, COUNT(*) as events</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">      </span><span class="no">FROM raw_events</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">      </span><span class="no">WHERE event_date &gt;= &#39;2024-01-01&#39;</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">      </span><span class="no">GROUP BY user_id</span>
+</span></code></pre></div>
+<div class="language-sql highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">-- dbt equivalent (models/transformed_data.sql)</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">SELECT</span><span class="w"> </span><span class="n">user_id</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">events</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">FROM</span><span class="w"> </span><span class="n">raw_events</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">event_date</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="s1">&#39;2024-01-01&#39;</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">user_id</span>
+</span></code></pre></div>
+<h4 id="duckalog-direct-duckdb">Duckalog → Direct DuckDB<a class="headerlink" href="#duckalog-direct-duckdb" title="Permanent link">&para;</a></h4>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Extract SQL from Duckalog</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>duckalog<span class="w"> </span>generate-sql<span class="w"> </span>catalog.yaml<span class="w"> </span>&gt;<span class="w"> </span>create_views.sql
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Apply to DuckDB directly</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>duckdb<span class="w"> </span>catalog.duckdb<span class="w"> </span>&lt;<span class="w"> </span>create_views.sql
+</span></code></pre></div>
+<h3 id="from-other-tools-to-duckalog">From Other Tools to Duckalog<a class="headerlink" href="#from-other-tools-to-duckalog" title="Permanent link">&para;</a></h3>
+<h4 id="manual-sql-scripts-duckalog">Manual SQL Scripts → Duckalog<a class="headerlink" href="#manual-sql-scripts-duckalog" title="Permanent link">&para;</a></h4>
+<div class="language-sql highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1">-- Before: Manual scripts</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1">-- create_daily_metrics.sql</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="k">CREATE</span><span class="w"> </span><span class="k">OR</span><span class="w"> </span><span class="k">REPLACE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">daily_metrics</span><span class="w"> </span><span class="k">AS</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="k">SELECT</span><span class="w"> </span><span class="nb">DATE</span><span class="p">(</span><span class="k">timestamp</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="k">day</span><span class="p">,</span><span class="w"> </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">events</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="k">FROM</span><span class="w"> </span><span class="n">events</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="nb">DATE</span><span class="p">(</span><span class="k">timestamp</span><span class="p">);</span>
+</span></code></pre></div>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># After: Duckalog configuration</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">views</span><span class="p">:</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">daily_metrics</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">      </span><span class="no">SELECT DATE(timestamp) as day, COUNT(*) as events</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">      </span><span class="no">FROM events</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">      </span><span class="no">GROUP BY DATE(timestamp)</span>
+</span></code></pre></div>
+<h4 id="pandas-workflows-duckalog">Pandas Workflows → Duckalog<a class="headerlink" href="#pandas-workflows-duckalog" title="Permanent link">&para;</a></h4>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Before: Pandas workflow</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s1">&#39;data.parquet&#39;</span><span class="p">)</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">filtered</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;amount&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">]</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">result</span> <span class="o">=</span> <span class="n">filtered</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;user_id&#39;</span><span class="p">)[</span><span class="s1">&#39;amount&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">result</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="s1">&#39;output.parquet&#39;</span><span class="p">)</span>
+</span></code></pre></div>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># After: Duckalog configuration</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nt">views</span><span class="p">:</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">user_spend</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">      </span><span class="no">SELECT user_id, SUM(amount) as total_spend</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">      </span><span class="no">FROM read_parquet(&#39;data.parquet&#39;)</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">      </span><span class="no">WHERE amount &gt; 100</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">      </span><span class="no">GROUP BY user_id</span>
+</span></code></pre></div>
+<h2 id="cost-comparison">Cost Comparison<a class="headerlink" href="#cost-comparison" title="Permanent link">&para;</a></h2>
+<h3 id="5-year-total-cost-of-ownership-per-year-averages">💰 <strong>5-Year Total Cost of Ownership</strong> (Per year averages)<a class="headerlink" href="#5-year-total-cost-of-ownership-per-year-averages" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Solution</th>
+<th>Compute</th>
+<th>Storage</th>
+<th>Operations</th>
+<th>Total/Year</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Duckalog</strong></td>
+<td>$2,000</td>
+<td>$500</td>
+<td>$1,000</td>
+<td><strong>$3,500</strong></td>
+</tr>
+<tr>
+<td>Direct DuckDB</td>
+<td>$2,000</td>
+<td>$500</td>
+<td>$500</td>
+<td>$3,000</td>
+</tr>
+<tr>
+<td>dbt + BigQuery</td>
+<td>$15,000</td>
+<td>$2,000</td>
+<td>$5,000</td>
+<td>$22,000</td>
+</tr>
+<tr>
+<td>dbt + Snowflake</td>
+<td>$20,000</td>
+<td>$2,500</td>
+<td>$5,000</td>
+<td>$27,500</td>
+</tr>
+<tr>
+<td>ClickHouse Cloud</td>
+<td>$10,000</td>
+<td>$1,500</td>
+<td>$3,000</td>
+<td>$14,500</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Assumptions:</strong>
+- 1TB data, growing 20% annually
+- Team of 5 data professionals
+- Moderate query workload
+- Standard cloud infrastructure costs</p>
+<h3 id="cost-scaling-patterns">📈 <strong>Cost Scaling Patterns</strong><a class="headerlink" href="#cost-scaling-patterns" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Duckalog</strong>: Linear scaling with data size</li>
+<li><strong>Cloud warehouses</strong>: Step function pricing, over-provisioning common</li>
+<li><strong>Managed services</strong>: Higher per-unit cost but lower operational overhead</li>
+</ul>
+<h2 id="conclusion">Conclusion<a class="headerlink" href="#conclusion" title="Permanent link">&para;</a></h2>
+<p>Duckalog fills an important gap in the data ecosystem by providing a <strong>simple, cost-effective, and configuration-driven</strong> approach to analytical data warehousing for medium-scale workloads.</p>
+<h3 id="key-strengths">Key Strengths<a class="headerlink" href="#key-strengths" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Simplicity</strong>: Minimal setup and maintenance</li>
+<li><strong>Cost-effectiveness</strong>: Predictable, low-cost operations  </li>
+<li><strong>Development velocity</strong>: Fast iteration and testing</li>
+<li><strong>Governance</strong>: Configuration-as-code approach</li>
+<li><strong>Portability</strong>: Self-hosted, no vendor lock-in</li>
+</ul>
+<h3 id="key-limitations">Key Limitations<a class="headerlink" href="#key-limitations" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Scale</strong>: Limited to GB-TB workloads</li>
+<li><strong>Concurrency</strong>: Not designed for high-concurrency production</li>
+<li><strong>Real-time</strong>: Batch-oriented, not streaming</li>
+<li><strong>Enterprise features</strong>: Limited compared to enterprise platforms</li>
+</ul>
+<h3 id="when-duckalog-is-the-right-choice">When Duckalog is the Right Choice<a class="headerlink" href="#when-duckalog-is-the-right-choice" title="Permanent link">&para;</a></h3>
+<p><strong>Use Duckalog when</strong> your primary needs are:
+- Team-based analytics (5-20 people)
+- GB-TB scale datasets
+- Need for configuration management and version control
+- Budget-conscious approach
+- Rapid development and iteration cycles</p>
+<p><strong>Consider alternatives when</strong> you need:
+- Petabyte-scale processing
+- Enterprise features and compliance
+- Real-time analytics
+- High-concurrency production workloads
+- managed cloud services</p>
+<p>The best tool depends on your specific requirements, team size, budget, and growth trajectory. Duckalog excels at making analytical data warehousing accessible to teams that want to focus on insights rather than infrastructure management.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["navigation.tabs","navigation.sections","navigation.path","navigation.top","content.action.edit","content.action.view"],"search":"../../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.dbc0afdc.min.js"></script>
+      
+    
+  </body>
+</html>
