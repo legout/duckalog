@@ -40,3 +40,4 @@ mms2.db.wal
 # Temporary research and context files
 code_context.md
 research.md
+.memory/branches/main/log.md
