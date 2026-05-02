@@ -34,3 +34,10 @@ mms2.db.wal
 
 # bv (beads viewer) local config and caches
 .bv/
+.pi/prompts/
+.DS_Store
+
+# Agent memory and temporary files
+.memory/
+code_context.md
+research.md
