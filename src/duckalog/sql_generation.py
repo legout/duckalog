@@ -274,10 +274,10 @@ def generate_secret_sql(secret: SecretConfig) -> str:
                 )
             params.append(f"{key.upper()} {rendered}")
 
-    secret_sql = f"CREATE {'PERSISTENT ' if secret.persistent else ''}SECRET {secret_name} ({', '.join(params)})"
-
     if secret.scope:
-        secret_sql += f"; SCOPE {quote_literal(secret.scope)}"
+        params.append(f"SCOPE {quote_literal(secret.scope)}")
+
+    secret_sql = f"CREATE {'PERSISTENT ' if secret.persistent else ''}SECRET {secret_name} ({', '.join(params)})"
 
     return secret_sql
 

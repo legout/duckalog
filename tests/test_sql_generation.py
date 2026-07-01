@@ -251,7 +251,7 @@ def test_generate_secret_sql_s3_persistent():
 
 
 def test_generate_secret_sql_s3_with_scope():
-    """Test S3 secret with scope generates correct SQL."""
+    """Test S3 secret with scope generates correct SQL with SCOPE inside the option list."""
     secret = SecretConfig(
         type="s3",
         name="scoped_s3",
@@ -263,8 +263,23 @@ def test_generate_secret_sql_s3_with_scope():
 
     sql = generate_secret_sql(secret)
 
-    expected = "CREATE SECRET \"scoped_s3\" (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456'); SCOPE 'prod/'"
+    expected = "CREATE SECRET \"scoped_s3\" (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456', SCOPE 'prod/')"
     assert sql == expected
+
+
+def test_scoped_secret_scope_is_inside_create_secret_options():
+    """SCOPE must be rendered inside the parenthesized CREATE SECRET option list."""
+    secret = SecretConfig(
+        type="http",
+        name="scoped_http",
+        bearer_token="tok",
+        scope="https://example.com",
+    )
+
+    sql = generate_secret_sql(secret)
+
+    assert "SCOPE 'https://example.com'" in sql
+    assert sql.index("SCOPE") < sql.rindex(")")
 
 
 def test_generate_secret_sql_s3_credential_chain():
