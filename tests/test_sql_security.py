@@ -12,14 +12,16 @@ import pytest
 from duckalog import (
     Config,
     DuckDBConfig,
+    SecretConfig,
     ViewConfig,
     generate_all_views_sql,
-    generate_view_sql,
     generate_secret_sql,
+    generate_view_sql,
+    load_config,
     quote_ident,
     quote_literal,
-    SecretConfig,
 )
+from duckalog.config import ConfigError
 
 
 @pytest.fixture()
@@ -215,9 +217,7 @@ class TestSecretSQLInjectionPrevention:
         sql = generate_secret_sql(secret)
         duckdb_connection.execute(sql)
 
-        row_count = duckdb_connection.execute(
-            "SELECT count(*) FROM keep_me"
-        ).fetchone()
+        row_count = duckdb_connection.execute("SELECT count(*) FROM keep_me").fetchone()
         assert row_count is not None
         assert row_count[0] == 0
 
@@ -389,3 +389,119 @@ class TestDryRunSQLSecurity:
         assert "CREATE OR REPLACE VIEW" in sql_without_secrets
         assert "CREATE SECRET" not in sql_without_secrets
         assert "test_secret" not in sql_without_secrets
+
+
+class TestAttachmentPathBoundary:
+    """Regression tests for attachment path traversal protection.
+
+    Attachment paths must receive the same root-boundary validation that
+    view URIs already receive.  A configuration file must not be able to
+    reference files outside its own directory through relative traversal.
+    """
+
+    def test_duckdb_attachment_path_cannot_escape_config_root(self, tmp_path):
+        """DuckDB attachment with ../ traversal is rejected."""
+        config_path = tmp_path / "catalog.yaml"
+        config_path.write_text(
+            "version: 1\n"
+            'duckdb:\n  database: ":memory:"\n'
+            "attachments:\n"
+            "  duckdb:\n"
+            "    - alias: escaped\n"
+            "      path: ../outside.duckdb\n"
+        )
+
+        with pytest.raises(ConfigError, match="outside the allowed root"):
+            load_config(str(config_path))
+
+    def test_sqlite_attachment_path_cannot_escape_config_root(self, tmp_path):
+        """SQLite attachment with ../ traversal is rejected."""
+        config_path = tmp_path / "catalog.yaml"
+        config_path.write_text(
+            "version: 1\n"
+            'duckdb:\n  database: ":memory:"\n'
+            "attachments:\n"
+            "  sqlite:\n"
+            "    - alias: escaped\n"
+            "      path: ../../outside.db\n"
+        )
+
+        with pytest.raises(ConfigError, match="outside the allowed root"):
+            load_config(str(config_path))
+
+    def test_duckalog_attachment_config_path_cannot_escape_config_root(self, tmp_path):
+        """Nested Duckalog attachment config_path with ../ traversal is rejected."""
+        config_path = tmp_path / "catalog.yaml"
+        config_path.write_text(
+            "version: 1\n"
+            'duckdb:\n  database: ":memory:"\n'
+            "attachments:\n"
+            "  duckalog:\n"
+            "    - alias: escaped\n"
+            "      config_path: ../outside/catalog.yaml\n"
+        )
+
+        with pytest.raises(ConfigError, match="outside the allowed root"):
+            load_config(str(config_path))
+
+    def test_duckalog_attachment_database_cannot_escape_config_root(self, tmp_path):
+        """Nested Duckalog attachment database override with ../ traversal is rejected."""
+        config_path = tmp_path / "catalog.yaml"
+        config_path.write_text(
+            "version: 1\n"
+            'duckdb:\n  database: ":memory:"\n'
+            "attachments:\n"
+            "  duckalog:\n"
+            "    - alias: escaped\n"
+            "      config_path: nested.yaml\n"
+            "      database: ../outside.duckdb\n"
+        )
+
+        with pytest.raises(ConfigError, match="outside the allowed root"):
+            load_config(str(config_path))
+
+    def test_attachment_path_inside_config_root_is_allowed(self, tmp_path):
+        """An attachment path that stays within the config root is accepted."""
+        config_path = tmp_path / "catalog.yaml"
+        config_path.write_text(
+            "version: 1\n"
+            'duckdb:\n  database: ":memory:"\n'
+            "attachments:\n"
+            "  duckdb:\n"
+            "    - alias: local\n"
+            "      path: subfolder/local.duckdb\n"
+        )
+
+        config = load_config(str(config_path))
+        assert config.attachments.duckdb[0].alias == "local"
+        assert "subfolder/local.duckdb" in config.attachments.duckdb[0].path
+
+    def test_remote_attachment_path_is_not_rejected(self, tmp_path):
+        """Remote URIs (s3://, https://) are not subject to local-root checks."""
+        config_path = tmp_path / "catalog.yaml"
+        config_path.write_text(
+            "version: 1\n"
+            'duckdb:\n  database: ":memory:"\n'
+            "attachments:\n"
+            "  duckdb:\n"
+            "    - alias: remote\n"
+            "      path: s3://bucket/remote.duckdb\n"
+        )
+
+        config = load_config(str(config_path))
+        assert config.attachments.duckdb[0].alias == "remote"
+
+    def test_absolute_local_path_outside_config_root_is_rejected(self, tmp_path):
+        """An absolute local path outside the config root is rejected."""
+        config_path = tmp_path / "catalog.yaml"
+        config_path.write_text(
+            "version: 1\n"
+            'duckdb:\n  database: ":memory:"\n'
+            "attachments:\n"
+            "  duckdb:\n"
+            "    - alias: escaped\n"
+            "      path: /tmp/outside.duckdb\n"
+        )
+
+        with pytest.raises(ConfigError, match="outside the allowed root"):
+            load_config(str(config_path))

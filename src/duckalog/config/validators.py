@@ -5,17 +5,18 @@ and attachments) and redacted logging.  Path-security primitives live in
 ``duckalog.config.security.path`` and should be imported directly from there.
 """
 
+import re
 from pathlib import Path
 from typing import Any
 
-from loguru import logger
-from duckalog.errors import ConfigError, PathResolutionError
 from duckalog.config.security.path import (
     DefaultPathResolver,
     is_relative_path,
     resolve_relative_path,
     validate_path_security,
 )
+from duckalog.errors import ConfigError, PathResolutionError
+from loguru import logger
 
 
 # Logging and redaction utilities
@@ -200,6 +201,56 @@ def _resolve_view_paths(view_data: dict, config_dir: Path) -> None:
                 ) from exc
 
 
+def _resolve_and_validate_local_path(
+    original_path: str, config_dir: Path, *, kind: str
+) -> str:
+    """Resolve a relative path and enforce the local root boundary.
+
+    Mirrors the security validation applied to view URIs so that
+    attachment paths cannot escape the configuration root via traversal.
+    Remote URIs are returned unchanged.
+
+    Args:
+        original_path: The path to resolve (may be relative or remote).
+        config_dir: Configuration file directory used as the root boundary.
+        kind: Human-readable label used in error messages and logs.
+
+    Returns:
+        The resolved absolute path, or the original path for remote URIs.
+
+    Raises:
+        PathResolutionError: If the path cannot be resolved or escapes
+            the allowed root.
+    """
+    # Remote URIs (s3://, https://, etc.) bypass local-root validation.
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", original_path):
+        return original_path
+
+    if is_relative_path(original_path):
+        try:
+            resolved_path = resolve_relative_path(original_path, config_dir)
+        except ValueError as exc:
+            raise PathResolutionError(
+                f"Failed to resolve {kind} path '{original_path}': {exc}",
+                original_path=original_path,
+            ) from exc
+        path_to_validate = resolved_path
+    else:
+        # Absolute local path: validate directly without re-resolving.
+        path_to_validate = original_path
+
+    if not validate_path_security(path_to_validate, config_dir):
+        raise PathResolutionError(
+            f"{kind} path '{original_path}' resolves outside the allowed root",
+            original_path=original_path,
+        )
+
+    log_debug(
+        f"Resolved {kind} path", original=original_path, resolved=path_to_validate
+    )
+    return path_to_validate
+
+
 def _resolve_attachment_paths(attachments_data: dict, config_dir: Path) -> None:
     """Resolve paths in attachment configurations.
 
@@ -214,81 +265,33 @@ def _resolve_attachment_paths(attachments_data: dict, config_dir: Path) -> None:
     if "duckdb" in attachments_data and attachments_data["duckdb"]:
         for attachment in attachments_data["duckdb"]:
             if "path" in attachment and attachment["path"]:
-                original_path = attachment["path"]
-
-                if is_relative_path(original_path):
-                    # Resolve the path (security validation is handled within resolve_relative_path)
-                    try:
-                        resolved_path = resolve_relative_path(original_path, config_dir)
-                        attachment["path"] = resolved_path
-                        log_debug(
-                            "Resolved DuckDB attachment",
-                            original=original_path,
-                            resolved=resolved_path,
-                        )
-                    except ValueError as exc:
-                        raise PathResolutionError(
-                            f"Failed to resolve DuckDB attachment path '{original_path}': {exc}",
-                            original_path=original_path,
-                        ) from exc
+                attachment["path"] = _resolve_and_validate_local_path(
+                    attachment["path"], config_dir, kind="DuckDB attachment"
+                )
 
     # Resolve SQLite attachment paths
     if "sqlite" in attachments_data and attachments_data["sqlite"]:
         for attachment in attachments_data["sqlite"]:
             if "path" in attachment and attachment["path"]:
-                original_path = attachment["path"]
-
-                if is_relative_path(original_path):
-                    # Resolve the path (security validation is handled within resolve_relative_path)
-                    try:
-                        resolved_path = resolve_relative_path(original_path, config_dir)
-                        attachment["path"] = resolved_path
-                        log_debug(
-                            "Resolved SQLite attachment",
-                            original=original_path,
-                            resolved=resolved_path,
-                        )
-                    except ValueError as exc:
-                        raise PathResolutionError(
-                            f"Failed to resolve SQLite attachment path '{original_path}': {exc}",
-                            original_path=original_path,
-                        ) from exc
+                attachment["path"] = _resolve_and_validate_local_path(
+                    attachment["path"], config_dir, kind="SQLite attachment"
+                )
 
     # Resolve Duckalog attachment paths
     if "duckalog" in attachments_data and attachments_data["duckalog"]:
         for attachment in attachments_data["duckalog"]:
             # Resolve config_path relative to parent config
             if "config_path" in attachment and attachment["config_path"]:
-                original_path = attachment["config_path"]
-                if is_relative_path(original_path):
-                    try:
-                        resolved_path = resolve_relative_path(original_path, config_dir)
-                        attachment["config_path"] = resolved_path
-                        log_debug(
-                            "Resolved Duckalog attachment config path",
-                            original=original_path,
-                            resolved=resolved_path,
-                        )
-                    except ValueError as exc:
-                        raise PathResolutionError(
-                            f"Failed to resolve Duckalog attachment config_path '{original_path}': {exc}",
-                            original_path=original_path,
-                        ) from exc
+                attachment["config_path"] = _resolve_and_validate_local_path(
+                    attachment["config_path"],
+                    config_dir,
+                    kind="Duckalog attachment config",
+                )
 
             # Resolve database override relative to parent config
             if "database" in attachment and attachment["database"]:
-                original_db = attachment["database"]
-                if is_relative_path(original_db):
-                    try:
-                        resolved_db = resolve_relative_path(original_db, config_dir)
-                        attachment["database"] = resolved_db
-                        log_debug(
-                            "Resolved Duckalog attachment database override",
-                            original=original_db,
-                            resolved=resolved_db,
-                        )
-                    except ValueError as exc:
-                        raise PathResolutionError(
-                            f"Failed to resolve Duckalog attachment database '{original_db}': {exc}",
-                            original_path=original_db,
-                        ) from exc
+                attachment["database"] = _resolve_and_validate_local_path(
+                    attachment["database"],
+                    config_dir,
+                    kind="Duckalog attachment database",
+                )
