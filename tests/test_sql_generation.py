@@ -229,7 +229,7 @@ def test_generate_secret_sql_s3_with_config_provider():
 
     sql = generate_secret_sql(secret)
 
-    expected = "CREATE SECRET prod_s3 (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456', REGION 'us-west-2')"
+    expected = "CREATE SECRET \"prod_s3\" (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456', REGION 'us-west-2')"
     assert sql == expected
 
 
@@ -246,7 +246,7 @@ def test_generate_secret_sql_s3_persistent():
 
     sql = generate_secret_sql(secret)
 
-    expected = "CREATE PERSISTENT SECRET prod_s3 (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456')"
+    expected = "CREATE PERSISTENT SECRET \"prod_s3\" (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456')"
     assert sql == expected
 
 
@@ -263,7 +263,7 @@ def test_generate_secret_sql_s3_with_scope():
 
     sql = generate_secret_sql(secret)
 
-    expected = "CREATE SECRET scoped_s3 (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456'); SCOPE 'prod/'"
+    expected = "CREATE SECRET \"scoped_s3\" (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456'); SCOPE 'prod/'"
     assert sql == expected
 
 
@@ -276,7 +276,7 @@ def test_generate_secret_sql_s3_credential_chain():
     sql = generate_secret_sql(secret)
 
     expected = (
-        "CREATE SECRET auto_s3 (TYPE S3, PROVIDER credential_chain, REGION 'us-east-1')"
+        "CREATE SECRET \"auto_s3\" (TYPE S3, PROVIDER credential_chain, REGION 'us-east-1')"
     )
     assert sql == expected
 
@@ -291,7 +291,7 @@ def test_generate_secret_sql_azure_connection_string():
 
     sql = generate_secret_sql(secret)
 
-    expected = "CREATE SECRET azure_prod (TYPE AZURE, CONNECTION_STRING 'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test')"
+    expected = "CREATE SECRET \"azure_prod\" (TYPE AZURE, CONNECTION_STRING 'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test')"
     assert sql == expected
 
 
@@ -307,7 +307,7 @@ def test_generate_secret_sql_azure_individual_params():
 
     sql = generate_secret_sql(secret)
 
-    expected = "CREATE SECRET azure_prod (TYPE AZURE, TENANT_ID 'tenant123', SECRET 'mysecret', ACCOUNT_NAME 'myaccount')"
+    expected = "CREATE SECRET \"azure_prod\" (TYPE AZURE, TENANT_ID 'tenant123', SECRET 'mysecret', ACCOUNT_NAME 'myaccount')"
     assert sql == expected
 
 
@@ -321,7 +321,7 @@ def test_generate_secret_sql_postgres_connection_string():
 
     sql = generate_secret_sql(secret)
 
-    expected = "CREATE SECRET pg_prod (TYPE POSTGRES, CONNECTION_STRING 'postgresql://user:password@localhost:5432/mydb')"
+    expected = "CREATE SECRET \"pg_prod\" (TYPE POSTGRES, CONNECTION_STRING 'postgresql://user:password@localhost:5432/mydb')"
     assert sql == expected
 
 
@@ -339,7 +339,7 @@ def test_generate_secret_sql_postgres_individual_params():
 
     sql = generate_secret_sql(secret)
 
-    expected = "CREATE SECRET pg_prod (TYPE POSTGRES, HOST 'localhost', PORT 5432, DATABASE 'analytics', USER 'user', PASSWORD 'password')"
+    expected = "CREATE SECRET \"pg_prod\" (TYPE POSTGRES, HOST 'localhost', PORT 5432, DATABASE 'analytics', USER 'user', PASSWORD 'password')"
     assert sql == expected
 
 
@@ -351,7 +351,7 @@ def test_generate_secret_sql_http_basic_auth():
 
     sql = generate_secret_sql(secret)
 
-    expected = "CREATE SECRET api_auth (TYPE HTTP, BEARER_TOKEN 'my_bearer_token')"
+    expected = "CREATE SECRET \"api_auth\" (TYPE HTTP, BEARER_TOKEN 'my_bearer_token')"
     assert sql == expected
 
 
@@ -368,7 +368,7 @@ def test_generate_secret_sql_with_options():
 
     sql = generate_secret_sql(secret)
 
-    assert "CREATE SECRET test_s3" in sql
+    assert 'CREATE SECRET "test_s3"' in sql
     assert "TYPE S3" in sql
     assert "KEY_ID 'AKIA123'" in sql
     assert "SECRET 'secret456'" in sql
@@ -460,7 +460,7 @@ def test_generate_secret_sql_default_name():
 
     sql = generate_secret_sql(secret)
 
-    expected = "CREATE SECRET s3 (TYPE S3, KEY_ID 'AKIA123', SECRET 'secret456')"
+    expected = 'CREATE SECRET "s3" (TYPE S3, KEY_ID \'AKIA123\', SECRET \'secret456\')'
     assert sql == expected
 
 

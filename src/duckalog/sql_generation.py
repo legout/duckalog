@@ -239,7 +239,7 @@ def generate_secret_sql(secret: SecretConfig) -> str:
     Returns:
         SQL CREATE SECRET statement.
     """
-    secret_name = secret.name or secret.type
+    secret_name = quote_ident(secret.name or secret.type)
 
     params = [f"TYPE {secret.type.upper()}"]
 

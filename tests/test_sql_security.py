@@ -6,6 +6,7 @@ of previously fixed vulnerabilities, particularly SQL injection vectors.
 
 from __future__ import annotations
 
+import duckdb
 import pytest
 
 from duckalog import (
@@ -19,6 +20,16 @@ from duckalog import (
     quote_literal,
     SecretConfig,
 )
+
+
+@pytest.fixture()
+def duckdb_connection():
+    """Provide an in-memory DuckDB connection for security regression tests."""
+    conn = duckdb.connect(database=":memory:")
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 class TestViewSQLInjectionPrevention:
@@ -126,12 +137,13 @@ class TestSecretSQLInjectionPrevention:
 
         sql = generate_secret_sql(secret)
 
-        # Secret name should contain the malicious content (not quoted in current implementation)
-        assert 'secret"; DROP ALL SECRETS; --' in sql
+        # Secret name should be quoted as a safe identifier, with the
+        # embedded double quote doubled per SQL escaping rules.
+        assert '"secret""; DROP ALL SECRETS; --"' in sql
         # Should be a single CREATE SECRET statement
         assert sql.count("CREATE SECRET") == 1
         # The malicious content should not be executed as SQL
-        # It's part of the secret name identifier, not additional SQL
+        # It's part of the quoted secret name identifier, not additional SQL
 
     def test_secret_values_with_quotes(self):
         """Test that secret values with quotes are properly escaped."""
@@ -183,6 +195,31 @@ class TestSecretSQLInjectionPrevention:
         # Should be a single CREATE SECRET statement
         assert sql.count("CREATE SECRET") == 1
         assert sql.count("SCOPE") == 1  # Only one SCOPE clause
+
+    def test_secret_name_is_quoted_before_execution(self, duckdb_connection):
+        """Regression: a malicious secret name must not execute extra SQL.
+
+        Before the fix the secret name was interpolated into ``CREATE SECRET``
+        unquoted, so a name containing ``"; <sql>; --`` could terminate the
+        statement and inject arbitrary SQL. The name is now quoted as a DuckDB
+        identifier, which makes the whole value a single (odd) identifier.
+        """
+        duckdb_connection.execute("CREATE TABLE keep_me(id INTEGER)")
+        secret = SecretConfig(
+            type="s3",
+            name='safe_name"; DROP TABLE keep_me; --',
+            key_id="key",
+            secret="secret",
+        )
+
+        sql = generate_secret_sql(secret)
+        duckdb_connection.execute(sql)
+
+        row_count = duckdb_connection.execute(
+            "SELECT count(*) FROM keep_me"
+        ).fetchone()
+        assert row_count is not None
+        assert row_count[0] == 0
 
 
 class TestSecretOptionTypeEnforcement:
