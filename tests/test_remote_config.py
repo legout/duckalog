@@ -269,7 +269,7 @@ class TestRemoteConfigLoading:
     @patch("duckalog.remote_config.fetch_remote_content")
     def test_load_config_from_uri_with_timeout(self, mock_fetch):
         """Test loading with custom timeout."""
-        mock_fetch.return_value = "version: 1\\nviews: []"
+        mock_fetch.return_value = 'version: 1\nduckdb:\n  database: ":memory:"\nviews: []'
 
         load_config_from_uri("s3://bucket/config.yaml", timeout=60)
 

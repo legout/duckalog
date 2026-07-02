@@ -55,17 +55,19 @@ def load_config(
 
 def _load_config_from_local_file(
     path: str,
+    filesystem: Optional[Any] = None,
     load_sql_files: bool = True,
     sql_file_loader: Optional[Any] = None,
     resolve_paths: bool = True,
-    filesystem: Optional[Any] = None,
     load_dotenv: bool = True,
     context: Optional[RequestContext] = None,
 ) -> Config:
     # Validate filesystem interface when provided
     if filesystem is not None:
         required_methods = ("open", "exists")
-        missing = [m for m in required_methods if not callable(getattr(filesystem, m, None))]
+        missing = [
+            m for m in required_methods if not callable(getattr(filesystem, m, None))
+        ]
         if missing:
             from duckalog.errors import ConfigError
 

@@ -79,29 +79,65 @@ from .validators import (
     get_logger,
 )
 
-# Import internal helper for testing compatibility
-from .api import load_config as api_load_config
+# Import internal helper for testing compatibility. ``_load_config_from_local_file``
+# is referenced by name in this module so tests can patch
+# ``duckalog.config._load_config_from_local_file`` and intercept local dispatch.
+from .api import _load_config_from_local_file
 
 from typing import Any, Optional
+
+# Sentinel used to distinguish "caller did not pass this option" from an
+# explicit ``None``/default value when forwarding to the local loader.
+_UNSET = object()
 
 
 def load_config(
     path: str,
-    load_sql_files: bool = True,
-    sql_file_loader: Optional[Any] = None,
-    resolve_paths: bool = True,
+    load_sql_files: Any = _UNSET,
+    sql_file_loader: Any = _UNSET,
+    resolve_paths: Any = _UNSET,
     filesystem: Optional[Any] = None,
-    load_dotenv: bool = True,
+    load_dotenv: Any = _UNSET,
 ) -> Config:
-    """Load, interpolate, and validate a Duckalog configuration file."""
-    return api_load_config(
-        path=path,
-        load_sql_files=load_sql_files,
-        sql_file_loader=sql_file_loader,
-        resolve_paths=resolve_paths,
-        filesystem=filesystem,
-        load_dotenv=load_dotenv,
-    )
+    """Load, interpolate, and validate a Duckalog configuration file.
+
+    Single public entry point for both local files and remote URIs. Remote
+    URIs (``s3://``, ``https://``, ...) are delegated to
+    :func:`duckalog.remote_config.load_config_from_uri`; local paths are
+    handled by :func:`_load_config_from_local_file`.
+    """
+    source = str(path)
+    try:
+        from duckalog.remote_config import is_remote_uri, load_config_from_uri
+    except ImportError:  # pragma: no cover - remote extras not installed
+        is_remote_uri = None  # type: ignore[assignment]
+        load_config_from_uri = None  # type: ignore[assignment]
+
+    if is_remote_uri is not None and is_remote_uri(source):
+        # Remote configs always disable path resolution. Forward the resolved
+        # option defaults so callers observe a stable remote contract, and only
+        # include ``filesystem`` when one was actually provided.
+        remote_kwargs: dict = {
+            "load_sql_files": True if load_sql_files is _UNSET else load_sql_files,
+            "sql_file_loader": None if sql_file_loader is _UNSET else sql_file_loader,
+            "resolve_paths": False,
+        }
+        if filesystem is not None:
+            remote_kwargs["filesystem"] = filesystem
+        return load_config_from_uri(source, **remote_kwargs)
+
+    # Local path: forward only the options the caller explicitly provided so
+    # the local loader falls back to its own defaults otherwise.
+    local_kwargs: dict = {}
+    if load_sql_files is not _UNSET:
+        local_kwargs["load_sql_files"] = load_sql_files
+    if sql_file_loader is not _UNSET:
+        local_kwargs["sql_file_loader"] = sql_file_loader
+    if resolve_paths is not _UNSET:
+        local_kwargs["resolve_paths"] = resolve_paths
+    if load_dotenv is not _UNSET:
+        local_kwargs["load_dotenv"] = load_dotenv
+    return _load_config_from_local_file(source, filesystem, **local_kwargs)
 
 
 # Define the public API - all symbols that should be available for import

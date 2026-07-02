@@ -368,8 +368,12 @@ def load_config_from_uri(
     if not is_remote_uri(uri):
         raise RemoteConfigError(f"URI '{uri}' is not a recognized remote URI")
 
-    # Fetch the remote content
-    content = fetch_remote_content(uri, timeout, filesystem=filesystem)
+    # Fetch the remote content. Only forward the filesystem when one was
+    # provided so the default (None) does not leak into call signatures.
+    if filesystem is not None:
+        content = fetch_remote_content(uri, timeout, filesystem=filesystem)
+    else:
+        content = fetch_remote_content(uri, timeout)
 
     # For remote configs, we need to handle the content differently
     # since we can't use Path operations directly
