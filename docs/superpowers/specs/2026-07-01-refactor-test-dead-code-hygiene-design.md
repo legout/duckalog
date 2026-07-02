@@ -8,7 +8,7 @@ Remove stale abstractions, stale docs/tests, and duplicated fixtures after contr
 
 ## User-visible outcome
 
-After this change, contributors will see fewer dead branches, fewer stale names, and smaller tests that still prove the same behavior. This is not the first workstream to implement; it is the cleanup pass that follows security, remote config, runtime, CLI, and dashboard contract repair. The visible proof is a cleaner source tree, fewer obvious mypy errors in touched files, and tests that no longer pass by catching every exception.
+After this change, contributors will see fewer dead branches, fewer stale names, and smaller tests that still prove the same behavior. This is not the first workstream to implement; it is the cleanup pass that follows security, remote config, runtime, and CLI contract repair. The visible proof is a cleaner source tree, fewer obvious mypy errors in touched files, and tests that no longer pass by catching every exception.
 
 ## Current context
 
@@ -20,7 +20,7 @@ Start with a fresh inventory after prior plans land. Use `rg` and Python AST scr
 
 Update documentation and architecture references to match the current tree. Remove references to files that no longer exist and commands that are no longer supported. Keep `ARCHITECTURE.md` focused on actual boundaries and current open questions.
 
-Consolidate tests by introducing local factory helpers for repeated config YAML patterns, especially in `tests/test_config.py` and `tests/test_config_imports.py`. Verify that broad exception-swallowing dashboard CLI tests were replaced by the dashboard safety plan; only adjust remaining assertions that were not touched there. Remove stale `build` command tests or convert them to canonical `run` tests when they are outside the CLI boundary plan.
+Consolidate tests by introducing local factory helpers for repeated config YAML patterns, especially in `tests/test_config.py` and `tests/test_config_imports.py`. Remove stale `build` command tests or convert them to canonical `run` tests when they are outside the CLI boundary plan.
 
 ## Files and responsibilities
 
@@ -28,20 +28,18 @@ Consolidate tests by introducing local factory helpers for repeated config YAML 
 - `file.py`
 - `remote.py`
 - `ARCHITECTURE.md`
-- `tests/test_dashboard.py:747-954`
 - `tests/test_config.py`
 - `src/duckalog/`
 - `tests/`
 - `tests/test_config_imports.py`
 - `tests_deadcode_review.md`
 - `cli_review.md`
-- `dashboard_misc_review.md`
 - `tests/conftest.py`
 
 ## Acceptance criteria
 
 - AC1: Dead abstractions identified in the review are removed or justified with live callers/tests.
-- AC2: Stale documentation references to removed files, removed commands, and dashboard controller names are updated without duplicating dashboard safety changes.
+- AC2: Stale documentation references to removed files, and removed commands are updated.
 - AC3: Repeated test YAML blocks and helper functions are consolidated without reducing coverage.
 - AC4: Mypy error count on touched modules decreases, especially obvious annotation drift.
 - AC5: Full ruff check passes and targeted tests continue passing.
@@ -60,7 +58,7 @@ Consolidate tests by introducing local factory helpers for repeated config YAML 
 
 ## Error handling and safety
 
-Use the existing domain error type already used by the surrounding module. Security-sensitive paths must fail closed. CLI and dashboard tests must assert concrete error messages or event payloads instead of swallowing broad exceptions. Remote/cloud behavior must be tested with fakes or mocks, not live services.
+Use the existing domain error type already used by the surrounding module. Security-sensitive paths must fail closed. CLI tests must assert concrete error messages or event payloads instead of swallowing broad exceptions. Remote/cloud behavior must be tested with fakes or mocks, not live services.
 
 ## Testing strategy
 

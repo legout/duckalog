@@ -2,7 +2,7 @@
 
 > **Status: COMPLETE (2026-07-02).** Implemented through focused commits for public remote `load_config()` dispatch, shared remote import resolution, remote dotenv loading, deterministic backend validation tests, and remote SQL-file failure handling. Validation: `uv run pytest tests/test_remote_config.py tests/test_config_imports.py -q` → 72 passed, 10 warnings. `uv run ruff check src/duckalog/cli.py src/duckalog/remote_config.py tests/test_remote_config.py tests/test_cli_remote.py` → All checks passed.
 >
-> **Known follow-up (not blocking this plan):** remaining failing test files are stale/non-remote-config hygiene work: removed dashboard tests no longer hang; `tests/test_cli_remote.py` still contains deleted `build`/remote-export command expectations; `tests/test_root_based_security.py` still encodes an older path-security model. These belong to `refactor-test-dead-code-hygiene`.
+> **Known follow-up (not blocking this plan):** remaining failing test files are stale/non-remote-config hygiene work: `tests/test_cli_remote.py` still contains deleted `build`/remote-export command expectations; `tests/test_root_based_security.py` still encodes an older path-security model. These belong to `refactor-test-dead-code-hygiene`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

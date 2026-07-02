@@ -48,7 +48,7 @@ Before starting a task, run only that task's focused failing test. After each ta
 
 **Interfaces:**
 
-- Consumes: Completed security, remote config, catalog runtime, CLI, and dashboard plans.
+- Consumes: Completed security, remote config, catalog runtime, and CLI plans.
 - Produces: Each reviewed dead-code candidate is either removed or documented with a live caller/test.
 
 - [ ] **Step 1: Write the failing test**
@@ -126,7 +126,7 @@ git add src/duckalog tests && git commit -m "refactor: remove unused internal ab
 **Interfaces:**
 
 - Consumes: The final command/runtime decisions from the CLI and catalog runtime plans.
-- Produces: Docs describe current files, current commands, and current dashboard route/controller names.
+- Produces: Docs describe current files and current commands, without references to removed modules or commands.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -321,7 +321,7 @@ Expected: PASS.
 git add src/duckalog tests && git commit -m "refactor: reduce touched-module typing drift"
 ```
 
-### Task 5: Verify cleanup did not duplicate earlier behavior-plan scope
+### Task 5: Verify cleanup did not duplicate earlier behavior/removal-plan scope
 
 **Files:**
 
@@ -330,18 +330,17 @@ git add src/duckalog tests && git commit -m "refactor: reduce touched-module typ
 
 **Interfaces:**
 
-- Consumes: Dashboard and CLI behavior plans already owning their specific test repairs.
-- Produces: The hygiene docs reference earlier behavior plans instead of duplicating their tasks.
+- Consumes: CLI behavior plans already owning their specific repairs.
+- Produces: The hygiene docs reference earlier behavior/removal decisions instead of duplicating their tasks.
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
-def test_hygiene_plan_references_dashboard_plan_without_repeating_task():
+def test_hygiene_plan_does_not_reintroduce_removed_test_scope():
     text = Path("docs/superpowers/plans/2026-07-01-refactor-test-dead-code-hygiene.md").read_text()
 
-    assert "Verify cleanup did not duplicate earlier behavior-plan scope" in text
-    forbidden = "Replace broad exception-" + "swallowing dashboard tests"
-    assert forbidden not in text
+    assert "Verify cleanup did not duplicate earlier behavior/removal-plan scope" in text
+    assert "Replace broad exception-swallowing tests" not in text
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -352,8 +351,8 @@ Run:
 uv run python - <<'PY'
 from pathlib import Path
 text = Path("docs/superpowers/plans/2026-07-01-refactor-test-dead-code-hygiene.md").read_text()
-forbidden = "Replace broad exception-" + "swallowing dashboard tests"
-assert forbidden not in text
+forbidden = "Replace broad exception-swallowing tests"
+assert "Replace broad exception-swallowing tests" not in text
 PY
 ```
 
@@ -362,7 +361,7 @@ Expected: FAIL before the Superpowers docs are de-duplicated.
 - [ ] **Step 3: Write the minimal implementation**
 
 ```python
-# Roadmap owns sequencing. Behavior plans own behavior-specific repairs. Hygiene owns final cleanup only.
+# Roadmap owns sequencing. Behavior/removal plans own behavior-specific repairs. Hygiene owns final stale-reference cleanup only.
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -373,8 +372,8 @@ Run:
 uv run python - <<'PY'
 from pathlib import Path
 text = Path("docs/superpowers/plans/2026-07-01-refactor-test-dead-code-hygiene.md").read_text()
-forbidden = "Replace broad exception-" + "swallowing dashboard tests"
-assert forbidden not in text
+forbidden = "Replace broad exception-swallowing tests"
+assert "Replace broad exception-swallowing tests" not in text
 PY
 ```
 

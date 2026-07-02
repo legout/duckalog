@@ -65,7 +65,7 @@ Finally, handle stale API parameters with concrete compatibility decisions. Keep
 
 ## Error handling and safety
 
-Use the existing domain error type already used by the surrounding module. Security-sensitive paths must fail closed. CLI and dashboard tests must assert concrete error messages or event payloads instead of swallowing broad exceptions. Remote/cloud behavior must be tested with fakes or mocks, not live services.
+Use the existing domain error type already used by the surrounding module. Security-sensitive paths must fail closed. CLI tests must assert concrete error messages or event payloads instead of swallowing broad exceptions. Remote/cloud behavior must be tested with fakes or mocks, not live services.
 
 ## Testing strategy
 

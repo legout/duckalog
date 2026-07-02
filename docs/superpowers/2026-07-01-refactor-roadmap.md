@@ -17,7 +17,7 @@ This roadmap coordinates the remaining focused Superpowers design specs and impl
 
 ## Merge decision
 
-Keep the remaining spec/plan pairs separate. They touch different review domains and can be implemented with separate Superpowers execution checkpoints. The dashboard safety workstream was removed because the current dashboard implementation has been deleted; a replacement UI will be designed and implemented from scratch later.
+Keep the remaining spec/plan pairs separate. They touch different review domains and can be implemented with separate Superpowers execution checkpoints. Removed workstreams are intentionally omitted from this roadmap.
 
 - CLI `build` and `python -m duckalog.cli` test drift belongs to the CLI boundary plan; the hygiene plan cleans up remaining stale references that are outside that plan.
 - Shared test fixture cleanup belongs to the final hygiene plan after behavior-specific tests exist.
