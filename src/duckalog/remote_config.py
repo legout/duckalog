@@ -410,8 +410,20 @@ def load_config_from_uri(
 
     # Process the configuration using the same logic as local configs
     # but adapted for remote content
-    from duckalog.config.resolution.env import _interpolate_env
     from duckalog.config.models import Config
+    from duckalog.config.resolution.env import (
+        _interpolate_env,
+        _load_dotenv_files_for_config,
+    )
+
+    # When load_dotenv is requested, load the caller's LOCAL .env files into the
+    # process environment before interpolation. For remote URIs the dotenv
+    # discovery searches from the current working directory (see
+    # _find_dotenv_files), so remote config content can reference values from a
+    # locally-selected .env file. The remote filesystem is intentionally NOT
+    # forwarded here: .env loading is always a local-filesystem concern.
+    if load_dotenv:
+        _load_dotenv_files_for_config(uri)
 
     log_debug("Remote config keys", keys=list(parsed_config.keys()))
     interpolated = _interpolate_env(parsed_config)

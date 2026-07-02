@@ -195,7 +195,9 @@ class TestRemoteConfigLoading:
         assert config.version == 1
         assert len(config.views) == 1
         assert config.views[0].name == "test_view"
-        mock_fetch.assert_called_once_with("s3://bucket/config.yaml", 30, filesystem=None)
+        mock_fetch.assert_called_once_with(
+            "s3://bucket/config.yaml", 30, filesystem=None
+        )
 
     @patch("duckalog.remote_config.fetch_remote_content")
     def test_load_config_from_uri_json_success(self, mock_fetch):
@@ -275,7 +277,9 @@ class TestRemoteConfigLoading:
 
         load_config_from_uri("s3://bucket/config.yaml", timeout=60)
 
-        mock_fetch.assert_called_once_with("s3://bucket/config.yaml", 60, filesystem=None)
+        mock_fetch.assert_called_once_with(
+            "s3://bucket/config.yaml", 60, filesystem=None
+        )
 
 
 class TestRemoteSQLFileLoading:
@@ -471,6 +475,59 @@ class TestFilesystemParameter:
 
             # The filesystem should be used by fetch_remote_content
             # (though in this test we're mocking it, the parameter is passed through)
+
+
+class TestRemoteDotenvInterpolation:
+    """Tests for remote config dotenv interpolation (Task 3 / spec AC3)."""
+
+    @patch("duckalog.remote_config.fetch_remote_content")
+    def test_load_dotenv_interpolates_local_env_file(
+        self, mock_fetch, tmp_path, monkeypatch
+    ):
+        """Remote config interpolates ${env:VAR} from a local .env when load_dotenv=True."""
+        (tmp_path / ".env").write_text("DUCKALOG_REMOTE_TABLE=remote_table\n")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("DUCKALOG_REMOTE_TABLE", raising=False)
+
+        yaml_content = (
+            "version: 1\n"
+            'duckdb:\n  database: ":memory:"\n'
+            "views:\n"
+            "  - name: v\n"
+            '    sql: "SELECT * FROM ${env:DUCKALOG_REMOTE_TABLE}"\n'
+        )
+        mock_fetch.return_value = yaml_content
+
+        config = load_config_from_uri("s3://bucket/catalog.yaml", load_dotenv=True)
+
+        assert config.views[0].sql is not None
+        assert "remote_table" in config.views[0].sql
+
+    @patch("duckalog.remote_config.fetch_remote_content")
+    def test_load_dotenv_false_skips_interpolation_of_unset_var(
+        self, mock_fetch, tmp_path, monkeypatch
+    ):
+        """When load_dotenv=False, local .env is not loaded and unset vars are not resolved."""
+        (tmp_path / ".env").write_text("DUCKALOG_REMOTE_TABLE=remote_table\n")
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("DUCKALOG_REMOTE_TABLE", raising=False)
+
+        # Provide a default so interpolation does not raise; the default proves the
+        # .env file was NOT loaded (otherwise remote_table would appear).
+        yaml_content = (
+            "version: 1\n"
+            'duckdb:\n  database: ":memory:"\n'
+            "views:\n"
+            "  - name: v\n"
+            '    sql: "SELECT * FROM ${env:DUCKALOG_REMOTE_TABLE:fallback}"\n'
+        )
+        mock_fetch.return_value = yaml_content
+
+        config = load_config_from_uri("s3://bucket/catalog.yaml", load_dotenv=False)
+
+        assert config.views[0].sql is not None
+        assert "fallback" in config.views[0].sql
+        assert "remote_table" not in config.views[0].sql
 
 
 if __name__ == "__main__":
