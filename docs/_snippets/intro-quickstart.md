@@ -78,16 +78,9 @@ For comprehensive documentation, tutorials, and examples, visit the **[Duckalog 
 - **Semantic layer** – Define business-friendly dimensions and measures on top of existing views for BI and analytics.
 - **Safe credentials** – Use environment variables (e.g. `${env:AWS_ACCESS_KEY_ID}`) instead of embedding secrets.
 - **CLI + Python API** – Build catalogs from command line or from Python code with same semantics.
-- **Web UI** – Interactive dashboard for catalog management, query execution, and data export (requires `duckalog[ui]`).
 
 ## Installation
 
 ```bash
 pip install duckalog
-```
-
-For the web UI dashboard:
-
-```bash
-pip install duckalog[ui]
 ```

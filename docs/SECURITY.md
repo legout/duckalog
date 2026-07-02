@@ -1,12 +1,11 @@
 # Security Documentation
 
-This document outlines the security features and best practices for Duckalog, including both web UI security and path resolution security features.
+This document outlines the security features and best practices for Duckalog, including SQL generation, path resolution, and configuration security features.
 
 ## Overview
 
 Duckalog includes comprehensive security hardening across multiple components:
 
-- **Web UI Security**: Read-only SQL enforcement, authentication, and CORS protection
 - **Path Resolution Security**: Validation against directory traversal and system access
 - **Configuration Security**: Secure handling of credentials and file operations
 
@@ -19,6 +18,7 @@ Duckalog implements comprehensive SQL injection protection through canonical quo
 Duckalog uses two canonical functions for safe SQL construction:
 
 #### **quote_ident()** - For Database Identifiers
+
 - **Purpose**: Quote database, table, column, and view names
 - **Protection**: Prevents identifier injection through proper escaping
 - **Usage**: `view.database`, `view.table`, attachment aliases, catalog names
@@ -33,6 +33,7 @@ quote_ident('user "events"')    # Returns: "user ""events""" (quotes escaped)
 ```
 
 #### **quote_literal()** - For String Values
+
 - **Purpose**: Quote string literals in SQL (paths, secrets, connection strings)
 - **Protection**: Prevents SQL injection through proper string escaping
 - **Usage**: File paths, secret values, connection strings, scope values
@@ -49,6 +50,7 @@ quote_literal("SELECT * FROM...") # Returns: "'SELECT * FROM...'" (not executed)
 ### Injection Attack Prevention
 
 #### **View SQL Injection Protection**
+
 ```yaml
 # ❌ MALICIOUS INPUT - BLOCKED
 views:
@@ -69,6 +71,7 @@ views:
 ```
 
 #### **Secret SQL Injection Protection**
+
 ```yaml
 # ❌ MALICIOUS SECRET VALUE - BLOCKED
 secrets:
@@ -90,6 +93,7 @@ secrets:
 ```
 
 #### **Path SQL Injection Protection**
+
 ```python
 # ❌ MALICIOUS PATH - BLOCKED
 path = "../../../etc/passwd"
@@ -185,12 +189,14 @@ The new security model enforces a simple but powerful invariant:
 > **Any local file path resolved from configuration MUST result in an absolute path that is located under at least one allowed root.**
 
 **Default Allowed Roots:**
+
 - The directory containing the main configuration file
 - Any additional roots specified in configuration options
 
 #### Security Threats Mitigated
 
 **All Forms of Path Traversal:**
+
 ```yaml
 # ❌ BLOCKED - Any traversal attempt is rejected
 views:
@@ -208,6 +214,7 @@ views:
 ```
 
 **System Directory Access:**
+
 ```yaml
 # ❌ BLOCKED - All system directories are outside allowed roots
 views:
@@ -221,6 +228,7 @@ views:
 ```
 
 **Invalid Path Encodings:**
+
 ```python
 # ❌ BLOCKED - All path encoding bypass attempts
 "..%2F..%2F..%2Fetc%2Fpasswd"     # URL encoded
@@ -249,6 +257,7 @@ views:
 ```
 
 **System Directory Access:**
+
 ```yaml
 # ❌ BLOCKED - Attempts to access system directories
 views:
@@ -259,6 +268,7 @@ views:
 ```
 
 **Security Violations Blocked:**
+
 - `/etc/`, `/usr/`, `/bin/`, `/sbin/`, `/var/log/`, `/sys/`, `/proc/`
 - Excessive parent directory traversal (more than 3 levels)
 - Paths that resolve to system locations
@@ -303,6 +313,7 @@ result = is_within_allowed_roots("/project/config/data/file.parquet", allowed_ro
 ```
 
 **Key Technical Features:**
+
 - **`Path.resolve()`**: Follows symlinks and resolves to canonical absolute paths
 - **`os.path.commonpath()`**: Finds common path prefix robustly across platforms  
 - **Cross-platform support**: Handles Windows drive letters, UNC paths, Unix absolute paths
@@ -329,6 +340,7 @@ result = is_within_allowed_roots("/project/config/data/file.parquet", allowed_ro
 ### Security Error Handling
 
 **Directory Traversal Violation:**
+
 ```json
 {
   "error": "Path resolution violates security rules: '../../../etc/passwd' resolves to '/etc/passwd' which is outside reasonable bounds"
@@ -336,6 +348,7 @@ result = is_within_allowed_roots("/project/config/data/file.parquet", allowed_ro
 ```
 
 **System Directory Access Violation:**
+
 ```json
 {
   "error": "Path resolution violates security rules: '../etc/config.parquet' resolves to dangerous location"
@@ -343,6 +356,7 @@ result = is_within_allowed_roots("/project/config/data/file.parquet", allowed_ro
 ```
 
 **File Access Issues:**
+
 ```json
 {
   "error": "File does not exist: /path/to/missing.parquet"
@@ -405,10 +419,12 @@ views:
 #### Environment-Specific Security
 
 **Development Environment:**
+
 - Allow broader file access for development convenience
 - Use relative paths for portable development setups
 
 **Production Environment:**
+
 - Restrict to well-defined data directories
 - Use absolute paths or controlled relative paths
 - Implement additional monitoring and logging
@@ -475,6 +491,7 @@ Monitor for security violations in production:
 The UI enforces strict read-only SQL execution to prevent data modification and database attacks:
 
 #### **Allowed Operations**
+
 - `SELECT` statements (single statement only)
 - `WITH` clauses (Common Table Expressions)
 - `JOIN`, `UNION`, `INTERSECT`, `EXCEPT` operations
@@ -486,6 +503,7 @@ The UI enforces strict read-only SQL execution to prevent data modification and 
 #### **Blocked Operations**
 
 **DDL (Data Definition Language)**
+
 - `CREATE` (TABLE, VIEW, INDEX, etc.)
 - `DROP` (TABLE, VIEW, INDEX, etc.)
 - `ALTER` (TABLE, etc.)
@@ -493,6 +511,7 @@ The UI enforces strict read-only SQL execution to prevent data modification and 
 - `RENAME`
 
 **DML (Data Manipulation Language)**
+
 - `INSERT`
 - `UPDATE`
 - `DELETE`
@@ -500,12 +519,14 @@ The UI enforces strict read-only SQL execution to prevent data modification and 
 - `CALL` (stored procedures)
 
 **Administrative Commands**
+
 - `GRANT` / `REVOKE`
 - `COMMENT`
 - `EXPLAIN` / `DESCRIBE`
 - `EXECUTE`
 
 **Multi-Statement Queries**
+
 - Any query containing multiple statements separated by semicolons
 - Attempted SQL injection using statement chaining
 
@@ -528,6 +549,7 @@ When queries are blocked, the system returns descriptive error messages:
 ### Examples
 
 ✅ **Allowed Queries:**
+
 ```sql
 SELECT * FROM my_view WHERE id > 100
 SELECT * FROM users JOIN orders ON users.id = orders.user_id
@@ -535,6 +557,7 @@ WITH ranked_data AS (SELECT *, ROW_NUMBER() OVER (ORDER BY created_at) as rn FRO
 ```
 
 ❌ **Blocked Queries:**
+
 ```sql
 DROP TABLE users
 SELECT * FROM users; DELETE FROM users;
@@ -554,15 +577,19 @@ export DUCKALOG_ADMIN_TOKEN="your-secure-random-token"
 ```
 
 #### **Protected Endpoints**
+
 - `/api/config` (POST)
 - `/api/views` (POST, PUT, DELETE)
 - `/api/rebuild` (POST)
 
 #### **Local Mode (Development)**
+
 When running locally without an admin token, the UI operates in a permissive mode suitable for development.
 
 #### **Production Mode**
+
 When `DUCKALOG_ADMIN_TOKEN` is set, all mutating endpoints require:
+
 ```http
 Authorization: Bearer your-secure-random-token
 ```
@@ -582,11 +609,13 @@ Authorization: Bearer your-secure-random-token
 The UI implements restrictive CORS policies by default:
 
 #### **Allowed Origins**
+
 - `http://localhost`
 - `http://127.0.0.1`
 - Specific localhost ports (3000, 8000, 8080, 9000, 5173)
 
 #### **Security Settings**
+
 - **Credentials**: Disabled by default (`Access-Control-Allow-Credentials: false`)
 - **Methods**: GET, POST, PUT, DELETE, OPTIONS
 - **Headers**: Content-Type, Authorization
@@ -594,6 +623,7 @@ The UI implements restrictive CORS policies by default:
 ### Cross-Origin Protection
 
 External domains are automatically blocked:
+
 - ❌ `https://evil-site.com`
 - ❌ `https://malicious-domain.net`
 - ❌ Any non-localhost origin
@@ -620,6 +650,7 @@ The UI preserves the original configuration file format (YAML/JSON) when making 
 ### Atomic Operations
 
 All configuration updates use atomic file operations:
+
 1. Write to temporary file
 2. Validate the temporary file
 3. Atomically move to target location
@@ -634,6 +665,7 @@ Configuration changes are immediately reflected in memory without requiring serv
 ### Task Isolation
 
 Database operations run in isolated background threads:
+
 - Prevents UI blocking during long-running queries
 - Isolates failures between concurrent operations
 - Prevents resource exhaustion
@@ -648,6 +680,7 @@ Database operations run in isolated background threads:
 ### Concurrent Operation Safety
 
 Multiple users can safely:
+
 - Run queries simultaneously
 - Export data concurrently
 - Rebuild catalogs without interference
@@ -658,6 +691,7 @@ Multiple users can safely:
 ### Request Logging
 
 All security-relevant actions are logged:
+
 - Failed authentication attempts
 - Blocked SQL queries
 - CORS policy violations
@@ -666,6 +700,7 @@ All security-relevant actions are logged:
 ### Error Handling
 
 Security-sensitive errors don't expose internal details:
+
 - Generic error messages for security violations
 - No stack traces in production responses
 - Proper HTTP status codes (401, 403, 400)
@@ -773,6 +808,7 @@ pytest tests/test_ui.py -k "security or auth or cors or read_only"
 ### Contact Information
 
 Report security vulnerabilities:
+
 - Create an issue with "SECURITY" label
 - Email security contacts (if provided)
 - Follow responsible disclosure practices

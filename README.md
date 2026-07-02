@@ -31,52 +31,6 @@ pip install duckalog
 
 This installs the Python package and provides the `duckalog` CLI command.
 
-### Install with UI support
-
-For the web UI dashboard, install with optional UI dependencies:
-
-```bash
-pip install duckalog[ui]
-```
-
-#### **UI Dependencies**
-
-The `duckalog[ui]` extra includes these core dependencies:
-
-- **Litestar** (`litestar>=2.0.0`): ASGI web framework
-- **Datastar Python SDK** (`datastar-python>=0.1.0`): Reactive web framework
-- **Uvicorn** (`uvicorn[standard]>=0.20.0`): ASGI server
-- **Background task support**: Built-in background task support
-- **CORS middleware**: Security-focused web access control
-
-#### **Datastar Runtime Requirements**
-
-The web UI uses **Datastar** for reactive, real-time updates:
-
-- **No legacy fallback**: The UI exclusively uses Datastar patterns
-- **Reactive data binding**: Automatic UI updates when data changes
-- **Server-Sent Events**: Real-time communication for background tasks
-- **Modern web patterns**: Built-in security and performance optimizations
-- **Bundled assets**: Datastar v1.0.0-RC.6 is served locally for offline operation
-- **Supply chain security**: No external CDN dependencies for the UI
-
-The bundled Datastar JavaScript is served from `/static/datastar.js` and works offline without external network access.
-
-#### **Optional Enhanced YAML Support**
-
-For better YAML formatting preservation, install optional dependency:
-
-```bash
-pip install duckalog[ui,yaml]
-# or
-pip install ruamel.yaml>=0.17.0
-```
-
-This provides:
-- **Comment preservation** in YAML configs
-- **Formatting maintenance** during updates
-- **Advanced YAML features** like anchors and aliases
-
 ### Verify Installation
 
 ```bash
@@ -87,6 +41,7 @@ duckalog --version
 ### Alternative Installation Methods
 
 **Development installation:**
+
 ```bash
 git clone https://github.com/legout/duckalog.git
 cd duckalog
@@ -94,6 +49,7 @@ pip install -e .
 ```
 
 **Using uv (recommended for development):**
+
 ```bash
 uv pip install duckalog
 ```
@@ -204,6 +160,7 @@ duckalog run catalog.yaml --verbose
 ```
 
 **Key features:**
+
 - **Automatic discovery**: Finds `.env` files in config directory and parent directories
 - **Zero configuration**: Works immediately without additional setup  
 - **Security first**: Sensitive data never logged, graceful error handling
@@ -228,6 +185,7 @@ duckalog init --force
 ```
 
 The generated config includes:
+
 - Sensible defaults for DuckDB settings
 - Example views showing common data sources and patterns
 - Educational comments explaining each section
@@ -360,7 +318,6 @@ duckalog validate sftp://user@server/path/configs/catalog.yaml
 
 **Limitations:**
 
-- **Web UI**: Currently only supports local configuration files
 - **Path resolution**: Relative paths are not resolved for remote configs
 - **SQL file references**: Local SQL files in remote configs require manual download
 
@@ -530,11 +487,13 @@ duckalog run gs://bucket/config.yaml --gcs-credentials-file invalid.json
 **Common Issues:**
 
 1. **"fsspec is required" error**
+
    ```bash
    pip install duckalog[remote]  # Install with remote dependencies
    ```
 
 2. **Authentication failures**
+
    ```bash
    # Check credentials are correct
    # Verify cloud provider permissions
@@ -542,69 +501,18 @@ duckalog run gs://bucket/config.yaml --gcs-credentials-file invalid.json
    ```
 
 3. **Timeout issues**
+
    ```bash
    # Increase timeout for slow connections
    duckalog run s3://bucket/config.yaml --fs-timeout 120
    ```
 
 4. **Protocol inference not working**
+
    ```bash
    # Explicitly specify protocol
    duckalog run s3://bucket/config.yaml --fs-protocol s3 --fs-key key --fs-secret secret
    ```
-
-### 8. Start the web UI
-
-```bash
-duckalog ui catalog.yaml
-```
-
-**Note**: The web UI currently only supports local configuration files. For remote configs, download them locally first:
-
-```bash
-# Download remote config locally
-curl -o catalog.yaml https://raw.githubusercontent.com/user/repo/main/catalog.yaml
-
-# Then use with UI
-duckalog ui catalog.yaml
-```
-
-This starts a secure, reactive web-based dashboard at http://127.0.0.1:8000 with:
-
-#### **Core Features**
-- **View Management**: Create, edit, and delete catalog views
-- **Query Execution**: Run SQL queries with real-time results
-- **Data Export**: Export data as CSV, Excel, or Parquet
-- **Schema Inspection**: View table and view schemas
-- **Catalog Rebuild**: Rebuild catalog with updated configuration
-- **Semantic Layer Explorer**: Browse semantic models with business-friendly labels
-- **Model Details**: View dimensions and measures with expressions and descriptions
-
-#### **Security Features**
-- **Read-Only SQL Enforcement**: Only allows SELECT queries, blocks DDL/DML
-- **Authentication**: Admin token protection for mutating operations (production mode)
-- **CORS Protection**: Restricted to localhost origins by default
-- **Background Task Processing**: Non-blocking database operations
-- **Configuration Security**: Atomic, format-preserving config updates
-
-#### **Technical Implementation**
-- **Reactive UI**: Built with Datastar for real-time updates
-- **Background Processing**: All database operations run in background threads
-- **Format Preservation**: Maintains YAML/JSON formatting when updating configs
-- **Error Handling**: Comprehensive security-focused error messages
-
-#### **Production Deployment**
-```bash
-# Set admin token for production security
-export DUCKALOG_ADMIN_TOKEN="your-secure-random-token"
-duckalog ui catalog.yaml --host 0.0.0.0 --port 8000
-```
-
-**Dependencies**: Requires `duckalog[ui]` installation for Datastar and Litestar dependencies.
-
-**Security**: See [docs/SECURITY.md](docs/SECURITY.md) for comprehensive security documentation.
-
----
 
 ## Python API
 
@@ -751,12 +659,14 @@ semantic_models:
 Semantic models provide business-friendly metadata on top of existing views. **v1 is metadata-only** - no new DuckDB views are created, and no automatic query generation is performed.
 
 **Key limitations in v1:**
+
 - No joins between semantic models
-- No automatic query generation 
+- No automatic query generation
 - No time dimension handling
 - Single base view per model
 
 **Use semantic models to:**
+
 - Define business-friendly names for technical columns
 - Document dimensions and measures for BI tools
 - Provide structured metadata for future UI features
@@ -766,6 +676,7 @@ Semantic models provide business-friendly metadata on top of existing views. **v
 Semantic layer v2 extends v1 with **joins, time dimensions, and defaults** while maintaining full backward compatibility.
 
 **New v2 features:**
+
 - **Joins**: Optional joins to other views (typically dimension tables)
 - **Time dimensions**: Enhanced time dimensions with supported time grains
 - **Defaults**: Default time dimension, primary measure, and default filters
@@ -815,6 +726,7 @@ semantic_models:
 ```
 
 **Backward Compatibility:**
+
 - All existing v1 semantic models continue to work unchanged
 - New v2 fields are optional and additive
 - No breaking changes to existing validation rules
@@ -841,12 +753,14 @@ duckdb:
 Duckalog automatically resolves relative paths to absolute paths, ensuring consistent behavior regardless of where Duckalog is executed from.
 
 #### **Automatic Path Resolution**
+
 - **Relative Paths**: Paths like `"data/file.parquet"` are automatically resolved relative to the configuration file's directory
 - **Absolute Paths**: Already absolute paths (e.g., `"/absolute/path/file.parquet"` or `"C:\path\file.parquet"`) are preserved unchanged
 - **Remote URIs**: Cloud storage URIs (`s3://`, `gs://`, `http://`) and database connections are not modified
 - **Cross-Platform**: Works consistently on Windows, macOS, and Linux
 
 #### **Security Features**
+
 - **Directory Traversal Protection**: Prevents malicious path patterns (e.g., `"../../../etc/passwd"`)
 - **Sandboxing**: Resolved paths are restricted to stay within reasonable bounds from the config directory
 - **Validation**: Path resolution is validated to ensure security and accessibility
@@ -882,46 +796,11 @@ views:
 ```
 
 #### **Benefits**
+
 - **Reproducible Builds**: Catalogs work consistently across different working directories
 - **Flexible Project Structure**: Organize data files relative to configuration location
 - **Portability**: Move configuration and data together without path updates
 - **Safety**: Security validation prevents path traversal attacks
-
-### Configuration Format Preservation
-
-Duckalog automatically preserves your configuration file format when making updates through the web UI:
-
-#### **YAML Format Preservation**
-- Maintains comments and formatting
-- Preserves indentation and structure
-- Uses `ruamel.yaml` when available for best results
-- Falls back to standard `pyyaml` if needed
-
-#### **JSON Format Preservation**
-- Maintains pretty-printed structure
-- Preserves field ordering
-- Uses 2-space indentation for readability
-
-#### **Automatic Format Detection**
-- **File Extension**: `.yaml`, `.yml`, `.json`
-- **Content Analysis**: Analyzes file structure if extension is ambiguous
-- **Smart Detection**: JSON detected by `{`/`[` starts, YAML otherwise
-
-#### **Atomic Operations**
-All configuration updates use atomic file operations:
-1. Write to temporary file with new format
-2. Validate the temporary file
-3. Atomically replace original file
-4. Clean up temporary files on failure
-5. Reload configuration into memory
-
-#### **In-Memory Configuration**
-- Configuration changes take effect immediately
-- No server restart required for updates
-- Background tasks use latest configuration
-- Failed updates don't affect running operations
-
----
 
 ## Contributing
 
@@ -942,6 +821,7 @@ This project uses automated version tagging to streamline releases. When you upd
 - Triggers the existing `publish.yml` workflow to publish to PyPI
 
 **Simple Release Process:**
+
 ```bash
 # 1. Update version in pyproject.toml
 sed -i 's/version = "0.1.0"/version = "0.1.1"/' pyproject.toml
@@ -957,6 +837,7 @@ git push origin main
 ```
 
 For detailed examples and troubleshooting, see:
+
 - [Automated Version Tagging Documentation](docs/automated-version-tagging.md)
 - [Version Update Examples](docs/version-update-examples.md)
 - [Troubleshooting Guide](docs/troubleshooting-version-tagging.md)
@@ -1034,6 +915,7 @@ pytest tests/test_config.py
 ```
 
 **Testing Strategy:**
+
 - **Unit tests**: Config parsing, validation, and SQL generation
 - **Integration tests**: End-to-end catalog building with temporary DuckDB files
 - **Deterministic tests**: Avoid network dependencies unless explicitly required
@@ -1044,6 +926,7 @@ pytest tests/test_config.py
 For significant changes, we use OpenSpec to manage proposals and specifications:
 
 1. **Create a change proposal**: Use the OpenSpec CLI to create a new change
+
    ```bash
    openspec new "your-change-description"
    ```
@@ -1053,6 +936,7 @@ For significant changes, we use OpenSpec to manage proposals and specifications:
 3. **Plan implementation**: Break down the work into tasks in `changes/<id>/tasks.md`
 
 4. **Validate your proposal**: Ensure it meets project standards
+
    ```bash
    openspec validate <change-id> --strict
    ```
@@ -1067,7 +951,7 @@ When submitting pull requests:
 
 1. **Branch naming**: Use small, focused branches with the OpenSpec change-id (e.g., `add-s3-parquet-support`)
 
-2. **Commit messages**: 
+2. **Commit messages**:
    - Keep spec changes (`openspec/`, `docs/`) and implementation changes (`src/`, `tests/`) clear
    - Reference relevant OpenSpec change IDs in PR titles or first commit messages
 

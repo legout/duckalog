@@ -147,7 +147,6 @@ def version_command() -> None:
     typer.echo(f"duckalog {current_version}")
 
 
-
 @app.command(help="Run a catalog with smart connection management.")
 def run(
     ctx: typer.Context,
@@ -623,88 +622,13 @@ def show_imports(
         _fail(f"Unexpected error: {exc}", 1)
 
 
-@app.command(name="ui", help="Launch the local dashboard for a catalog.")
-def ui(
-    config_path: str = typer.Argument(
-        ..., help="Path to configuration file (local or remote)."
-    ),
-    host: str = typer.Option(
-        "127.0.0.1", "--host", help="Host to bind (default: loopback)."
-    ),
-    port: int = typer.Option(8787, "--port", help="Port to bind (default: 8787)."),
-    row_limit: int = typer.Option(
-        500, "--row-limit", help="Max rows to show in query results."
-    ),
-    db_path: Optional[str] = typer.Option(
-        None, "--db", help="Path to DuckDB database file (optional)."
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose logging output."
-    ),
-) -> None:
-    """Start a local dashboard to inspect and query a Duckalog catalog.
-
-    This command launches a web-based dashboard that allows you to:
-    - Browse views defined in the catalog configuration
-    - Execute SQL queries against the DuckDB database
-    - View query results in real-time with streaming
-
-    Examples:
-        # Basic usage with config file
-        duckalog ui config.yaml
-
-        # Specify a custom host and port
-        duckalog ui config.yaml --host 0.0.0.0 --port 8080
-
-        # Use with an existing database file
-        duckalog ui config.yaml --db catalog.duckdb
-    """
-    _configure_logging(verbose)
-
-    # Check for UI dependencies
-    try:
-        from .dashboard import create_app
-    except ImportError:
-        _fail(
-            "Dashboard dependencies not installed. Install with: pip install duckalog[ui]",
-            2,
-        )
-
-    try:
-        import uvicorn
-    except ImportError:
-        _fail("uvicorn is required. Install with: pip install duckalog[ui]", 2)
-
-    # Load configuration
-    try:
-        config = load_config(config_path)
-    except ConfigError as exc:
-        _fail(f"Config error: {exc}", 2)
-
-    # Create the dashboard app
-    dashboard_app = create_app(
-        config,
-        config_path=config_path,
-        db_path=db_path,
-        row_limit=row_limit,
-    )
-
-    typer.echo(f"Starting dashboard at http://{host}:{port}")
-    if host not in ("127.0.0.1", "localhost", "::1"):
-        typer.echo(
-            "Warning: binding to a non-loopback host may expose the dashboard to others on your network.",
-            err=True,
-        )
-    uvicorn.run(dashboard_app, host=host, port=port, log_level="info")
-
-
 @app.command(help="Execute SQL queries against a DuckDB catalog.")
 def query(
     sql: str = typer.Argument(
         ...,
         help="SQL query to execute against the catalog.",
     ),
-    catalog: Optional[str] = typer.Option(
+    catalog: str | None = typer.Option(
         None,
         "--catalog",
         "-c",
@@ -810,7 +734,7 @@ def query(
 
 @app.command(help="Initialize a new Duckalog configuration file.")
 def init(
-    output: Optional[str] = typer.Option(
+    output: str | None = typer.Option(
         None,
         "--output",
         "-o",
@@ -871,7 +795,7 @@ def init(
     # Validate format
     if format not in ("yaml", "json"):
         typer.echo(f"Error: Format must be 'yaml' or 'json', got '{format}'", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     # Determine default output path
     if not output:
@@ -919,15 +843,13 @@ def init(
             typer.echo(
                 f"   2. Run 'duckalog validate {output_path}' to check your configuration"
             )
-            typer.echo(
-                f"   3. Run 'duckalog run {output_path}' to create your catalog"
-            )
+            typer.echo(f"   3. Run 'duckalog run {output_path}' to create your catalog")
 
     except Exception as exc:
         if verbose:
             raise
         typer.echo(f"Error creating configuration: {exc}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
 
 def main_entry() -> None:

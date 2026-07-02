@@ -4,7 +4,7 @@ _Last updated: 2026-04-14_
 
 ## Purpose
 
-Duckalog is a Python library and CLI for building DuckDB catalogs from declarative YAML/JSON configuration files. A user writes a catalog config (views, attachments, secrets, settings) and Duckalog generates and executes the corresponding DuckDB SQL—either via the `duckalog run` CLI command, the `connect_to_catalog()` Python API, or an optional Litestar-based web dashboard.
+Duckalog is a Python library and CLI for building DuckDB catalogs from declarative YAML/JSON configuration files. A user writes a catalog config (views, attachments, secrets, settings) and Duckalog generates and executes the corresponding DuckDB SQL—either via the `duckalog run` CLI command or the `connect_to_catalog()` Python API.
 
 ## High-Level Design
 
@@ -14,7 +14,7 @@ The **Configuration layer** (`src/duckalog/config/`) is the deepest part of the 
 
 The **Engine layer** (`src/duckalog/engine.py`, `src/duckalog/connection.py`) takes a validated `Config` and orchestrates DuckDB. `CatalogBuilder` (engine) is a stateful workflow object that opens a DuckDB connection, applies pragmas, creates secrets, sets up attachments (DuckDB, SQLite, Postgres, or nested Duckalog catalogs), and creates views. `CatalogConnection` (connection) provides the Python API entry point: it lazily initializes a DuckDB connection, restores session state, and performs incremental view updates so that repeated `get_connection()` calls return a catalog-ready connection.
 
-The **Interface layer** exposes three surfaces: a **Typer CLI** (`src/duckalog/cli.py`) for command-line usage, a **Python API** (`src/duckalog/python_api.py`) for programmatic access, and an optional **Web Dashboard** (`src/duckalog/dashboard/`) for browsing views and running ad-hoc queries. The CLI is the largest file in the project (~1,500+ lines) and acts as the primary user-facing orchestrator.
+The **Interface layer** exposes two surfaces: a **Typer CLI** (`src/duckalog/cli.py`) for command-line usage and a **Python API** (`src/duckalog/python_api.py`) for programmatic access. The CLI is the largest file in the project and acts as the primary user-facing orchestrator.
 
 ## Module Map
 
@@ -84,16 +84,9 @@ The **Interface layer** exposes three surfaces: a **Typer CLI** (`src/duckalog/c
 ### `duckalog.cli`
 
 - Path: `src/duckalog/cli.py`
-- Responsibility: Typer-based command-line interface (`run`, `show-paths`, `show-imports`, `query`, `init`, `validate`, `ui`, etc.).
+- Responsibility: Typer-based command-line interface (`run`, `show-paths`, `show-imports`, `query`, `init`, `validate`, etc.).
 - Boundary: **Shallow and wide** — the CLI absorbs a lot of complexity directly (filesystem factory with 12 parameters, error handling repeated 7+ times, mixed concerns of SQL generation, building, and display formatting).
 - Depends on: nearly every other module in `src/duckalog/`
-
-### `duckalog.dashboard`
-
-- Path: `src/duckalog/dashboard/`
-- Responsibility: Optional Litestar web UI for browsing catalog views and running read-only queries.
-- Boundary: Isolated from the CLI and engine except through `DashboardContext`.
-- Depends on: `litestar`, `htpy`, `uvicorn`, `duckalog.config`
 
 ### `duckalog.remote_config`
 
@@ -142,12 +135,12 @@ flowchart LR
   Date: 2026-04-14
 
 - Decision: `build_catalog()` was removed from the public Python API (`__init__.py`) but retained as an internal helper inside `engine.py` without renaming.
-  Rationale: The function is still useful internally (e.g., `run --dry-run` and the dashboard), but renaming it would create churn outside the current cleanup scope.
+  Rationale: The function is still useful internally for `run --dry-run`, but renaming it would create churn outside the current cleanup scope.
   Date: 2026-04-14
 
-- Decision: The dashboard is an optional `[ui]` extra, isolated in `src/duckalog/dashboard/` and wired together via Litestar dependency injection (`DashboardContext`).
-  Rationale: Keeps the core library lightweight; web dependencies are not required for CLI or Python API usage.
-  Date: 2026-04-14
+- Decision: The legacy dashboard/UI implementation was removed.
+  Rationale: The current UI stack was stale and caused hanging tests. A future UI will be implemented from scratch rather than refactoring the deleted dashboard modules.
+  Date: 2026-07-02
 
 - Decision: `duckalog.config.validators` was created as a consolidation layer for path helpers and redacted logging, but it ended up as a thin wrapper over `security/path.py`.
   Rationale: The intention was to reduce module sprawl, but the result is a shallow boundary that adds an extra hop for most path operations.
@@ -188,16 +181,6 @@ flowchart LR
     │   └── security/         # Path security
     │       ├── base.py       # Abstract path validator
     │       └── path.py       # Root-based traversal prevention
-    ├── dashboard/            # Optional Litestar web UI
-    │   ├── app.py            # Litestar app factory
-    │   ├── state.py          # DashboardContext
-    │   ├── components/
-    │   │   └── layout.py     # htpy HTML components
-    │   └── routes/
-    │       ├── home.py       # Catalog overview
-    │       ├── views.py      # View browser
-    │       └── query.py      # Query + Build controllers
-    └── static/               # Dashboard static assets
 
 ## Dependencies
 
@@ -210,17 +193,12 @@ flowchart LR
 | click | >=8.0.0 | Underlying CLI toolkit (Typer dependency) |
 | loguru | >=0.7.0 | Structured logging with redaction |
 | python-dotenv | >=1.0.0 | `.env` file discovery |
-| datastar-py | >=0.7.0 | Reactive SSE framework for dashboard |
-| litestar | >=2.0.0 | Optional web framework (`[ui]` extra) |
-| htpy | >=0.1.0 | Optional type-safe HTML builder (`[ui]` extra) |
-| uvicorn | >=0.24.0 | Optional ASGI server (`[ui]` extra) |
 | fsspec | >=2023.6.0 | Optional remote filesystems (`[remote]` extra) |
 
 ## Open Questions
 
 - Should `duckalog.config.validators` be folded into `duckalog.config.security.path` and `duckalog.config.api` so that the delegation layer disappears?
 - Should `CatalogBuilder.build()` be split into phase methods (`_build_secrets`, `_build_attachments`, `_build_views`) to reduce the 180+ line orchestration method?
-- Is `dashboard/routes/query.py:BuildController` still meaningful now that the `build` CLI command and public `build_catalog` export have been removed? Should it be renamed to `RunController` or removed entirely?
 - How should the `_is_remote_uri()` helper be consolidated? It currently exists in four places (`remote_config.py`, `config/resolution/imports.py`, `config/resolution/env.py`, `config/loading/sql.py`).
 
 ## Complexity Assessment

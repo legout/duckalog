@@ -11,6 +11,7 @@ Duckalog is built on DuckDB, which provides exceptional performance for analytic
 ### 1. **Data Size and Memory Requirements**
 
 #### Ideal Range: 1MB - 100GB
+
 ```yaml
 # Excellent performance for this scale
 views:
@@ -20,12 +21,14 @@ views:
 ```
 
 **Performance Characteristics:**
+
 - **< 1GB**: Loads entirely into cache, queries complete in milliseconds
 - **1-10GB**: Frequent cache misses but still fast (seconds)
 - **10-100GB**: Requires careful query optimization, manages memory well
 - **100GB-1TB**: Possible but requires additional optimization
 
 #### Memory Management
+
 ```yaml
 duckdb:
   database: analytics.duckdb
@@ -36,6 +39,7 @@ duckdb:
 ```
 
 **Guidelines:**
+
 - **Dataset size**: Allocate 2-4x dataset size in RAM for optimal performance
 - **Available RAM**: Set memory_limit to 75% of available RAM
 - **Temp storage**: Ensure sufficient disk space for spill-over operations
@@ -43,13 +47,16 @@ duckdb:
 ### 2. **Query Complexity Patterns**
 
 #### Simple Filters and Aggregations (Fastest)
+
 ```sql
 -- Optimal: Simple operations on columnar data
 SELECT user_id, COUNT(*) FROM events WHERE event_date = '2024-01-01' GROUP BY user_id
 ```
+
 **Performance**: Milliseconds to seconds regardless of dataset size
 
 #### Complex Joins (Good)
+
 ```sql
 -- Good: DuckDB's join optimizer performs well
 SELECT u.name, e.event_type, COUNT(*) 
@@ -57,9 +64,11 @@ FROM users u
 JOIN events e ON u.id = e.user_id 
 GROUP BY u.name, e.event_type
 ```
+
 **Performance**: Seconds for GB-scale, minutes for TB-scale
 
 #### Window Functions and Subqueries (Varies)
+
 ```sql
 -- Moderate: More complex execution plans
 SELECT *, 
@@ -67,11 +76,13 @@ SELECT *,
        LAG(timestamp) OVER (PARTITION BY user_id ORDER BY timestamp) as prev_timestamp
 FROM events
 ```
+
 **Performance**: Can be memory-intensive, test on sample data
 
 ### 3. **Data Source Performance**
 
 #### Parquet Files (Optimal)
+
 ```yaml
 views:
   - name: parquet_source
@@ -81,11 +92,13 @@ views:
 ```
 
 **Characteristics:**
+
 - **Predicate pushdown**: DuckDB reads only needed columns and row groups
 - **Compression**: Efficient storage and faster I/O
 - **Partitioning**: Works well with hive-style partitioning
 
 #### CSV Files (Slower)
+
 ```yaml
 views:
   - name: csv_source
@@ -94,11 +107,13 @@ views:
 ```
 
 **Performance Impact:**
+
 - 2-5x slower than equivalent Parquet
 - More memory pressure during ingestion
 - Limited predicate optimization
 
 #### External Databases (Network Dependent)
+
 ```yaml
 attachments:
   - name: postgres
@@ -107,6 +122,7 @@ attachments:
 ```
 
 **Factors:**
+
 - **Network latency**: Primary bottleneck
 - **Data transfer volume**: Use WHERE clauses to limit data
 - **Database performance**: Source database affects overall performance
@@ -114,6 +130,7 @@ attachments:
 ### 4. **Multi-Source Join Performance**
 
 #### Efficient Join Patterns
+
 ```yaml
 # Good: Partitioned by join key
 views:
@@ -126,6 +143,7 @@ views:
 ```
 
 #### Performance Considerations
+
 - **Data locality**: Joins work best on data from the same storage system
 - **Join order**: DuckDB optimizes, but smaller tables first helps
 - **Partitioning**: Align partitioning strategies across datasets
@@ -135,17 +153,20 @@ views:
 Duckalog 0.4.0+ features a refactored configuration architecture with request-scoped caching, which significantly improves performance for complex configurations with many imports.
 
 **Performance Characteristics:**
+
 - **Initial Load**: Parsing, interpolating, and merging a complex configuration tree takes tens of milliseconds.
 - **Cached Load**: Repeatedly loading the same configuration (e.g., in a long-running service) using a shared cache is ~1000x faster, typically completing in tens of microseconds.
 - **Deep Import Trees**: Caching prevents redundant processing of files imported multiple times within the same configuration tree.
 
 **Best Practices:**
+
 - In long-running applications (like web servers), reuse the `RequestContext` or use the provided `request_cache_scope` to benefit from cross-request caching.
 - Keep configuration trees manageable; while caching handles deep imports efficiently, extremely large trees still incur initial parsing overhead.
 
 ## Benchmark Scenarios
 
 ### Scene 1: E-commerce Analytics (10GB Parquet)
+
 ```yaml
  Dataset: 50M event records, compressed to 10GB Parquet
  Query: Daily sales metrics by product category
@@ -154,6 +175,7 @@ Duckalog 0.4.0+ features a refactored configuration architecture with request-sc
 ```
 
 ### Scene 2: User Behavior Analysis (50GB Multi-source)
+
 ```yaml
  Dataset: 200M events + 10M users + 5M products
  Query: 30-day user cohort analysis
@@ -161,10 +183,11 @@ Duckalog 0.4.0+ features a refactored configuration architecture with request-sc
  Result: ~30 seconds query time
 ```
 
-### Scene 3: Real-time Dashboard (1GB Rolling Window)
+### Scene 3: Real-time Metrics Workload (1GB Rolling Window)
+
 ```yaml
  Dataset: 1GB of recent data, refreshed hourly
- Query: Dashboard metrics, 20+ concurrent users
+ Query: Metrics queries, 20+ concurrent users
  Hardware: 4 CPU, 16GB RAM
  Result: <500ms per query with caching
 ```
@@ -174,6 +197,7 @@ Duckalog 0.4.0+ features a refactored configuration architecture with request-sc
 ### 1. **Storage Optimization**
 
 #### Use Columnar Formats
+
 ```bash
 # Convert CSV to Parquet for 5-10x performance improvement
 # Use DuckDB directly or your preferred ETL tool
@@ -182,6 +206,7 @@ duckdb -c "COPY (SELECT * FROM read_csv_auto('data.csv')) TO 'data.parquet' (FOR
 ```
 
 #### Optimize Parquet Files
+
 ```yaml
 # In your data pipeline
 views:
@@ -193,6 +218,7 @@ views:
 ```
 
 **Best Practices:**
+
 - **File size**: 128MB-1GB Parquet files per partition
 - **Compression**: SNAPPY (default) or ZSTD for better compression
 - **Partitioning**: Date-based or categorical partitioning
@@ -200,6 +226,7 @@ views:
 ### 2. **Query Optimization**
 
 #### Materialize Intermediate Results
+
 ```yaml
 views:
   # Step 1: Filter and prepare data
@@ -219,6 +246,7 @@ views:
 ```
 
 #### Use Appropriate Data Types
+
 ```sql
 -- Good: Specific data types
 CREATE TABLE events (
@@ -239,6 +267,7 @@ CREATE TABLE events (
 ### 3. **Configuration Optimization**
 
 #### Memory Settings
+
 ```yaml
 duckdb:
   database: analytics.duckdb
@@ -257,6 +286,7 @@ duckdb:
 ```
 
 #### Connection Pooling
+
 ```yaml
 # For concurrent access
 duckdb:
@@ -269,6 +299,7 @@ duckdb:
 ## Monitoring Performance
 
 ### Built-in Monitoring
+
 ```sql
 -- Check query performance
 EXPLAIN ANALYZE SELECT * FROM large_table WHERE date_column = '2024-01-01';
@@ -279,6 +310,7 @@ PRAGMA threads;
 ```
 
 ### Application-Level Monitoring
+
 ```python
 import duckdb
 import time
@@ -295,11 +327,13 @@ print(f"Query completed in {query_time:.2f} seconds")
 ### Current Limitations
 
 #### Single-Node Processing
+
 - **Max practical dataset**: ~1TB with sufficient RAM
 - **Concurrent users**: Limited by I/O and memory
 - **Query complexity**: Complex joins may hit memory limits
 
 #### Memory Constraints
+
 ```yaml
 # Monitor memory usage
 duckdb:
@@ -308,6 +342,7 @@ duckdb:
 ```
 
 **Symptoms of memory pressure:**
+
 - Queries become very slow
 - Temporary file usage increases
 - Out-of-memory errors for complex queries
@@ -315,23 +350,29 @@ duckdb:
 ### When to Scale Up vs Out
 
 #### Scale Up (Single Machine)
+
 **Signs you need more resources:**
+
 - Queries consistently > 30 seconds
 - Memory usage > 80% of available RAM
 - I/O becomes bottleneck
 
 **Solutions:**
+
 - More RAM (16GB → 32GB → 64GB)
 - Faster storage (NVMe SSDs)
 - More CPU cores
 
 #### Scale Out (Distributed)
+
 **Signs you need distributed processing:**
+
 - Datasets > 1TB and growing
 - High concurrent query load
 - Need for real-time processing
 
 **Alternatives:**
+
 - ClickHouse for real-time analytics
 - BigQuery/Snowflake for cloud-native warehousing
 - Spark for massive distributed processing
@@ -339,6 +380,7 @@ duckdb:
 ## Performance Testing
 
 ### Benchmark Your Workload
+
 ```python
 import duckdb
 import time
@@ -371,6 +413,7 @@ benchmark_query(conn, """
 ```
 
 ### Performance Regression Testing
+
 ```yaml
 # Add to CI/CD pipeline
 name: performance-test
@@ -391,6 +434,7 @@ jobs:
 ## Common Performance Pitfalls
 
 ### 1. **Cartesian Products**
+
 ```sql
 -- BAD: Creates 1B x 1B = 1 trillion row result set
 SELECT * FROM large_table1 CROSS JOIN large_table2
@@ -400,6 +444,7 @@ SELECT * FROM large_table1 JOIN large_table2 ON id1 = id2
 ```
 
 ### 2. **Reading Entire Datasets Unnecessarily**
+
 ```sql
 -- BAD: Reads entire table, then filters in application
 SELECT * FROM events
@@ -409,6 +454,7 @@ SELECT * FROM events WHERE event_date >= '2024-01-01'
 ```
 
 ### 3. **Inefficient Data Types**
+
 ```sql
 -- BAD: String operations are slow
 WHERE CAST(timestamp AS TEXT) LIKE '2024-01%'
@@ -420,18 +466,21 @@ WHERE timestamp >= '2024-01-01' AND timestamp < '2024-02-01'
 ## Performance Monitoring Checklist
 
 ### Regular Performance Reviews
+
 - [ ] Check query execution times for critical business queries
 - [ ] Monitor memory usage during peak hours
 - [ ] Review storage costs and compression ratios
 - [ ] Test performance on dataset growth projections
 
 ### Alerting Setup
+
 - [ ] Query latency > 30 seconds
 - [ ] Memory usage > 80%
 - [ ] Disk space > 90% full
 - [ ] Query failures due to memory limits
 
 ### Capacity Planning
+
 - [ ] Dataset growth trends
 - [ ] User growth projections
 - [ ] Required performance SLAs

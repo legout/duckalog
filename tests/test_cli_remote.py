@@ -102,42 +102,6 @@ class TestRemoteConfigCLI:
         assert result.exit_code == 2
         assert "Config error: Invalid config" in result.stdout
 
-    def test_ui_with_remote_uri_error(self):
-        """Test UI command with remote URI (should fail)."""
-        result = self.runner.invoke(app, ["ui", "s3://bucket/config.yaml"])
-
-        assert result.exit_code == 2
-        assert "UI currently only supports local configuration files" in result.stdout
-
-    @patch("duckalog.cli.load_config")
-    def test_ui_with_local_file(self, mock_load_config):
-        """Test UI command with local file."""
-        # Create a temporary config file
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            f.write("version: 1\\nviews: []")
-            config_file = f.name
-
-        try:
-            # Mock successful config loading
-            mock_config = Mock()
-            mock_load_config.return_value = mock_config
-
-            # Mock UIServer to avoid actually starting it
-            with patch("duckalog.cli.UIServer") as mock_ui_server:
-                mock_server_instance = Mock()
-                mock_ui_server.return_value = mock_server_instance
-
-                result = self.runner.invoke(
-                    app, ["ui", config_file, "--host", "localhost", "--port", "8080"]
-                )
-
-                # UI command should fail because we can't actually test the UI server
-                # but we can check that it tried to create it
-                assert mock_ui_server.called or result.exit_code != 0
-        finally:
-            # Clean up
-            Path(config_file).unlink()
-
     @patch("duckalog.cli.is_remote_uri")
     def test_command_without_remote_support(self, mock_is_remote):
         """Test commands when remote support is not available."""
@@ -291,12 +255,7 @@ views:
 
             result = self.runner.invoke(
                 app,
-                [
-                    "build",
-                    config_path,
-                    "--db-path",
-                    "s3://my-bucket/catalog.duckdb"
-                ]
+                ["build", config_path, "--db-path", "s3://my-bucket/catalog.duckdb"],
             )
 
             assert result.exit_code == 0
@@ -319,8 +278,8 @@ views:
                     "build",
                     config_path,
                     "--db-path",
-                    "gs://my-project-bucket/catalog.duckdb"
-                ]
+                    "gs://my-project-bucket/catalog.duckdb",
+                ],
             )
 
             assert result.exit_code == 0
@@ -345,8 +304,8 @@ views:
                     "--db-path",
                     "abfs://account@container/catalog.duckdb",
                     "--azure-connection-string",
-                    "DefaultEndpointsProtocol=https;AccountName=test"
-                ]
+                    "DefaultEndpointsProtocol=https;AccountName=test",
+                ],
             )
 
             assert result.exit_code == 0
@@ -373,8 +332,8 @@ views:
                     "--sftp-host",
                     "server.com",
                     "--sftp-key-file",
-                    "/path/to/key"
-                ]
+                    "/path/to/key",
+                ],
             )
 
             assert result.exit_code == 0
@@ -401,8 +360,8 @@ views:
                     "--fs-key",
                     "AKIATESTKEY",
                     "--fs-secret",
-                    "testsecret"
-                ]
+                    "testsecret",
+                ],
             )
 
             assert result.exit_code == 0
@@ -423,13 +382,7 @@ views:
             local_db_path = Path(temp_dir) / "catalog.duckdb"
 
             result = self.runner.invoke(
-                app,
-                [
-                    "build",
-                    config_path,
-                    "--db-path",
-                    str(local_db_path)
-                ]
+                app, ["build", config_path, "--db-path", str(local_db_path)]
             )
 
             assert result.exit_code == 0
@@ -453,8 +406,8 @@ views:
                     config_path,
                     "--db-path",
                     "s3://my-bucket/catalog.duckdb",
-                    "--dry-run"
-                ]
+                    "--dry-run",
+                ],
             )
 
             assert result.exit_code == 0
@@ -466,10 +419,13 @@ views:
 
     @patch("duckalog.cli.build_catalog")
     @patch("duckalog.cli._create_filesystem_from_options")
-    def test_build_export_filesystem_creation_error(self, mock_create_filesystem, mock_build_catalog):
+    def test_build_export_filesystem_creation_error(
+        self, mock_create_filesystem, mock_build_catalog
+    ):
         """Test build command with filesystem creation error."""
         # Mock filesystem creation failure
         from typer import Exit
+
         mock_create_filesystem.side_effect = Exit(4)
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -483,8 +439,8 @@ views:
                     "--db-path",
                     "s3://my-bucket/catalog.duckdb",
                     "--fs-key",
-                    "invalidkey"
-                ]
+                    "invalidkey",
+                ],
             )
 
             assert result.exit_code == 4
@@ -494,6 +450,7 @@ views:
         """Test build command with engine error during remote export."""
         # Mock engine error
         from duckalog.engine import EngineError
+
         mock_build_catalog.side_effect = EngineError("Upload failed")
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -501,12 +458,7 @@ views:
 
             result = self.runner.invoke(
                 app,
-                [
-                    "build",
-                    config_path,
-                    "--db-path",
-                    "s3://my-bucket/catalog.duckdb"
-                ]
+                ["build", config_path, "--db-path", "s3://my-bucket/catalog.duckdb"],
             )
 
             assert result.exit_code == 3

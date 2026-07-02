@@ -38,9 +38,11 @@ All examples in this tutorial use the `duckalog run` workflow.
 
 - **Python 3.12+** installed and accessible
 - **Duckalog package** installed:
+
   ```bash
   pip install duckalog
   ```
+
 - **Basic command line** familiarity
 - **Text editor** for configuration files
 - **No prior Duckalog experience** required
@@ -141,6 +143,7 @@ DESCRIBE users;
 ```
 
 **Expected Output:**
+
 - Database file: `tutorial.duckdb`
 - View: `users` with 5 records
 - Successful query execution
@@ -157,6 +160,7 @@ Let's break down what the new `run` command did:
 6. **Validated**: Ensured view was created successfully and connection is ready
 
 **Key Benefits:**
+
 - **Single Command**: Build and query in one step
 - **Session State**: Pragmas and settings are automatically restored on reconnection
 - **Incremental Updates**: Only missing views are created for faster subsequent runs
@@ -169,6 +173,7 @@ Learn how to use environment variables and `.env` files for secure, portable con
 ### 2.1 Why Use Environment Variables?
 
 Environment variables help you:
+
 - **Keep secrets secure** - No hardcoded passwords in configuration files
 - **Support multiple environments** - Different values for dev, staging, prod
 - **Improve portability** - Same config works everywhere with different variables
@@ -224,6 +229,7 @@ views:
 ```
 
 **Note the syntax:**
+
 - `${env:VARIABLE_NAME}` - Use environment variable
 - `${env:VARIABLE_NAME:default_value}` - Use variable with default value
 
@@ -656,7 +662,9 @@ Advantages of using imports:
 Test your knowledge with these exercises:
 
 ### Exercise 1: Basic Configuration
+
 Create a configuration that:
+
 - Uses a Parquet file named `products.parquet`
 - Creates a view called `active_products`
 - Filters for products with `status = 'active'`
@@ -679,10 +687,13 @@ views:
       SELECT * FROM products 
       WHERE status = 'active'
 ```
+
 </details>
 
 ### Exercise 2: SQL Transformation
+
 Create a view that:
+
 - Uses the `active_products` view
 - Calculates total inventory value
 - Groups by product category
@@ -714,10 +725,13 @@ views:
       FROM active_products
       GROUP BY category
 ```
+
 </details>
 
 ### Exercise 3: Multi-Source Configuration
+
 Create a configuration with imports that:
+
 - Has separate base, views, and analytics modules
 - Joins customer data with order data
 - Creates a customer lifetime value view
@@ -778,6 +792,7 @@ imports:
   - ./views/orders.yaml
   - ./analytics.yaml
 ```
+
 </details>
 
 ## Troubleshooting
@@ -785,9 +800,11 @@ imports:
 ### Common Issues and Solutions
 
 #### Build Fails
+
 **Issue**: `ConfigError: Field required`
 
 **Solution**: Ensure you have all required fields:
+
 ```yaml
 version: 1  # Required
 duckdb:         # Required
@@ -796,9 +813,11 @@ views: []         # Required (can be empty)
 ```
 
 #### Data File Not Found
+
 **Issue**: `PathResolutionError: Failed to resolve import path`
 
 **Solution**: Check file paths are correct:
+
 ```bash
 # Verify data files exist
 ls -la data/
@@ -811,9 +830,11 @@ views:
 ```
 
 #### SQL Syntax Errors
+
 **Issue**: `EngineError: Failed to create view`
 
 **Solution**: Test SQL in interactive mode first:
+
 ```bash
 # Test SQL interactively
 duckalog run step3_transformations.yaml --interactive
@@ -823,9 +844,11 @@ duckdb tutorial.duckdb -c "YOUR SQL HERE"
 ```
 
 #### Connection Issues
+
 **Issue**: Connection failures or session not restored
 
 **Solution**: Use verbose logging to diagnose:
+
 ```bash
 # Check connection details with verbose output
 duckalog run config.yaml --verbose --query "SELECT 1"
@@ -860,19 +883,15 @@ After completing this tutorial:
    - [Troubleshooting Guide](../guides/troubleshooting.md)
    - [Secrets Persistence Guide](../how-to/secrets-persistence.md)
 
-5. **Try the Dashboard**:
-   - [Dashboard Tutorial](dashboard-basics.md)
-   - Interactive data exploration
-   - Real-time query execution
-
-6. **Migration Tips**:
+5. **Migration Tips**:
    - Use `duckalog run` instead of `build` + `query` workflow
    - Leverage context managers for Python API (`with connect_to_catalog(...)`)
    - Consider using persistent secrets for long-running applications
 
-## Congratulations!
+## Congratulations
 
 You have successfully:
+
 - ✅ Created your first Duckalog configuration
 - ✅ Implemented SQL transformations
 - ✅ Built multi-source data joins
@@ -884,9 +903,10 @@ You're now ready to tackle more advanced Duckalog scenarios and build sophistica
 ## Need Help?
 
 If you encountered issues:
+
 - Review the [Troubleshooting Guide](../guides/troubleshooting.md)
 - Check the [API Reference](../reference/api.md)
 - Explore [Examples](../examples/index.md) for similar patterns
 - Ask questions in GitHub discussions
 
-Ready to continue your Duckalog journey? Try the [Dashboard Tutorial](dashboard-basics.md) next!
+Ready to continue your Duckalog journey? Explore the [Examples](../examples/index.md) next!

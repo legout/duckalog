@@ -7,12 +7,15 @@ Understanding Duckalog's limitations helps you make informed decisions and avoid
 ### 🚨 **Critical Limitations**
 
 #### Single-Node Architecture
+
 **Issue**: Duckalog runs on a single machine, not distributed
+
 - **Maximum practical dataset**: ~1TB with sufficient RAM
 - **No horizontal scaling**: Cannot distribute across multiple nodes
 - **Single point of failure**: Machine failure affects entire catalog
 
 **Workarounds**:
+
 ```yaml
 # Partition data to stay within memory limits
 views:
@@ -25,11 +28,14 @@ views:
 **Alternatives**: ClickHouse, BigQuery, Snowflake for distributed processing
 
 #### No Write-Ahead Logging (WAL)
+
 **Issue**: Database file corruption can occur if process crashes during writes
+
 - **Risk**: Data loss if DuckDB process crashes mid-operation
 - **Recovery**: May need to rebuild from scratch using configuration file
 
 **Mitigation**:
+
 ```yaml
 # Regular backups of configuration and data
 # Use atomic operations where possible
@@ -40,11 +46,14 @@ views:
 ### ⚠️ **Significant Limitations**
 
 #### Memory-Intensive Operations
+
 **Issue**: Large joins and complex queries may exceed available memory
+
 - **Symptoms**: Out-of-memory errors, very slow performance
 - **Common triggers**: Self-joins, window functions on large datasets
 
 **Detection**:
+
 ```sql
 -- Monitor memory usage
 PRAGMA memory_limit;
@@ -52,6 +61,7 @@ PRAGMA current_memory_usage;
 ```
 
 **Solutions**:
+
 ```yaml
 duckdb:
   settings:
@@ -60,23 +70,28 @@ duckdb:
 ```
 
 #### Concurrency Limitations
+
 **Issue**: Limited support for concurrent writers/readers
+
 - **Multiple writers**: Not supported (can corrupt database)
 - **Read concurrency**: Limited by file locks and memory pressure
-- **Dashboard users**: More than 10-20 concurrent users may degrade performance
 
 **Best Practices**:
+
 - Use read-only mode for analytics workloads
 - Implement proper connection pooling
 - Schedule write operations during low usage periods
 
 #### External Database Dependencies
+
 **Issue**: Performance and reliability depend on external databases
+
 - **Network latency**: Major bottleneck for remote databases
 - **Connection stability**: Failures affect catalog operations
 - **Data transfer volume**: May be limited by network bandwidth
 
 **Mitigation**:
+
 ```yaml
 # Cache frequently accessed data locally
 views:
@@ -89,7 +104,9 @@ views:
 ### 🔧 **Functional Limitations**
 
 #### Limited Real-time Capabilities
+
 **Issue**: Not designed for streaming or real-time analytics
+
 - **Near real-time**: Possible with frequent rebuilds (minutes)
 - **Streaming**: Not supported
 - **Low-latency queries**: Millisecond latency not guaranteed
@@ -97,13 +114,17 @@ views:
 **Alternatives**: Apache Flink, Apache Kafka + ClickHouse
 
 #### No Automatic Scaling
+
 **Issue**: Cannot automatically scale resources based on load
+
 - **Manual scaling**: Requires infrastructure changes
 - **Resource planning**: Must provision for peak load
 - **Cost optimization**: Fixed resource allocation
 
 #### Limited Data Type Support
+
 **Issue**: Some advanced data types not fully supported
+
 - **Geospatial**: Limited DuckDB geospatial support
 - **JSON/JSONB**: Basic support, limited query capabilities
 - **Arrays/Structures**: Supported but with performance considerations
@@ -113,9 +134,11 @@ views:
 ### 🐛 **Bug Reports and Workarounds**
 
 #### Issue #1: Large External Parquet Files
+
 **Problem**: Reading very large Parquet files (>10GB) may cause memory issues
 **Status**: Open  
 **Workaround**: Split into smaller files or use filters during ingestion
+
 ```yaml
 views:
   - name: large_parquet
@@ -125,15 +148,18 @@ views:
 ```
 
 #### Issue #2: Iceberg Catalog Integration
+
 **Problem**: Some Iceberg catalogs have compatibility issues with DuckDB
 **Status**: In progress
 **Workaround**: Use Parquet export from Iceberg tables first
+
 ```bash
 # Export from Spark then ingest with Duckalog
 spark.sql("COPY iceberg_db.table TO 'path/hadoop' FORMAT PARQUET")
 ```
 
 #### Issue #3: DuckDB Version Compatibility
+
 **Problem**: Duckalog may lag behind latest DuckDB releases
 **Status**: Tracking in #452
 **Workaround**: Use supported DuckDB versions, monitor compatibility matrix
@@ -141,9 +167,11 @@ spark.sql("COPY iceberg_db.table TO 'path/hadoop' FORMAT PARQUET")
 ### ⚠️ **Performance Issues**
 
 #### Issue #10: Query Performance Degradation
+
 **Problem**: Query performance may degrade after many catalog rebuilds
 **Root Cause**: Database fragmentation from frequent table recreation
 **Solution**:
+
 ```yaml
 # Periodic database optimization
 duckalog:
@@ -153,15 +181,18 @@ duckalog:
 ```
 
 **Manual fix**:
+
 ```sql
 VACUUM;  -- Reclaim space
 PRAGMA optimize;  -- Optimize query plans
 ```
 
 #### Issue #15: Memory Leaks in Long-running Processes
+
 **Problem**: Memory usage slowly increases in long-running daemon processes
 **Status**: Investigating in #478
 **Workaround**: Regular process restarts or connection recycling
+
 ```python
 # Periodically recycle connections
 if time.time() - start_time > 3600:  # 1 hour
@@ -172,9 +203,11 @@ if time.time() - start_time > 3600:  # 1 hour
 ### 🔧 **Integration Issues**
 
 #### Issue #20: S3 Authentication Timing
+
 **Problem**: S3 credentials may expire during long-running operations
 **Severity**: Medium
 **Solution**: Refresh credentials or use long-lived credentials
+
 ```yaml
 # Use instance profiles or long-lived tokens
 attachments:
@@ -184,9 +217,11 @@ attachments:
 ```
 
 #### Issue #25: Windows Path Handling
+
 **Problem**: Path resolution issues on Windows with backslashes
 **Severity**: Low (Windows-specific)
 **Solution**: Use forward slashes in configurations
+
 ```yaml
 # Use forward slashes even on Windows
 views:
@@ -200,6 +235,7 @@ views:
 ### 🛡️ **Preventive Measures**
 
 #### Regular Health Checks
+
 ```python
 def catalog_health_check(catalog_path):
     """Monitor catalog health and performance"""
@@ -221,6 +257,7 @@ def catalog_health_check(catalog_path):
 ```
 
 #### Backup and Recovery
+
 ```bash
 #!/bin/bash
 # Backup script
@@ -237,7 +274,8 @@ duckdb catalog.duckdb ".backup $BACKUP_DIR/catalog.duckdb" 2>/dev/null
 echo "Backup created: $DATE" >> backup.log
 ```
 
-#### Monitoring Dashboard
+#### Monitoring Metrics
+
 ```yaml
 # Add to your monitoring system
 metrics:
@@ -251,6 +289,7 @@ metrics:
 ### 🔧 **Recovery Procedures**
 
 #### Database Corruption Recovery
+
 ```bash
 # 1. Identify corruption
 duckdb broken.duckdb "PRAGMA database_list"
@@ -266,6 +305,7 @@ duckdb new_catalog.duckdb "ATTACH 'broken.duckdb' AS old; INSERT INTO main.views
 ```
 
 #### Performance Degradation Recovery
+
 ```sql
 -- Complete database cleanup
 VACUUM;                    -- Reclaim space
@@ -279,16 +319,19 @@ ANALYZE;                   -- Update statistics
 ### 🚧 **Planned Improvements**
 
 #### Distributed Processing Support (Q2 2024)
+
 - Multi-node DuckDB integration
 - Automatic partitioning strategies
 - Load balancing across nodes
 
 #### Enhanced Concurrency (Q3 2024)
+
 - Read/write separation
 - Connection pooling improvements
-- Better multi-user dashboard support
+- Improved multi-user analytics workflows
 
 #### Streaming Integration (Q4 2024)
+
 - incremental updates
 - Change data capture (CDC)
 - Real-time view refreshing
@@ -296,16 +339,19 @@ ANALYZE;                   -- Update statistics
 ### 📋 **Under Consideration**
 
 #### Advanced Authentication
+
 - OAuth 2.0 support for external databases  
 - Service account management
 - Multi-tenant support
 
 #### Cloud-native Features
+
 - Automatic scaling based on load
 - Managed storage integration
 - Cost optimization recommendations
 
 #### Enhanced Monitoring
+
 - Built-in performance dashboards
 - Automated alerting
 - Predictive scaling recommendations

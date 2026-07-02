@@ -5,12 +5,14 @@ This guide helps existing Duckalog users migrate from absolute paths to relative
 ## What's Changed
 
 ### Before (Legacy Behavior)
+
 - Relative paths like `"data/file.parquet"` were passed directly to DuckDB
 - Users had to ensure they ran commands from the correct working directory
 - Paths would fail if the working directory changed
 - Absolute paths were required for reliable operation
 
 ### After (New Behavior)
+
 - Relative paths are automatically resolved relative to the configuration file's directory
 - Commands work consistently regardless of working directory
 - Paths are resolved securely with validation
@@ -19,6 +21,7 @@ This guide helps existing Duckalog users migrate from absolute paths to relative
 ## Migration Benefits
 
 ### ✅ Portability
+
 ```yaml
 # Old way: Required specific working directory
 views:
@@ -34,6 +37,7 @@ views:
 ```
 
 ### ✅ Simplified Project Structure
+
 ```yaml
 # Recommended structure:
 # my-project/
@@ -50,6 +54,7 @@ views:
 ```
 
 ### ✅ Better Collaboration
+
 - Team members can work from different locations
 - No need to coordinate working directories
 - Version control friendly paths
@@ -97,6 +102,7 @@ mv /path/to/reference.db reference/
 Update your configuration file with relative paths:
 
 **Before:**
+
 ```yaml
 version: 1
 views:
@@ -115,6 +121,7 @@ attachments:
 ```
 
 **After:**
+
 ```yaml
 version: 1
 views:
@@ -193,6 +200,7 @@ attachments:
 **Challenge**: Moving from Windows absolute paths to cross-platform relative paths
 
 **Before (Windows):**
+
 ```yaml
 views:
   - name: users
@@ -201,6 +209,7 @@ views:
 ```
 
 **After (Cross-platform):**
+
 ```yaml
 views:
   - name: users
@@ -217,6 +226,7 @@ If you encounter issues during migration:
 3. **Verify functionality**: Run your full workflow after each change
 
 To rollback:
+
 ```bash
 # Restore original configuration
 cp catalog.yaml.backup catalog.yaml
@@ -232,7 +242,6 @@ After migration, verify:
 - [ ] `duckalog validate` works from any working directory
 - [ ] `duckalog run` creates the expected views
 - [ ] `duckalog generate-sql` produces correct SQL with absolute paths
-- [ ] Web UI (if used) loads and functions correctly
 - [ ] All data sources are accessible
 - [ ] No security violations are reported
 
@@ -242,7 +251,8 @@ After migration, verify:
 
 **Cause**: Data files not moved to correct relative location
 
-**Solution**: 
+**Solution**:
+
 ```bash
 # Check where paths resolve to
 python3 -c "
@@ -259,6 +269,7 @@ for view in config.views:
 **Cause**: Path tries to escape reasonable boundaries
 
 **Solution**: Avoid excessive parent directory traversal:
+
 ```yaml
 # Bad
 uri: "../../../etc/passwd"  # Blocked for security
@@ -272,6 +283,7 @@ uri: "../shared/data.parquet"  # Reasonable parent traversal
 **Cause**: Using platform-specific path separators
 
 **Solution**: Use forward slashes for cross-platform compatibility:
+
 ```yaml
 # Good (cross-platform)
 uri: "data/users.parquet"

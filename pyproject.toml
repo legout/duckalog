@@ -3,81 +3,57 @@ name = "duckalog"
 version = "0.6.3"
 description = "Python library and CLI to build DuckDB catalogs from declarative YAML/JSON configs"
 readme = "README.md"
-authors = [
-    { name = "legout", email = "ligno.blades@gmail.com" }
-]
+authors = [{ name = "legout", email = "ligno.blades@gmail.com" }]
 requires-python = ">=3.12"
 keywords = [
-    "duckdb",
-    "catalog",
-    "yaml",
-    "json",
-    "data-engineering",
-    "database",
-    "views",
-    "configuration",
-    "cli",
-    "python",
-    "etl",
-    "analytics"
+  "duckdb",
+  "catalog",
+  "yaml",
+  "json",
+  "data-engineering",
+  "database",
+  "views",
+  "configuration",
+  "cli",
+  "python",
+  "etl",
+  "analytics",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3 :: Only",
-    "Topic :: Database",
-    "Topic :: Database :: Database Engines/Servers",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: System :: Systems Administration",
-    "Topic :: Utilities",
-    "Topic :: Scientific/Engineering",
-    "Natural Language :: English",
-    "Environment :: Console",
-    "Environment :: Web Environment"
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Database",
+  "Topic :: Database :: Database Engines/Servers",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: System :: Systems Administration",
+  "Topic :: Utilities",
+  "Topic :: Scientific/Engineering",
+  "Natural Language :: English",
+  "Environment :: Console",
 ]
 dependencies = [
-    "duckdb<1.5.0",
-    "pyyaml>=6.0",
-    "pydantic>=2.0.0",
-    "click>=8.0.0",
-    "loguru>=0.7.0",
-    "typer>=0.20.0",
-    "datastar-py>=0.7.0",
-    "python-dotenv>=1.0.0",
+  "duckdb<1.5.0",
+  "pyyaml>=6.0",
+  "pydantic>=2.0.0",
+  "click>=8.0.0",
+  "loguru>=0.7.0",
+  "typer>=0.20.0",
+  "python-dotenv>=1.0.0",
 ]
 
 [project.optional-dependencies]
-ui = [
-    "litestar>=2.0.0",
-    "htpy>=0.1.0",
-    "datastar-py>=0.7.0",
-    "uvicorn[standard]>=0.24.0",
-    "python-multipart>=0.0.20",
-    "msgspec>=0.18.0",
-    "sniffio>=1.3.0",
-]
-remote = [
-    "fsspec>=2023.6.0",
-    "requests>=2.28.0",
-]
-remote-s3 = [
-    "fsspec[s3]>=2023.6.0",
-]
-remote-gcs = [
-    "fsspec[gcs]>=2023.6.0",
-]
-remote-azure = [
-    "adlfs>=2023.6.0",
-]
-remote-sftp = [
-    "fsspec[sftp]>=2023.6.0",
-]
+remote = ["fsspec>=2023.6.0", "requests>=2.28.0"]
+remote-s3 = ["fsspec[s3]>=2023.6.0"]
+remote-gcs = ["fsspec[gcs]>=2023.6.0"]
+remote-azure = ["adlfs>=2023.6.0"]
+remote-sftp = ["fsspec[sftp]>=2023.6.0"]
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -104,20 +80,20 @@ where = ["src"]
 
 [dependency-groups]
 dev = [
-    "faker>=38.2.0",
-    "httpx>=0.28.1",
-    "ipython>=8.18.1",
-    "marimo>=0.18.0",
-    "mkdocstrings-python>=1.0.0",
-    "mypy>=1.18.2",
-    "pandas>=2.3.3",
-    "polars>=1.35.2",
-    "pyarrow>=22.0.0",
-    "pytest>=7.0.0",
-    "pytest-benchmark>=4.0.0",
-    "pytest-memray>=1.5.0",
-    "psutil>=5.9.0",
-    "ruff>=0.14.5",
-    "types-PyYAML>=6.0.0",
-    "zensical>=0.0.11",
+  "faker>=38.2.0",
+  "httpx>=0.28.1",
+  "ipython>=8.18.1",
+  "marimo>=0.18.0",
+  "mkdocstrings-python>=1.0.0",
+  "mypy>=1.18.2",
+  "pandas>=2.3.3",
+  "polars>=1.35.2",
+  "pyarrow>=22.0.0",
+  "pytest>=7.0.0",
+  "pytest-benchmark>=4.0.0",
+  "pytest-memray>=1.5.0",
+  "psutil>=5.9.0",
+  "ruff>=0.14.5",
+  "types-PyYAML>=6.0.0",
+  "zensical>=0.0.11",
 ]

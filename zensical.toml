@@ -12,12 +12,6 @@ nav = [
   { "Getting Started" = [
     { "Overview" = "tutorials/index.md" },
     { "Tutorial" = "tutorials/getting-started.md" },
-    { "Dashboard Tutorial" = "tutorials/dashboard-basics.md" },
-  ] },
-  { "Dashboard" = [
-    { "Architecture" = "dashboard/architecture.md" },
-    { "Components" = "dashboard/components.md" },
-    { "Datastar Patterns" = "dashboard/datastar-patterns.md" },
   ] },
   { "How-to Guides" = [
     { "Overview" = "how-to/index.md" },

@@ -17,24 +17,27 @@ The documentation is organized for different learning styles and needs:
 ## Key Features Overview
 
 ### ✅ Multi-Source Data Integration
+
 - **S3 Parquet/Delta/Iceberg**: Direct querying of cloud data lakes
 - **Database Attachments**: Connect DuckDB, SQLite, PostgreSQL databases
 - **Semantic Layer**: Business-friendly dimensions and measures
 - **Path Resolution**: Automatic path handling with security validation
 
 ### ✅ Developer Experience  
+
 - **Config-Driven**: Declarative YAML/JSON configurations
 - **Idempotent**: Same config always produces the same catalog
 - **CLI + Python API**: Use from command line or in code
 - **Remote Configs**: Load configurations from S3, GCS, Azure, GitHub
 
 ### ✅ Production Ready
+
 - **Security**: Environment variable credentials, no secrets in configs
 - **Performance**: Optimized for large-scale analytics workloads
 - **Monitoring**: Comprehensive logging and error handling
-- **Web UI**: Interactive dashboard for catalog management
 
 ### ✅ Enterprise Features
+
 - **Semantic Models**: Business-friendly metadata layer
 - **Secret Management**: Canonical credential configuration
 - **Audit Trail**: Config-driven change tracking
@@ -52,14 +55,12 @@ The documentation is organized for different learning styles and needs:
 ```bash
 # Installation
 pip install duckalog           # Core package
-pip install duckalog[ui]       # With web dashboard
 pip install duckalog[remote]   # With remote configuration support
 
 # Core CLI commands
 duckalog init                  # Create starter configuration
-duckalog run catalog.yaml    # Build DuckDB catalog
+duckalog run catalog.yaml      # Build DuckDB catalog
 duckalog validate catalog.yaml # Check configuration syntax
-duckalog ui catalog.yaml       # Launch web dashboard
 
 # Remote configuration examples
 duckalog run s3://bucket/config.yaml          # S3 configuration

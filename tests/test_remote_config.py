@@ -103,7 +103,6 @@ class TestRemoteURIValidation:
             validate_remote_uri("ftp://example.com/config.yaml")
 
     @patch("duckalog.remote_config.FSSPEC_AVAILABLE", True)
-    @patch("duckalog.remote_config.fsspec", None)
     @patch("duckalog.remote_config.known_implementations", {})
     def test_validate_remote_uri_backend_not_available(self):
         """Test validation when specific backend is not available."""
