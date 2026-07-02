@@ -368,12 +368,10 @@ def load_config_from_uri(
     if not is_remote_uri(uri):
         raise RemoteConfigError(f"URI '{uri}' is not a recognized remote URI")
 
-    # Fetch the remote content. Only forward the filesystem when one was
-    # provided so the default (None) does not leak into call signatures.
-    if filesystem is not None:
-        content = fetch_remote_content(uri, timeout, filesystem=filesystem)
-    else:
-        content = fetch_remote_content(uri, timeout)
+    # Fetch the remote content. Always forward the filesystem (even when
+    # None) so remote children resolved through the shared import pipeline
+    # inherit the parent's filesystem consistently.
+    content = fetch_remote_content(uri, timeout, filesystem=filesystem)
 
     # For remote configs, we need to handle the content differently
     # since we can't use Path operations directly

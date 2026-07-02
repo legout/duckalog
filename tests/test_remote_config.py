@@ -195,7 +195,7 @@ class TestRemoteConfigLoading:
         assert config.version == 1
         assert len(config.views) == 1
         assert config.views[0].name == "test_view"
-        mock_fetch.assert_called_once_with("s3://bucket/config.yaml", 30)
+        mock_fetch.assert_called_once_with("s3://bucket/config.yaml", 30, filesystem=None)
 
     @patch("duckalog.remote_config.fetch_remote_content")
     def test_load_config_from_uri_json_success(self, mock_fetch):
@@ -269,11 +269,13 @@ class TestRemoteConfigLoading:
     @patch("duckalog.remote_config.fetch_remote_content")
     def test_load_config_from_uri_with_timeout(self, mock_fetch):
         """Test loading with custom timeout."""
-        mock_fetch.return_value = 'version: 1\nduckdb:\n  database: ":memory:"\nviews: []'
+        mock_fetch.return_value = (
+            'version: 1\nduckdb:\n  database: ":memory:"\nviews: []'
+        )
 
         load_config_from_uri("s3://bucket/config.yaml", timeout=60)
 
-        mock_fetch.assert_called_once_with("s3://bucket/config.yaml", 60)
+        mock_fetch.assert_called_once_with("s3://bucket/config.yaml", 60, filesystem=None)
 
 
 class TestRemoteSQLFileLoading:
@@ -296,7 +298,7 @@ class TestRemoteSQLFileLoading:
         sql_content = "SELECT * FROM table"
 
         # Mock fetch to return different content based on URI
-        def mock_fetch_side_effect(uri, timeout=30):
+        def mock_fetch_side_effect(uri, timeout=30, filesystem=None):
             if uri.endswith("config.yaml"):
                 return config_content
             elif uri.endswith("view.sql"):
