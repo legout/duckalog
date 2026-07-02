@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, TYPE_CHECKING
 from urllib.parse import urlparse
 
-from .errors import RemoteConfigError
+from .errors import RemoteConfigError, ConfigError
 from .config.validators import log_debug, log_info
 
 if TYPE_CHECKING:
@@ -450,14 +450,33 @@ def load_config_from_uri(
 
         from duckalog.config.loading.sql import process_sql_file_references
 
-        updated_views, file_based_views = process_sql_file_references(
-            views=config.views,
-            sql_file_loader=sql_file_loader,
-            config_file_path=fake_config_path,
-            log_info_func=log_info,
-            log_debug_func=log_debug,
-            filesystem=filesystem,
-        )
+        # A remote config cannot reach the caller's local filesystem. If a view
+        # references a local SQL file and no remote filesystem is configured to
+        # fetch it, surface a RemoteConfigError instead of crashing on a None
+        # loader. Default the loader so non-remote (http(s)) SQL refs still work.
+        effective_loader = sql_file_loader
+        if effective_loader is None:
+            try:
+                from duckalog.sql_file_loader import SQLFileLoader
+
+                effective_loader = SQLFileLoader()
+            except ImportError:
+                effective_loader = None
+
+        try:
+            updated_views, file_based_views = process_sql_file_references(
+                views=config.views,
+                sql_file_loader=effective_loader,
+                config_file_path=fake_config_path,
+                log_info_func=log_info,
+                log_debug_func=log_debug,
+                filesystem=filesystem,
+            )
+        except (ConfigError, AttributeError, OSError) as exc:
+            raise RemoteConfigError(
+                f"Remote config at {uri!r} references SQL files that could not be "
+                f"resolved from the remote source: {exc}"
+            ) from exc
 
         # Create updated config with processed views
         config = config.model_copy(update={"views": updated_views})
