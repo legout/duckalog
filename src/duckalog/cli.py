@@ -356,7 +356,11 @@ def generate_sql(
         filesystem=filesystem is not None,
     )
     try:
-        config = load_config(config_path, filesystem=filesystem)
+        config = (
+            load_config(config_path, filesystem=filesystem)
+            if filesystem is not None
+            else load_config(config_path)
+        )
         sql = generate_all_views_sql(config)
     except ConfigError as exc:
         log_error("Generate-sql failed due to config error", error=str(exc))
@@ -413,7 +417,10 @@ def validate(
         filesystem=filesystem is not None,
     )
     try:
-        load_config(config_path, filesystem=filesystem)
+        if filesystem is not None:
+            load_config(config_path, filesystem=filesystem)
+        else:
+            load_config(config_path)
     except ConfigError as exc:
         log_error("Validate failed due to config error", error=str(exc))
         _fail(f"Config error: {exc}", 2)
@@ -595,7 +602,11 @@ def show_imports(
                 typer.echo("Merged Configuration:")
                 typer.echo("=" * 80)
                 try:
-                    merged_config = load_config(config_path, filesystem=filesystem)
+                    merged_config = (
+                        load_config(config_path, filesystem=filesystem)
+                        if filesystem is not None
+                        else load_config(config_path)
+                    )
                     # Use model_dump_json for clean JSON output
                     merged_json = merged_config.model_dump_json(indent=2)
                     typer.echo(merged_json)
