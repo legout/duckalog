@@ -102,18 +102,19 @@ def validate_filesystem(filesystem: Any) -> None:
             "Expected fsspec-compatible filesystem object."
         )
 
-    # Basic type check - should be fsspec compatible
-    try:
-        # Try to get the protocol to validate it's a proper filesystem
-        if hasattr(filesystem, "protocol"):
-            # Most fsspec filesystems have a protocol attribute
-            protocol = getattr(filesystem, "protocol", None)
-            if not protocol:
-                raise RemoteConfigError("Filesystem missing protocol attribute")
-    except Exception:
-        # If we can't access the protocol, that's ok - the filesystem
-        # might be valid but not expose this attribute
-        pass
+    # Basic type check - should be fsspec compatible.
+    # An fsspec-compatible filesystem must expose a non-empty protocol. A
+    # missing or empty protocol is a validation failure (spec AC5), so it must
+    # raise rather than be swallowed by a bare except.
+    if hasattr(filesystem, "protocol"):
+        protocol = getattr(filesystem, "protocol", None)
+        if not protocol:
+            raise RemoteConfigError("Filesystem missing protocol attribute")
+    else:
+        raise RemoteConfigError(
+            "Filesystem missing 'protocol' attribute. "
+            "Expected an fsspec-compatible filesystem object."
+        )
 
 
 def validate_remote_uri(uri: str, filesystem: Any | None = None) -> None:
