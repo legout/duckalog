@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DuckDB-Wasm Lake Reader — Prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: #101316;
+      color: #e8edf2;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background: #101316;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.45rem;
+    }
+
+    .prototype {
+      margin: 0 0 1.5rem;
+      color: #f0b35b;
+      font-size: 0.8rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .panel {
+      border: 1px solid #303941;
+      border-radius: 8px;
+      padding: 1rem;
+      background: #171b20;
+    }
+
+    .form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 160px 180px auto;
+      gap: 0.75rem;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 0.35rem;
+      color: #9faab5;
+      font-size: 0.75rem;
+    }
+
+    textarea,
+    input,
+    select,
+    button {
+      box-sizing: border-box;
+      border: 1px solid #46515b;
+      border-radius: 5px;
+      padding: 0.65rem;
+      color: #e8edf2;
+      background: #0f1215;
+      font: inherit;
+      font-size: 0.85rem;
+    }
+
+    textarea {
+      min-height: 2.55rem;
+      resize: vertical;
+    }
+
+    button {
+      cursor: pointer;
+      border-color: #4d9bff;
+      background: #1d5c9c;
+    }
+
+    button:hover {
+      background: #2674c3;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .advanced {
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr);
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .hint,
+    #status {
+      margin: 0.8rem 0 0;
+      color: #9faab5;
+      font-size: 0.78rem;
+      white-space: pre-wrap;
+    }
+
+    #status[data-kind="error"] {
+      color: #ff9a9a;
+    }
+
+    #status[data-kind="success"] {
+      color: #91d7a4;
+    }
+
+    .results {
+      margin-top: 1rem;
+      overflow: auto;
+      border: 1px solid #303941;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    th,
+    td {
+      padding: 0.55rem 0.7rem;
+      border-bottom: 1px solid #293139;
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      color: #a8d2ff;
+      background: #202831;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .empty {
+      padding: 2rem;
+      color: #9faab5;
+      text-align: center;
+    }
+
+    @media (max-width: 800px) {
+      body {
+        padding: 1rem;
+      }
+
+      .form,
+      .advanced {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>DuckDB-Wasm Lake Reader</h1>
+    <p class="prototype">Prototype — read-only data inspection</p>
+
+    <section class="panel">
+      <div class="form">
+        <label>
+          Table path or URL(s)
+          <textarea id="path" placeholder="https://example.com/data/table.parquet&#10;One path per line for multiple files"></textarea>
+        </label>
+
+        <label>
+          Format
+          <select id="format">
+            <option value="parquet">Parquet</option>
+            <option value="csv">CSV</option>
+            <option value="json">JSON</option>
+          </select>
+        </label>
+
+        <label>
+          Table alias
+          <input id="alias" value="data" spellcheck="false">
+        </label>
+
+        <button id="run" type="button">Read table</button>
+      </div>
+
+      <div class="advanced">
+        <label>
+          Auth header
+          <input id="auth-header" placeholder="Authorization" spellcheck="false">
+        </label>
+
+        <label>
+          Auth value (memory only)
+          <input id="auth-value" type="password" placeholder="Optional; prefer presigned URLs" autocomplete="off">
+        </label>
+      </div>
+
+      <p class="hint">Remote URLs must allow the GitLab Pages origin through CORS. Authenticated files are fetched into browser memory for this prototype.</p>
+      <p id="status" role="status">DuckDB-Wasm is loading…</p>
+    </section>
+
+    <section class="results" aria-live="polite">
+      <div id="empty" class="empty">No query run yet.</div>
+      <table id="table" hidden>
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <!--
+    Static HTML has no process.env. For local/CI defaults, inject this object
+    before the module script, or replace its values during the build:
+
+    window.__DUCKALOG_ENV__ = {
+      DUCKALOG_TABLE_PATH: "https://.../table.parquet",
+      DUCKALOG_TABLE_ALIAS: "orders",
+      DUCKALOG_TABLE_FORMAT: "parquet",
+      DUCKALOG_AUTH_HEADER: "Authorization",
+      DUCKALOG_AUTH_VALUE: "Bearer ..."
+    };
+
+    Any secret placed in a public HTML file is visible to every page visitor.
+    Use this only for local testing; prefer a user-entered short-lived token or
+    presigned URLs for a deployed GitLab Pages site.
+  -->
+  <script>
+    window.__DUCKALOG_ENV__ = window.__DUCKALOG_ENV__ || {};
+  </script>
+
+  <script type="module">
+    import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev61.0/+esm";
+
+    const env = window.__DUCKALOG_ENV__;
+    const pathInput = document.querySelector("#path");
+    const formatInput = document.querySelector("#format");
+    const aliasInput = document.querySelector("#alias");
+    const authHeaderInput = document.querySelector("#auth-header");
+    const authValueInput = document.querySelector("#auth-value");
+    const runButton = document.querySelector("#run");
+    const status = document.querySelector("#status");
+    const empty = document.querySelector("#empty");
+    const table = document.querySelector("#table");
+    const thead = table.querySelector("thead");
+    const tbody = table.querySelector("tbody");
+
+    let db;
+    let connection;
+
+    function setStatus(message, kind = "") {
+      status.textContent = message;
+      status.dataset.kind = kind;
+    }
+
+    function sqlString(value) {
+      return `'${String(value).replaceAll("'", "''")}'`;
+    }
+
+    function sqlIdentifier(value) {
+      const identifier = value.trim();
+      if (!/^[A-Za-z_][A-Za-z0-9_$]*$/.test(identifier)) {
+        throw new Error("Alias must start with a letter or underscore and contain only letters, numbers, _, or $.");
+      }
+      return `"${identifier.replaceAll('"', '""')}"`;
+    }
+
+    function sourcePaths() {
+      return pathInput.value
+        .split(/[,\n]/)
+        .map((path) => path.trim())
+        .filter(Boolean);
+    }
+
+    function virtualName(index, path, format) {
+      const filename = path.split(/[?#]/, 1)[0].split("/").pop() || `source-${index}`;
+      const safeFilename = filename.replace(/[^A-Za-z0-9._-]/g, "_");
+      return `duckalog-prototype-${index}-${safeFilename || `source.${format}`}`;
+    }
+
+    async function registerSources(paths, format, authHeader, authValue) {
+      const registered = [];
+
+      for (const [index, path] of paths.entries()) {
+        const name = virtualName(index, path, format);
+        const hasAuth = authHeader && authValue;
+
+        if (hasAuth) {
+          const response = await fetch(path, {
+            headers: { [authHeader]: authValue },
+          });
+          if (!response.ok) {
+            throw new Error(`Fetch failed for ${path}: ${response.status} ${response.statusText}`);
+          }
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          await db.registerFileBuffer(name, bytes);
+        } else {
+          if (!/^https:\/\//i.test(path)) {
+            throw new Error("Use HTTPS URLs, or provide a browser File registration in a later prototype.");
+          }
+          await db.registerFileURL(
+            name,
+            path,
+            duckdb.DuckDBDataProtocol.HTTP,
+            false,
+          );
+        }
+
+        registered.push(name);
+      }
+
+      return registered;
+    }
+
+    function scanSql(format, registeredNames) {
+      const files = `[${registeredNames.map(sqlString).join(", ")}]`;
+      switch (format) {
+        case "parquet":
+          return `read_parquet(${files})`;
+        case "csv":
+          return `read_csv_auto(${files}, union_by_name = true)`;
+        case "json":
+          return `read_json_auto(${files}, union_by_name = true)`;
+        default:
+          throw new Error(`Unsupported format: ${format}`);
+      }
+    }
+
+    function cellText(value) {
+      if (value === null || value === undefined) return "NULL";
+      if (typeof value === "bigint") return value.toString();
+      if (typeof value === "object") {
+        try {
+          return JSON.stringify(value);
+        } catch {
+          return String(value);
+        }
+      }
+      return String(value);
+    }
+
+    function renderResult(result) {
+      const rows = result.toArray().map((row) => row.toJSON());
+      const columns = result.schema.fields.map((field) => field.name);
+
+      thead.replaceChildren();
+      tbody.replaceChildren();
+      table.hidden = false;
+      empty.hidden = true;
+
+      const headerRow = document.createElement("tr");
+      for (const column of columns) {
+        const cell = document.createElement("th");
+        cell.textContent = column;
+        headerRow.append(cell);
+      }
+      thead.append(headerRow);
+
+      for (const row of rows) {
+        const tableRow = document.createElement("tr");
+        for (const column of columns) {
+          const cell = document.createElement("td");
+          cell.textContent = cellText(row[column]);
+          tableRow.append(cell);
+        }
+        tbody.append(tableRow);
+      }
+
+      if (!rows.length) {
+        empty.hidden = false;
+        empty.textContent = "Query returned no rows.";
+      }
+
+      return rows.length;
+    }
+
+    async function runQuery() {
+      const paths = sourcePaths();
+      const format = formatInput.value;
+      const alias = sqlIdentifier(aliasInput.value);
+      const authHeader = authHeaderInput.value.trim();
+      const authValue = authValueInput.value;
+
+      if (!paths.length) throw new Error("Enter at least one HTTPS table path.");
+
+      runButton.disabled = true;
+      table.hidden = true;
+      empty.hidden = false;
+      empty.textContent = "Reading…";
+      setStatus("Registering source file(s)…");
+
+      try {
+        const registeredNames = await registerSources(paths, format, authHeader, authValue);
+        const scan = scanSql(format, registeredNames);
+
+        await connection.query(`DROP VIEW IF EXISTS ${alias}`);
+        // pi-lens-ignore: ast-grep:no-sql-in-code-js
+        await connection.query(`CREATE VIEW ${alias} AS SELECT * FROM ${scan}`);
+        // pi-lens-ignore: ast-grep:no-sql-in-code-js
+        const result = await connection.query(`SELECT * FROM ${alias} LIMIT 100`);
+        const rowCount = renderResult(result);
+
+        setStatus(`Loaded ${paths.length} source file(s); showing ${rowCount} row(s) from ${alias}.`, "success");
+      } catch (error) {
+        console.error(error);
+        table.hidden = true;
+        empty.hidden = false;
+        empty.textContent = "No result.";
+        setStatus(error instanceof Error ? error.message : String(error), "error");
+      } finally {
+        runButton.disabled = false;
+        authValueInput.value = "";
+      }
+    }
+
+    async function start() {
+      pathInput.value = env.DUCKALOG_TABLE_PATH || "";
+      aliasInput.value = env.DUCKALOG_TABLE_ALIAS || "data";
+      formatInput.value = env.DUCKALOG_TABLE_FORMAT || "parquet";
+      authHeaderInput.value = env.DUCKALOG_AUTH_HEADER || "";
+      authValueInput.value = env.DUCKALOG_AUTH_VALUE || "";
+
+      const bundles = duckdb.getJsDelivrBundles();
+      const bundle = await duckdb.selectBundle(bundles);
+      const workerUrl = URL.createObjectURL(new Blob([
+        `importScripts(${JSON.stringify(bundle.mainWorker)});`,
+      ], { type: "text/javascript" }));
+      const worker = new Worker(workerUrl);
+      const logger = new duckdb.ConsoleLogger();
+
+      db = new duckdb.AsyncDuckDB(logger, worker);
+      await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+      connection = await db.connect();
+      URL.revokeObjectURL(workerUrl);
+
+      setStatus("Ready. Configure a source and click Read table.", "success");
+    }
+
+    runButton.addEventListener("click", () => runQuery());
+    start().catch((error) => {
+      runButton.disabled = true;
+      setStatus(`DuckDB-Wasm failed to start: ${error instanceof Error ? error.message : String(error)}`, "error");
+    });
+  </script>
+</body>
+</html>

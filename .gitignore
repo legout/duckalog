@@ -35,9 +35,12 @@ mms2.db.wal
 # bv (beads viewer) local config and caches
 .bv/
 .pi/prompts/
+.pi/
 .DS_Store
 
 # Temporary research and context files
 code_context.md
 research.md
 .memory/branches/main/log.md
+openspec_archive/
+
