@@ -1,0 +1,2248 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Build DuckDB catalogs from declarative YAML/JSON configs.">
+      
+      
+      
+        <link rel="canonical" href="https://legout.github.io/duckalog/ARCHITECTURE/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.37">
+    
+    
+      
+        <title>Architecture: duckalog - Duckalog</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/classic/main.a2001754.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,500,500i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,a=__md_scope)=>JSON.parse(t.getItem(a.pathname+"."+e)),__md_set=(e,t,a=localStorage,_=__md_scope)=>{try{a.setItem(_.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#architecture-duckalog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Duckalog" class="md-header__button md-logo" aria-label="Duckalog" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Duckalog
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture: duckalog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/legout/duckalog" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    legout/duckalog
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="./.." class="md-tabs__link">
+        
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../tutorials/" class="md-tabs__link">
+          
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../how-to/" class="md-tabs__link">
+          
+  
+  How-to Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../reference/" class="md-tabs__link">
+          
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../explanation/architecture/" class="md-tabs__link">
+          
+  
+  Understanding
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/" class="md-tabs__link">
+          
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../SECURITY/" class="md-tabs__link">
+        
+  
+  Security
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Duckalog" class="md-nav__button md-logo" aria-label="Duckalog" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Duckalog
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/legout/duckalog" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    legout/duckalog
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/environment-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/debugging-builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Debugging Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Path Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration-path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrating to Path Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration-refactor-config-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrating to Config Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/performance-tuning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance Tuning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/secrets-persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Secrets Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/api-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/config-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understanding
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Understanding
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dependency-injection-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependency Injection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Path Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/philosophy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/simple-parquet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simple Parquet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/multi-source-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Source Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/duckdb-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DuckDB Secrets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/duckdb-settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DuckDB Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/environment-vars/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/local-attachments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Attachments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/path-resolution-examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Path Resolution Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/config-imports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Imports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SECURITY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Purpose
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        High-Level Design
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#module-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Module Map
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Module Map">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duckalogconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>duckalog.config</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalogconfigmodels" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>duckalog.config.models</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalogconfigapi" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>duckalog.config.api</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalogconfigresolutionimports" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>duckalog.config.resolution.imports</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalogconfigsecuritypath" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>duckalog.config.security.path</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalogconfigvalidators" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>duckalog.config.validators</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalogengine" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>duckalog.engine</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalogconnection" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>duckalog.connection</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalogsql_generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>duckalog.sql_generation</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalogcli" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>duckalog.cli</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#duckalogremote_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>duckalog.remote_config</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Data Flow
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-design-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key Design Decisions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#directory-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Directory Structure
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dependencies
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Open Questions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complexity-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Complexity Assessment
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Complexity Assessment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deep-modules-good" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Deep Modules (good)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shallow-boundaries-candidates-for-deepening" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Shallow Boundaries (candidates for deepening)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#leaky-abstractions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Leaky Abstractions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+    <a href="https://github.com/legout/duckalog/edit/main/docs/ARCHITECTURE.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/legout/duckalog/raw/main/docs/ARCHITECTURE.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
+    </a>
+  
+
+
+<h1 id="architecture-duckalog">Architecture: duckalog<a class="headerlink" href="#architecture-duckalog" title="Permanent link">&para;</a></h1>
+<p><em>Last updated: 2026-04-14</em></p>
+<h2 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h2>
+<p>Duckalog is a Python library and CLI for building DuckDB catalogs from declarative YAML/JSON configuration files. A user writes a catalog config (views, attachments, secrets, settings) and Duckalog generates and executes the corresponding DuckDB SQL—either via the <code>duckalog run</code> CLI command or the <code>connect_to_catalog()</code> Python API.</p>
+<h2 id="high-level-design">High-Level Design<a class="headerlink" href="#high-level-design" title="Permanent link">&para;</a></h2>
+<p>The system is organized around three layers: <strong>Configuration</strong>, <strong>Engine</strong>, and <strong>Interfaces</strong>.</p>
+<p>The <strong>Configuration layer</strong> (<code>src/duckalog/config/</code>) is the deepest part of the system. It parses and validates YAML/JSON into Pydantic models, resolves environment-variable interpolation, discovers <code>.env</code> files, expands config imports (one config file can import another), performs root-based path-security validation, and loads external SQL files into inline statements. This layer is intentionally thick: callers invoke <code>load_config()</code> and receive a fully materialized <code>Config</code> object without knowing about the sequencing of interpolation, import resolution, or security checks.</p>
+<p>The <strong>Engine layer</strong> (<code>src/duckalog/engine.py</code>, <code>src/duckalog/connection.py</code>) takes a validated <code>Config</code> and orchestrates DuckDB. <code>CatalogBuilder</code> (engine) is a stateful workflow object that opens a DuckDB connection, applies pragmas, creates secrets, sets up attachments (DuckDB, SQLite, Postgres, or nested Duckalog catalogs), and creates views. <code>CatalogConnection</code> (connection) provides the Python API entry point: it lazily initializes a DuckDB connection, restores session state, and performs incremental view updates so that repeated <code>get_connection()</code> calls return a catalog-ready connection.</p>
+<p>The <strong>Interface layer</strong> exposes two surfaces: a <strong>Typer CLI</strong> (<code>src/duckalog/cli.py</code>) for command-line usage and a <strong>Python API</strong> (<code>src/duckalog/python_api.py</code>) for programmatic access. The CLI is the largest file in the project and acts as the primary user-facing orchestrator.</p>
+<h2 id="module-map">Module Map<a class="headerlink" href="#module-map" title="Permanent link">&para;</a></h2>
+<h3 id="duckalogconfig"><code>duckalog.config</code><a class="headerlink" href="#duckalogconfig" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Path: <code>src/duckalog/config/</code></li>
+<li>Responsibility: Parse, validate, interpolate, and secure catalog configuration files.</li>
+<li>Boundary: Hides the entire chain of env resolution, import expansion, path validation, and SQL-file loading behind <code>load_config()</code>.</li>
+<li>Depends on: <code>pydantic</code>, <code>python-dotenv</code>, <code>pyyaml</code>, <code>duckalog.remote_config</code> (optional, for remote URIs)</li>
+</ul>
+<h3 id="duckalogconfigmodels"><code>duckalog.config.models</code><a class="headerlink" href="#duckalogconfigmodels" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Path: <code>src/duckalog/config/models.py</code></li>
+<li>Responsibility: Pydantic schema definitions for the entire configuration surface (<code>Config</code>, <code>ViewConfig</code>, <code>SecretConfig</code>, <code>AttachmentsConfig</code>, etc.).</li>
+<li>Boundary: Guarantees that any <code>Config</code> instance is structurally valid before it reaches the engine.</li>
+<li>Depends on: <code>pydantic</code></li>
+</ul>
+<h3 id="duckalogconfigapi"><code>duckalog.config.api</code><a class="headerlink" href="#duckalogconfigapi" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Path: <code>src/duckalog/config/api.py</code></li>
+<li>Responsibility: Public entry point for configuration loading. Decides whether a path is remote (delegates to <code>remote_config</code>) or local (delegates to <code>config/resolution/imports.py</code>).</li>
+<li>Boundary: Hides the remote-vs-local branching from callers.</li>
+<li>Depends on: <code>duckalog.config.models</code>, <code>duckalog.config.resolution.imports</code>, <code>duckalog.remote_config</code> (optional)</li>
+</ul>
+<h3 id="duckalogconfigresolutionimports"><code>duckalog.config.resolution.imports</code><a class="headerlink" href="#duckalogconfigresolutionimports" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Path: <code>src/duckalog/config/resolution/imports.py</code></li>
+<li>Responsibility: The actual implementation of local config loading: import-chain resolution, cyclic-import detection, glob expansion, SQL-file inlining, and name deduplication.</li>
+<li>Boundary: Hides the complexity of transitive config imports and file-system traversal.</li>
+<li>Depends on: <code>duckalog.config.models</code>, <code>duckalog.config.loading.sql</code>, <code>duckalog.config.resolution.env</code></li>
+</ul>
+<h3 id="duckalogconfigsecuritypath"><code>duckalog.config.security.path</code><a class="headerlink" href="#duckalogconfigsecuritypath" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Path: <code>src/duckalog/config/security/path.py</code></li>
+<li>Responsibility: Root-based path security (directory traversal prevention, allowed-root validation, and path normalization).</li>
+<li>Boundary: Hides platform-specific path rules and security policy.</li>
+<li>Depends on: <code>pathlib</code></li>
+</ul>
+<h3 id="duckalogconfigvalidators"><code>duckalog.config.validators</code><a class="headerlink" href="#duckalogconfigvalidators" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Path: <code>src/duckalog/config/validators.py</code></li>
+<li>Responsibility: Re-exports path helpers from <code>security/path.py</code>, provides redacted logging wrappers, and resolves relative paths inside a loaded config.</li>
+<li>Boundary: <strong>Shallow</strong> — mostly a delegation layer with minimal added value. The path helpers and logging functions could be collapsed into their canonical homes.</li>
+<li>Depends on: <code>duckalog.config.security.path</code>, <code>loguru</code></li>
+</ul>
+<h3 id="duckalogengine"><code>duckalog.engine</code><a class="headerlink" href="#duckalogengine" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Path: <code>src/duckalog/engine.py</code></li>
+<li>Responsibility: Build a DuckDB catalog from a validated <code>Config</code>: secrets, attachments, pragmas, view creation, and optional remote export.</li>
+<li>Boundary: <strong>Leaky</strong> — <code>CatalogBuilder.build()</code> is a long orchestration method that mixes connection management, SQL generation, and file upload. The sequencing is visible to maintainers but not to callers.</li>
+<li>Depends on: <code>duckdb</code>, <code>duckalog.config</code>, <code>duckalog.sql_generation</code>, <code>duckalog.sql_utils</code>, <code>fsspec</code> (optional)</li>
+</ul>
+<h3 id="duckalogconnection"><code>duckalog.connection</code><a class="headerlink" href="#duckalogconnection" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Path: <code>src/duckalog/connection.py</code></li>
+<li>Responsibility: Manage DuckDB connections with lazy initialization, session-state restoration, and incremental view updates.</li>
+<li>Boundary: Hides connection lifecycle and state replay from Python callers.</li>
+<li>Depends on: <code>duckdb</code>, <code>duckalog.config</code>, <code>duckalog.engine</code> (imports private helpers for state setup)</li>
+</ul>
+<h3 id="duckalogsql_generation"><code>duckalog.sql_generation</code><a class="headerlink" href="#duckalogsql_generation" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Path: <code>src/duckalog/sql_generation.py</code></li>
+<li>Responsibility: Generate DuckDB SQL (<code>CREATE SECRET</code>, <code>CREATE OR REPLACE VIEW</code>, <code>ATTACH</code>, etc.) from Pydantic models.</li>
+<li>Boundary: Hides provider-specific SQL dialects, but the <code>generate_secret_sql()</code> function is a very long switch statement that could be deeper.</li>
+<li>Depends on: <code>duckalog.config.models</code>, <code>duckalog.sql_utils</code></li>
+</ul>
+<h3 id="duckalogcli"><code>duckalog.cli</code><a class="headerlink" href="#duckalogcli" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Path: <code>src/duckalog/cli.py</code></li>
+<li>Responsibility: Typer-based command-line interface (<code>run</code>, <code>show-paths</code>, <code>show-imports</code>, <code>query</code>, <code>init</code>, <code>validate</code>, etc.).</li>
+<li>Boundary: <strong>Shallow and wide</strong> — the CLI absorbs a lot of complexity directly (filesystem factory with 12 parameters, error handling repeated 7+ times, mixed concerns of SQL generation, building, and display formatting).</li>
+<li>Depends on: nearly every other module in <code>src/duckalog/</code></li>
+</ul>
+<h3 id="duckalogremote_config"><code>duckalog.remote_config</code><a class="headerlink" href="#duckalogremote_config" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Path: <code>src/duckalog/remote_config.py</code></li>
+<li>Responsibility: Load configuration files from remote URIs (S3, GCS, Azure, HTTP, SFTP) via fsspec.</li>
+<li>Boundary: Hides fsspec protocol details from the config loader.</li>
+<li>Depends on: <code>fsspec</code>, <code>duckalog.config.loading.sql</code></li>
+</ul>
+<h2 id="data-flow">Data Flow<a class="headerlink" href="#data-flow" title="Permanent link">&para;</a></h2>
+<p>A typical <code>duckalog run catalog.yaml</code> invocation follows this path:</p>
+<ol>
+<li><strong>CLI</strong> (<code>cli.py</code>) parses arguments, optionally creates an fsspec filesystem, and calls <code>load_config(config_path)</code>.</li>
+<li><strong>Config API</strong> (<code>config/api.py</code>) checks whether the path is remote. If so, it delegates to <code>remote_config.load_config_from_uri()</code>; otherwise it delegates to <code>_load_config_from_local_file()</code>.</li>
+<li><strong>Import Resolver</strong> (<code>config/resolution/imports.py</code>) loads the base file, expands any <code>imports:</code> declarations recursively, resolves <code>.env</code> interpolation via <code>resolution/env.py</code>, inlines SQL file references via <code>loading/sql.py</code>, and validates path security via <code>security/path.py</code>.</li>
+<li><strong>Engine</strong> (<code>engine.py</code>) receives the fully materialized <code>Config</code> object. <code>CatalogBuilder</code> opens DuckDB, applies settings, creates secrets, attaches databases, and executes <code>CREATE OR REPLACE VIEW</code> statements for each view.</li>
+<li><strong>Connection</strong> (Python API only) — <code>CatalogConnection</code> wraps the DuckDB connection and restores state on every access.</li>
+</ol>
+<pre class="mermaid"><code>flowchart LR
+    CLI["cli.py: run"]
+    API["config/api.py"]
+    REMOTE["remote_config.py"]
+    IMPORTS["config/resolution/imports.py"]
+    ENV["config/resolution/env.py"]
+    SQL["config/loading/sql.py"]
+    SEC["config/security/path.py"]
+    ENGINE["engine.py"]
+    DB[(DuckDB)]
+
+    CLI --&gt; API
+    API --&gt;|remote URI| REMOTE
+    API --&gt;|local file| IMPORTS
+    IMPORTS --&gt; ENV
+    IMPORTS --&gt; SQL
+    IMPORTS --&gt; SEC
+    REMOTE --&gt; SQL
+    CLI --&gt; ENGINE
+    ENGINE --&gt; DB</code></pre>
+<h2 id="key-design-decisions">Key Design Decisions<a class="headerlink" href="#key-design-decisions" title="Permanent link">&para;</a></h2>
+<ul>
+<li>
+<p>Decision: The configuration layer is intentionally deep. All parsing, interpolation, import expansion, and path security happen behind <code>load_config()</code> so that the engine and CLI work only with validated Pydantic models.
+  Rationale: Reduces change amplification when the config schema evolves; callers above <code>load_config()</code> never touch raw YAML or file paths.
+  Date: 2026-04-14</p>
+</li>
+<li>
+<p>Decision: <code>build_catalog()</code> was removed from the public Python API (<code>__init__.py</code>) but retained as an internal helper inside <code>engine.py</code> without renaming.
+  Rationale: The function is still useful internally for <code>run --dry-run</code>, but renaming it would create churn outside the current cleanup scope.
+  Date: 2026-04-14</p>
+</li>
+<li>
+<p>Decision: The legacy dashboard/UI implementation was removed.
+  Rationale: The current UI stack was stale and caused hanging tests. A future UI will be implemented from scratch rather than refactoring the deleted dashboard modules.
+  Date: 2026-07-02</p>
+</li>
+<li>
+<p>Decision: <code>duckalog.config.validators</code> was created as a consolidation layer for path helpers and redacted logging, but it ended up as a thin wrapper over <code>security/path.py</code>.
+  Rationale: The intention was to reduce module sprawl, but the result is a shallow boundary that adds an extra hop for most path operations.
+  Date: 2026-04-14</p>
+</li>
+</ul>
+<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><pre><span></span><code>src/duckalog/
+├── __init__.py           # Public Python API exports
+├── cli.py                # Typer CLI (~1,500 lines, primary user surface)
+├── python_api.py         # High-level Python convenience functions
+├── connection.py         # DuckDB connection manager with state restoration
+├── engine.py             # Catalog build orchestration
+├── sql_generation.py     # DuckDB SQL generators
+├── sql_utils.py          # SQL quoting and option rendering
+├── sql_file_loader.py    # SQL file loading and template processing
+├── remote_config.py      # Remote config loading via fsspec
+├── config_init.py        # `duckalog init` template generator
+├── errors.py             # Unified exception hierarchy
+├── benchmarks.py         # Performance benchmarking utilities
+├── performance.py        # Runtime performance helpers
+├── config/               # Configuration layer
+│   ├── __init__.py       # Config package public API
+│   ├── api.py            # load_config() entry point
+│   ├── models.py         # Pydantic schema definitions
+│   ├── validators.py     # Path/log wrappers (shallow consolidation)
+│   ├── interpolation.py  # DEPRECATED proxy module
+│   ├── loading/          # SQL-file loading
+│   │   ├── __init__.py
+│   │   ├── sql.py        # Real SQL-file reference processor
+│   │   ├── base.py       # Unused ABCs
+│   │   ├── file.py       # Empty stub
+│   │   └── remote.py     # Empty stub
+│   ├── resolution/       # Config interpolation &amp; imports
+│   │   ├── imports.py    # Import-chain resolver
+│   │   ├── env.py        # .env and ${env:VAR} interpolation
+│   │   └── base.py       # Abstract resolver interfaces
+│   └── security/         # Path security
+│       ├── base.py       # Abstract path validator
+│       └── path.py       # Root-based traversal prevention
+</code></pre></div>
+<h2 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Dependency</th>
+<th>Version</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>duckdb</td>
+<td>&gt;=0.8.0</td>
+<td>Core analytical database engine</td>
+</tr>
+<tr>
+<td>pydantic</td>
+<td>&gt;=2.0.0</td>
+<td>Config schema validation</td>
+</tr>
+<tr>
+<td>pyyaml</td>
+<td>&gt;=6.0</td>
+<td>YAML config parsing</td>
+</tr>
+<tr>
+<td>typer</td>
+<td>&gt;=0.20.0</td>
+<td>CLI framework</td>
+</tr>
+<tr>
+<td>click</td>
+<td>&gt;=8.0.0</td>
+<td>Underlying CLI toolkit (Typer dependency)</td>
+</tr>
+<tr>
+<td>loguru</td>
+<td>&gt;=0.7.0</td>
+<td>Structured logging with redaction</td>
+</tr>
+<tr>
+<td>python-dotenv</td>
+<td>&gt;=1.0.0</td>
+<td><code>.env</code> file discovery</td>
+</tr>
+<tr>
+<td>fsspec</td>
+<td>&gt;=2023.6.0</td>
+<td>Optional remote filesystems (<code>[remote]</code> extra)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="open-questions">Open Questions<a class="headerlink" href="#open-questions" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Should <code>duckalog.config.validators</code> be folded into <code>duckalog.config.security.path</code> and <code>duckalog.config.api</code> so that the delegation layer disappears?</li>
+<li>Should <code>CatalogBuilder.build()</code> be split into phase methods (<code>_build_secrets</code>, <code>_build_attachments</code>, <code>_build_views</code>) to reduce the 180+ line orchestration method?</li>
+<li>How should the <code>_is_remote_uri()</code> helper be consolidated? It currently exists in four places (<code>remote_config.py</code>, <code>config/resolution/imports.py</code>, <code>config/resolution/env.py</code>, <code>config/loading/sql.py</code>).</li>
+</ul>
+<h2 id="complexity-assessment">Complexity Assessment<a class="headerlink" href="#complexity-assessment" title="Permanent link">&para;</a></h2>
+<h3 id="deep-modules-good">Deep Modules (good)<a class="headerlink" href="#deep-modules-good" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>duckalog.config.resolution.imports</code>: Hides transitive config imports, cyclic-import detection, glob expansion, and SQL-file inlining behind <code>_load_config_with_imports()</code>.</li>
+<li><code>duckalog.config.security.path</code>: Hides platform-specific path rules, root validation, and traversal prevention behind a small public surface.</li>
+<li><code>duckalog.connection</code>: Hides DuckDB connection lifecycle, session-state restoration, and incremental view updates from Python callers.</li>
+</ul>
+<h3 id="shallow-boundaries-candidates-for-deepening">Shallow Boundaries (candidates for deepening)<a class="headerlink" href="#shallow-boundaries-candidates-for-deepening" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>duckalog.config.validators</code>: Nine path functions are thin wrappers around <code>security/path.py</code>, and four logging functions are thin wrappers around <code>loguru</code>. This module adds hops without hiding meaningful policy.</li>
+<li><code>duckalog.config.loading.base</code>: Defines <code>ConfigLoader</code> and <code>SQLFileLoader</code> ABCs with no concrete subclasses left in the tree. The abstraction is unused and adds cognitive load.</li>
+<li><code>duckalog.cli._create_filesystem_from_options</code>: A 217-line function with 12 parameters and deep protocol-specific <code>if/elif</code> chains. Each protocol (S3, GCS, SFTP, etc.) should be a small private helper called by a thin dispatcher.</li>
+</ul>
+<h3 id="leaky-abstractions">Leaky Abstractions<a class="headerlink" href="#leaky-abstractions" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>duckalog.cli</code>: The CLI directly orchestrates filesystem creation, SQL generation, catalog building, interactive mode, and table display. These concerns leak into one mega-module because there is no stable boundary between "CLI argument parsing" and "CLI action execution."</li>
+<li><code>duckalog.engine.CatalogBuilder</code>: The <code>build()</code> method exposes the exact sequencing of connection → pragmas → secrets → attachments → views → export. Callers don't see this, but maintainers do, and the long method makes changes fragile.</li>
+<li><code>duckalog.sql_generation.generate_secret_sql</code>: A 169-line provider switch statement. The provider-specific SQL dialects are not hidden behind small generators, so adding a new secret provider requires touching a large function.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["navigation.tabs","navigation.sections","navigation.path","navigation.top","content.action.edit","content.action.view"],"search":"../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.dbc0afdc.min.js"></script>
+      
+    
+  </body>
+</html>

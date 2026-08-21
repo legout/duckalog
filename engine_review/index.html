@@ -1,0 +1,2042 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Build DuckDB catalogs from declarative YAML/JSON configs.">
+      
+      
+      
+        <link rel="canonical" href="https://legout.github.io/duckalog/engine_review/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.37">
+    
+    
+      
+        <title>Engine & Connection Layer Review - Duckalog</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/classic/main.a2001754.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,500,500i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,a=__md_scope)=>JSON.parse(t.getItem(a.pathname+"."+e)),__md_set=(e,t,a=localStorage,_=__md_scope)=>{try{a.setItem(_.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#engine-connection-layer-review" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Duckalog" class="md-header__button md-logo" aria-label="Duckalog" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Duckalog
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Engine &amp; Connection Layer Review
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/legout/duckalog" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    legout/duckalog
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="./.." class="md-tabs__link">
+        
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../tutorials/" class="md-tabs__link">
+          
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../how-to/" class="md-tabs__link">
+          
+  
+  How-to Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../reference/" class="md-tabs__link">
+          
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../explanation/architecture/" class="md-tabs__link">
+          
+  
+  Understanding
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/" class="md-tabs__link">
+          
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../SECURITY/" class="md-tabs__link">
+        
+  
+  Security
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Duckalog" class="md-nav__button md-logo" aria-label="Duckalog" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Duckalog
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/legout/duckalog" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    legout/duckalog
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/environment-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/debugging-builds/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Debugging Builds
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Path Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration-path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrating to Path Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration-refactor-config-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrating to Config Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/performance-tuning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance Tuning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/secrets-persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Secrets Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/api-patterns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Patterns
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/config-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Understanding
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Understanding
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dependency-injection-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependency Injection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../path-resolution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Path Resolution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/philosophy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Philosophy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explanation/comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/simple-parquet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simple Parquet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/multi-source-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Source Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/duckdb-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DuckDB Secrets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/duckdb-settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DuckDB Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/environment-vars/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Variables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/local-attachments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Attachments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/path-resolution-examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Path Resolution Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/config-imports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config Imports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SECURITY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#review" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Review
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Review">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#correct" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Correct
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Findings
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Findings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-severity-high-connectioncli-path-does-not-build-or-attach-duckalog-child-catalogs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        1. Severity: High — Connection/CLI path does not build or attach Duckalog child catalogs
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-severity-high-missing-fsspec-remote-export-error-path-is-unreachable" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        2. Severity: High — Missing-fsspec remote export error path is unreachable
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-severity-medium-build_cataloginclude_secrets-is-deadignored-api-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        3. Severity: Medium — <code>build_catalog(include_secrets=...)</code> is dead/ignored API surface
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-severity-medium-use_connection-path-appears-unfinished-and-is-untesteddead-in-production-callers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. Severity: Medium — <code>use_connection</code> path appears unfinished and is untested/dead in production callers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-severity-medium-engine-error-wrapping-is-inconsistent-with-build_catalog-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. Severity: Medium — Engine error wrapping is inconsistent with <code>build_catalog()</code> documentation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-severity-low-view-creation-logic-is-duplicated-between-engine-and-connection-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        6. Severity: Low — View-creation logic is duplicated between engine and connection layers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-severity-low-catalogconnectionget_connection-contains-a-dead-compatibility-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        7. Severity: Low — <code>CatalogConnection.get_connection()</code> contains a dead compatibility branch
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-severity-low-python-api-narrows-lower-level-connection-capabilities-and-duplicates-generated-config-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        8. Severity: Low — Python API narrows lower-level connection capabilities and duplicates generated-config validation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-severity-low-configdependencygraph-keeps-unusednondeterministic-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        9. Severity: Low — <code>ConfigDependencyGraph</code> keeps unused/nondeterministic state
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-severity-low-regressiondetector-has-zero-baseline-division-edge-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        10. Severity: Low — <code>RegressionDetector</code> has zero-baseline division edge cases
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Validation notes
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+    <a href="https://github.com/legout/duckalog/edit/main/docs/engine_review.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/legout/duckalog/raw/main/docs/engine_review.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 18c.56 0 1 .44 1 1s-.44 1-1 1-1-.44-1-1 .44-1 1-1m0-3c-2.73 0-5.06 1.66-6 4 .94 2.34 3.27 4 6 4s5.06-1.66 6-4c-.94-2.34-3.27-4-6-4m0 6.5a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5M9.27 20H6V4h7v5h5v4.07c.7.08 1.36.25 2 .49V8l-6-6H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h4.5a8.2 8.2 0 0 1-1.23-2"/></svg>
+    </a>
+  
+
+
+<h1 id="engine-connection-layer-review">Engine &amp; Connection Layer Review<a class="headerlink" href="#engine-connection-layer-review" title="Permanent link">&para;</a></h1>
+<p>Scope: reviewed <code>ARCHITECTURE.md</code> engine/connection sections and inspected <code>src/duckalog/engine.py</code>, <code>src/duckalog/connection.py</code>, <code>src/duckalog/python_api.py</code>, and <code>src/duckalog/performance.py</code>. Requested <code>plan.md</code> and <code>progress.md</code> were not present in the repo root.</p>
+<h2 id="review">Review<a class="headerlink" href="#review" title="Permanent link">&para;</a></h2>
+<h3 id="correct">Correct<a class="headerlink" href="#correct" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>ARCHITECTURE.md</code> accurately calls out the intended layer split and already identifies <code>CatalogBuilder</code>/connection sequencing as a leaky boundary (<code>ARCHITECTURE.md:17</code>, <code>ARCHITECTURE.md:241-243</code>). The current <code>CatalogBuilder.build()</code> is now a short dispatcher (<code>src/duckalog/engine.py:85-104</code>), with phase helpers for dry-run, connection setup, export, and cleanup.</li>
+<li><code>CatalogConnection</code> does implement lazy initialization and shared connection reuse for the normal case: it loads config only when needed (<code>src/duckalog/connection.py:99-105</code>), connects once (<code>src/duckalog/connection.py:131-139</code>), restores state (<code>src/duckalog/connection.py:141-146</code>), and returns the same connection on later calls (<code>src/duckalog/connection.py:96-97</code>).</li>
+<li><code>PerformanceMetrics</code> is not entirely dead code: the import resolver creates it in <code>RequestContext</code> (<code>src/duckalog/config/resolution/imports.py:42-54</code>) and records timings around path resolution, file I/O, parsing, env interpolation, SQL processing, and dotenv loading (<code>src/duckalog/config/resolution/imports.py:377-383</code>, <code>src/duckalog/config/resolution/imports.py:619-651</code>).</li>
+</ul>
+<h3 id="findings">Findings<a class="headerlink" href="#findings" title="Permanent link">&para;</a></h3>
+<h4 id="1-severity-high-connectioncli-path-does-not-build-or-attach-duckalog-child-catalogs">1. Severity: High — Connection/CLI path does not build or attach Duckalog child catalogs<a class="headerlink" href="#1-severity-high-connectioncli-path-does-not-build-or-attach-duckalog-child-catalogs" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Evidence: <code>build_catalog()</code> explicitly builds Duckalog attachment dependencies and stores <code>duckalog_results</code> (<code>src/duckalog/engine.py:522-553</code>), then passes those results into <code>CatalogBuilder</code> (<code>src/duckalog/engine.py:561-570</code>). <code>_apply_catalog_state()</code> only attaches Duckalog child catalogs when <code>duckalog_results</code> is provided (<code>src/duckalog/engine.py:967-984</code>).</li>
+<li>Evidence: <code>CatalogConnection.get_connection()</code> calls <code>_apply_catalog_state()</code> with no <code>duckalog_results</code> (<code>src/duckalog/connection.py:141-146</code>), and then creates/recreates views (<code>src/duckalog/connection.py:173-180</code>, <code>src/duckalog/connection.py:225-228</code>). The CLI non-dry-run path uses <code>connect_to_catalog()</code> rather than <code>build_catalog()</code> (<code>src/duckalog/cli.py:271-279</code>).</li>
+<li>Verified behavior: a parent config with <code>attachments.duckalog</code> and a view selecting from <code>ref.child_view</code> fails through <code>duckalog.python_api.connect_to_catalog(..., force_rebuild=True)</code> with <code>EngineError: Failed to rebuild views: Catalog Error: Table with name child_view does not exist</code>.</li>
+<li>Rationale: this breaks the advertised connection/session restoration path for hierarchical catalogs. It is also a leaky abstraction: the connection layer depends on engine-private helpers (<code>src/duckalog/connection.py:19-24</code>) but does not reproduce the dependency-building state that those helpers require.</li>
+</ul>
+<h4 id="2-severity-high-missing-fsspec-remote-export-error-path-is-unreachable">2. Severity: High — Missing-fsspec remote export error path is unreachable<a class="headerlink" href="#2-severity-high-missing-fsspec-remote-export-error-path-is-unreachable" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Evidence: <code>_setup_connection()</code> intends to reject remote export without fsspec (<code>src/duckalog/engine.py:155-159</code>), but the guard is nested under <code>if is_remote_export_uri(target_db)</code>. <code>is_remote_export_uri()</code> returns <code>False</code> whenever <code>FSSPEC_AVAILABLE</code> is false (<code>src/duckalog/engine.py:585-588</code>).</li>
+<li>Verified behavior: with <code>FSSPEC_AVAILABLE</code> patched to <code>False</code>, <code>build_catalog(..., db_path='s3://bucket/catalog.duckdb')</code> tried <code>duckdb.connect('s3://bucket/catalog.duckdb')</code> and raised <code>EngineError Failed to connect to DuckDB at s3://bucket/catalog.duckdb: IO Error: Cannot open file ...</code>, not the intended remote-export dependency error.</li>
+<li>Rationale: remote URIs are misclassified as local paths when the optional dependency is absent, so error handling no longer matches the engine's own message or the remote-export tests' intent (<code>tests/test_engine_remote_export.py:185-195</code>).</li>
+</ul>
+<h4 id="3-severity-medium-build_cataloginclude_secrets-is-deadignored-api-surface">3. Severity: Medium — <code>build_catalog(include_secrets=...)</code> is dead/ignored API surface<a class="headerlink" href="#3-severity-medium-build_cataloginclude_secrets-is-deadignored-api-surface" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Evidence: <code>build_catalog()</code> exposes <code>include_secrets</code> and documents it (<code>src/duckalog/engine.py:461-483</code>), but the value is never passed into <code>CatalogBuilder</code> or <code>_handle_dry_run()</code> (<code>src/duckalog/engine.py:561-570</code>). <code>_handle_dry_run()</code> always calls <code>generate_all_views_sql(..., include_secrets=True)</code> (<code>src/duckalog/engine.py:142-147</code>).</li>
+<li>Evidence: repo-wide grep found <code>include_secrets</code> only in <code>engine.py</code>, <code>sql_generation.py</code>, and SQL-generation tests; no call path consumes <code>build_catalog()</code>'s parameter.</li>
+<li>Rationale: callers cannot suppress secret SQL through the documented <code>build_catalog()</code> argument, so dry-run output may include secrets despite an explicit false value.</li>
+</ul>
+<h4 id="4-severity-medium-use_connection-path-appears-unfinished-and-is-untesteddead-in-production-callers">4. Severity: Medium — <code>use_connection</code> path appears unfinished and is untested/dead in production callers<a class="headerlink" href="#4-severity-medium-use_connection-path-appears-unfinished-and-is-untesteddead-in-production-callers" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Evidence: <code>build_catalog()</code> exposes <code>use_connection</code> (<code>src/duckalog/engine.py:463-486</code>) and <code>CatalogBuilder</code> branches into <code>_build_with_connection()</code> (<code>src/duckalog/engine.py:91-92</code>), but grep found no CLI or test callers using <code>use_connection</code>.</li>
+<li>Evidence: <code>_build_with_connection()</code> opens a <code>CatalogConnection</code> against the target database before checking whether that target is a remote export URI (<code>src/duckalog/engine.py:110-119</code>, <code>src/duckalog/engine.py:129-138</code>). The comments explicitly note the path is bypassing <code>_setup_connection()</code> and needs refinement (<code>src/duckalog/engine.py:121-128</code>).</li>
+<li>Evidence: this path also ignores <code>self.duckalog_results</code>; the <code>CatalogConnection</code> constructor has no parameter for dependency build results (<code>src/duckalog/engine.py:113-118</code>, <code>src/duckalog/connection.py:46-54</code>).</li>
+<li>Rationale: this public parameter combines unfinished remote-export handling with the same hierarchical-catalog gap described above, while adding another orchestration mode to the engine.</li>
+</ul>
+<h4 id="5-severity-medium-engine-error-wrapping-is-inconsistent-with-build_catalog-documentation">5. Severity: Medium — Engine error wrapping is inconsistent with <code>build_catalog()</code> documentation<a class="headerlink" href="#5-severity-medium-engine-error-wrapping-is-inconsistent-with-build_catalog-documentation" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Evidence: <code>build_catalog()</code> documents <code>EngineError</code> for connection and SQL execution failures (<code>src/duckalog/engine.py:492-494</code>). <code>_setup_connection()</code> wraps connection failures (<code>src/duckalog/engine.py:172-178</code>) and <code>_create_secrets()</code> wraps secret creation failures (<code>src/duckalog/engine.py:741-751</code>).</li>
+<li>Evidence: other phases execute DuckDB calls without contextual wrapping: extension/pragmas/settings (<code>src/duckalog/engine.py:758-781</code>), Iceberg catalog attach (<code>src/duckalog/engine.py:905-929</code>), and view creation (<code>src/duckalog/engine.py:932-951</code>). <code>CatalogConnection.get_connection()</code> compensates with a broad wrapper (<code>src/duckalog/connection.py:159-166</code>), but plain <code>build_catalog()</code> does not.</li>
+<li>Rationale: the same underlying failure can surface as raw DuckDB exceptions in the build path and as <code>EngineError</code> in the connection path, which makes error handling patterns harder to reason about.</li>
+</ul>
+<h4 id="6-severity-low-view-creation-logic-is-duplicated-between-engine-and-connection-layers">6. Severity: Low — View-creation logic is duplicated between engine and connection layers<a class="headerlink" href="#6-severity-low-view-creation-logic-is-duplicated-between-engine-and-connection-layers" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Evidence: engine view creation creates schemas then executes <code>generate_view_sql()</code> for all views (<code>src/duckalog/engine.py:932-951</code>). Connection incremental creation repeats schema creation and <code>generate_view_sql()</code> execution for missing views (<code>src/duckalog/connection.py:212-228</code>).</li>
+<li>Rationale: the connection layer already imports <code>_create_views</code> from engine (<code>src/duckalog/connection.py:19-23</code>) but still carries its own partial copy. This duplication is a drift risk for future changes to schema/view creation semantics.</li>
+</ul>
+<h4 id="7-severity-low-catalogconnectionget_connection-contains-a-dead-compatibility-branch">7. Severity: Low — <code>CatalogConnection.get_connection()</code> contains a dead compatibility branch<a class="headerlink" href="#7-severity-low-catalogconnectionget_connection-contains-a-dead-compatibility-branch" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Evidence: the read-only missing-file check at <code>src/duckalog/connection.py:109-114</code> performs <code>pass</code> and is immediately followed by the real check at <code>src/duckalog/connection.py:116-123</code>.</li>
+<li>Rationale: the no-op branch and contradictory comments add noise to already stateful connection initialization.</li>
+</ul>
+<h4 id="8-severity-low-python-api-narrows-lower-level-connection-capabilities-and-duplicates-generated-config-validation">8. Severity: Low — Python API narrows lower-level connection capabilities and duplicates generated-config validation<a class="headerlink" href="#8-severity-low-python-api-narrows-lower-level-connection-capabilities-and-duplicates-generated-config-validation" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Evidence: <code>connection.connect_to_catalog()</code> accepts <code>filesystem</code> and <code>load_dotenv</code> (<code>src/duckalog/connection.py:254-260</code>), but <code>python_api.connect_to_catalog()</code> exposes only <code>config_path</code>, <code>database_path</code>, <code>read_only</code>, and <code>force_rebuild</code> (<code>src/duckalog/python_api.py:62-67</code>) and forwards only those (<code>src/duckalog/python_api.py:100-105</code>).</li>
+<li>Evidence: generated-config validation exists in both <code>config_init.py</code> (<code>src/duckalog/config_init.py:195-222</code>) and <code>python_api.py</code> (<code>src/duckalog/python_api.py:147-164</code>). The public package import selects the <code>config_init</code> version (<code>src/duckalog/__init__.py:22-35</code>), leaving the <code>python_api.py</code> version as parallel API surface.</li>
+<li>Rationale: programmatic users lose access to connection features that the lower layer already supports, and duplicate validation helpers create two places for behavior to diverge.</li>
+</ul>
+<h4 id="9-severity-low-configdependencygraph-keeps-unusednondeterministic-state">9. Severity: Low — <code>ConfigDependencyGraph</code> keeps unused/nondeterministic state<a class="headerlink" href="#9-severity-low-configdependencygraph-keeps-unusednondeterministic-state" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Evidence: <code>visited</code> is initialized (<code>src/duckalog/engine.py:236-238</code>) and written in <code>finally</code> (<code>src/duckalog/engine.py:317-319</code>), but grep found no reads. Cycle-path diagnostics are built from the unordered <code>visiting</code> set (<code>src/duckalog/engine.py:282-285</code>).</li>
+<li>Rationale: this is overcomplicated state management in dependency orchestration; the stored state does not currently affect behavior, and cycle messages can be nondeterministic.</li>
+</ul>
+<h4 id="10-severity-low-regressiondetector-has-zero-baseline-division-edge-cases">10. Severity: Low — <code>RegressionDetector</code> has zero-baseline division edge cases<a class="headerlink" href="#10-severity-low-regressiondetector-has-zero-baseline-division-edge-cases" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Evidence: <code>BenchmarkResult.__post_init__()</code> leaves <code>avg_time</code> at <code>0.0</code> when <code>iterations == 0</code> (<code>src/duckalog/performance.py:92-94</code>). <code>RegressionDetector.detect()</code> divides by <code>baseline.avg_time</code> for overall degradation (<code>src/duckalog/performance.py:109-118</code>) and by <code>base_total</code> for metric degradation (<code>src/duckalog/performance.py:121-136</code>) without checking zero baselines.</li>
+<li>Rationale: benchmark comparison can crash on an empty or zero-duration baseline instead of returning a regression/no-regression result.</li>
+</ul>
+<h3 id="validation-notes">Validation notes<a class="headerlink" href="#validation-notes" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>pytest tests/test_connection_api.py tests/test_engine_remote_export.py tests/test_performance_regression.py</code> failed under system Python because the package was not importable.</li>
+<li><code>uv run pytest tests/test_connection_api.py tests/test_engine_remote_export.py tests/test_performance_regression.py</code> collected tests and reported <code>19 passed, 8 failed</code>. Several failures are in <code>tests/test_engine_remote_export.py</code>; at least part of that file is stale against current config validation (<code>tests/test_engine_remote_export.py:142-154</code> omits required <code>version</code>).</li>
+<li>Current <code>git status --short</code> shows modified <code>uv.lock</code> and untracked <code>config_review.md</code> in addition to this report; this review did not edit <code>uv.lock</code> or <code>config_review.md</code>.</li>
+</ul>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>{
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  &quot;criteriaSatisfied&quot;: [
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    {
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>      &quot;id&quot;: &quot;criterion-1&quot;,
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>      &quot;status&quot;: &quot;satisfied&quot;,
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>      &quot;evidence&quot;: &quot;Completed the requested review-only deliverable and wrote findings to engine_review.md without modifying source/test files.&quot;
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    }
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  ],
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  &quot;changedFiles&quot;: [
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    &quot;engine_review.md&quot;
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  ],
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>  &quot;testsAddedOrUpdated&quot;: [],
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>  &quot;commandsRun&quot;: [
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    {
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>      &quot;command&quot;: &quot;read plan.md, progress.md, ARCHITECTURE.md, src/duckalog/{engine.py,connection.py,python_api.py,performance.py}&quot;,
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>      &quot;result&quot;: &quot;completed with missing inputs&quot;,
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>      &quot;summary&quot;: &quot;plan.md and progress.md were absent; architecture and target source files were read.&quot;
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    },
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    {
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>      &quot;command&quot;: &quot;grep for include_secrets, use_connection, performance classes, build/connect call sites&quot;,
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>      &quot;result&quot;: &quot;passed&quot;,
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>      &quot;summary&quot;: &quot;Confirmed ignored/dead parameters and call-site coverage.&quot;
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    },
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    {
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>      &quot;command&quot;: &quot;pytest tests/test_connection_api.py tests/test_engine_remote_export.py tests/test_performance_regression.py&quot;,
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>      &quot;result&quot;: &quot;failed&quot;,
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>      &quot;summary&quot;: &quot;System Python could not import duckalog; no tests collected.&quot;
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    },
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    {
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>      &quot;command&quot;: &quot;uv run pytest tests/test_connection_api.py tests/test_engine_remote_export.py tests/test_performance_regression.py&quot;,
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>      &quot;result&quot;: &quot;failed&quot;,
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>      &quot;summary&quot;: &quot;19 passed, 8 failed; failures concentrated in remote-export tests and stale config fixture.&quot;
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>    },
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    {
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>      &quot;command&quot;: &quot;manual uv run python reproductions for hierarchical CatalogConnection and missing-fsspec remote export&quot;,
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>      &quot;result&quot;: &quot;completed&quot;,
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>      &quot;summary&quot;: &quot;Confirmed hierarchical connection failure and remote URI misclassification when fsspec is unavailable.&quot;
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>    },
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>    {
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>      &quot;command&quot;: &quot;git status --short; git diff --stat; git diff --cached --stat&quot;,
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>      &quot;result&quot;: &quot;passed&quot;,
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>      &quot;summary&quot;: &quot;git status shows modified uv.lock and untracked config_review.md plus this report; git diff --cached is empty, so no staged files.&quot;
+</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>    }
+</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>  ],
+</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>  &quot;validationOutput&quot;: [
+</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>    &quot;uv run pytest tests/test_connection_api.py tests/test_engine_remote_export.py tests/test_performance_regression.py: 19 passed, 8 failed&quot;,
+</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>    &quot;Hierarchical CatalogConnection reproduction: EngineError: Failed to rebuild views: Catalog Error: Table with name child_view does not exist&quot;,
+</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>    &quot;Missing-fsspec remote export reproduction: EngineError from duckdb.connect on local-looking s3:// path, not intended remote-export dependency error&quot;
+</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>  ],
+</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>  &quot;residualRisks&quot;: [
+</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>    &quot;Review was inspection-focused; no fixes were applied by instruction.&quot;,
+</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>    &quot;uv.lock is modified and config_review.md is untracked outside this review; neither was touched.&quot;
+</span><span id="__span-0-53"><a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>  ],
+</span><span id="__span-0-54"><a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>  &quot;noStagedFiles&quot;: true,
+</span><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>  &quot;diffSummary&quot;: &quot;Added engine_review.md report only; source and tests were not edited.&quot;,
+</span><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>  &quot;reviewFindings&quot;: [
+</span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>    &quot;high: src/duckalog/connection.py:141 - connection path restores catalog state without duckalog_results, so Duckalog child catalogs are not attached&quot;,
+</span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>    &quot;high: src/duckalog/engine.py:585 - remote URI detection returns false when fsspec is unavailable, bypassing intended dependency error&quot;,
+</span><span id="__span-0-59"><a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>    &quot;medium: src/duckalog/engine.py:461 - build_catalog include_secrets argument is documented but ignored&quot;,
+</span><span id="__span-0-60"><a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>    &quot;medium: src/duckalog/engine.py:106 - use_connection path is unfinished/untested and bypasses normal remote/dependency orchestration&quot;,
+</span><span id="__span-0-61"><a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>    &quot;medium: src/duckalog/engine.py:758 - SQL execution error wrapping is inconsistent across build phases&quot;,
+</span><span id="__span-0-62"><a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>    &quot;low: src/duckalog/connection.py:212 - view creation logic duplicates engine._create_views&quot;,
+</span><span id="__span-0-63"><a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>    &quot;low: src/duckalog/connection.py:109 - dead no-op compatibility branch&quot;,
+</span><span id="__span-0-64"><a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>    &quot;low: src/duckalog/python_api.py:62 - Python wrapper narrows lower-level connection options and duplicates validation helper&quot;,
+</span><span id="__span-0-65"><a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a>    &quot;low: src/duckalog/engine.py:236 - unused/nondeterministic ConfigDependencyGraph state&quot;,
+</span><span id="__span-0-66"><a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a>    &quot;low: src/duckalog/performance.py:109 - RegressionDetector can divide by zero for zero baselines&quot;
+</span><span id="__span-0-67"><a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a>  ],
+</span><span id="__span-0-68"><a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>  &quot;manualNotes&quot;: &quot;Report written to /Users/volker/coding/libs/duckalog/engine_review.md as requested.&quot;
+</span><span id="__span-0-69"><a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>}
+</span></code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["navigation.tabs","navigation.sections","navigation.path","navigation.top","content.action.edit","content.action.view"],"search":"../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.dbc0afdc.min.js"></script>
+      
+    
+  </body>
+</html>
