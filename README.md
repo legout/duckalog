@@ -1,8 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/duckalog.svg)](https://badge.fury.io/py/duckalog)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/duckalog.svg)](https://pypi.org/project/duckalog/)
-[![Tests](https://github.com/legout/duckalog/workflows/Tests/badge.svg)](https://github.com/legout/duckalog/actions)
-[![codecov](https://codecov.io/gh/legout/duckalog/branch/main/graph/badge.svg)](https://codecov.io/gh/legout/duckalog)
-[![Security](https://github.com/legout/duckalog/workflows/Security/badge.svg)](https://github.com/legout/duckalog/actions/workflows/security.yml)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/badge/lint-ruff-blue.svg)](https://github.com/charliermarsh/ruff)
 
@@ -842,19 +839,13 @@ For detailed examples and troubleshooting, see:
 - [Version Update Examples](docs/version-update-examples.md)
 - [Troubleshooting Guide](docs/troubleshooting-version-tagging.md)
 
-#### Continuous Integration
+#### Local Quality Checks
 
-Duckalog uses a streamlined GitHub Actions setup to keep CI predictable:
+Run these checks before contributing:
 
-- **Tests workflow** runs Ruff + mypy on Python 3.12 and executes pytest on Ubuntu for Python 3.12 and 3.13. If tests fail, the workflow fails—no auto-generated smoke tests.
-- **Security workflow** focuses on a curated set of scans: TruffleHog and GitLeaks for secrets, Safety + pip-audit for dependency issues, and Bandit + Semgrep for code-level checks. Heavy container or supply-chain scans run only when explicitly needed.
-- **publish.yml** builds sdist + wheel once on Python 3.12, validates artifacts with `twine check`, smoke-tests the wheel, and then reuses the artifacts for Test PyPI, PyPI, or dry-run scenarios. Release jobs rely on the `Tests` workflow’s status rather than re-running the full test matrix.
-
-For local development, we recommend:
-
-- `uv run ruff check src/ tests/` to run lint checks (CI treats these as required).
-- `uv run ruff format src/ tests/` to auto-format code (CI runs `ruff format --check` in advisory mode).
-- `uv run mypy src/duckalog` to run type checks.
+- `uv run ruff check src/ tests/` for lint checks.
+- `uv run ruff format src/ tests/` to format code.
+- `uv run mypy src/duckalog` for type checking.
 
 #### Using uv (recommended for development)
 
